@@ -1,0 +1,15 @@
+@import url("./properties.css");
+
+.ag-root {
+    --ag-header-background-color: green;
+}
+
+.du-bois-light-typography a, .du-bois-light-breadcrumb a, a {
+    color: var(--fg-accent-default);
+    &:hover, &:focus {
+        color: var(--fg-accent-hover);
+    }
+    &:active {
+        color: var(--fg-accent-active);
+    }
+}

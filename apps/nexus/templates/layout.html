@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>{% block title %}{% endblock %} - ViCoS</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body>
+
+
+    <nav>
+        <h2>ViCoS Toolbox</h2>
+        <a href="/label" {% if request.endpoint=='label' %}aria-current="page" {% endif %}>Labeling</a>
+        <a href="/dashboard" {% if request.endpoint=='dashboard' %}aria-current="page" {% endif %}>Experiments</a>
+    </nav>
+
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+
+</body>
+
+</html>

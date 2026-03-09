@@ -1,0 +1,20 @@
+@import url("./properties.css");
+
+:root {
+    --color-primary-emphasis-subtle: var(--bg-accent-default);
+    --color-primary-content: var(--fg-accent-default);
+    --color-primary-surface: var(--bg-accent-hover);
+    --color-primary-surface-content: var(--fg-accent-default);
+    --color-primary-surface-hover: var(--bg-accent-active);
+    --color-primary-border: var(--fg-accent-default);
+    --color-primary-border-subtle: var(--fg-accent-default);
+    --color-primary-border-subtler: var(--fg-accent-default);
+    --color-primary-border-bold: var(--fg-accent-default);
+    --color-primary-icon: var(--fg-accent-default);
+    --color-primary-emphasis: var(--bg-accent-hover);
+    --color-primary-background: var(--bg-accent-default);
+    --color-accent-grape-subtle: var(--bg-accent-hover);
+    --color-primary-content-hover: var(--fg-accent-hover);
+    --color-primary-focus-outline: var(--bg-accent-active);
+    --accent_color-raw: 193 55 55;
+}

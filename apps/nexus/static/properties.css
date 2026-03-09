@@ -1,0 +1,9 @@
+:root, html > body {
+    --bg-primary: white; /*#950606*/
+    --fg-accent-default: #c13737; 
+    --fg-accent-hover: #d32a2a;
+    --fg-accent-active: #db1a1a;
+    --bg-accent-default: #d32a2a00;
+    --bg-accent-hover: #d32a2a10;
+    --bg-accent-active: #d32a2a20;
+}

@@ -1,0 +1,51 @@
+@import url("./properties.css");
+
+*, *::before, *::after {
+    box-sizing: border-box;
+}
+html, body {
+    width: 100%;
+    height: 100%;
+}
+html {
+    overflow: hidden;
+}
+body {
+    display: grid;
+    grid-template-rows: 3rem 1fr;
+    margin: 0;
+    background-color: rgb(255, 158, 158);
+    /* background-color: rgb(232, 232, 232); */
+}
+main {
+    margin: 1rem;
+    margin-top: 0.5rem;
+    iframe {
+        width: 100%;
+        height: 100%;
+        border-radius: 1rem;
+        border: 1px solid black;
+    }
+}
+nav {
+    display: flex;
+    gap: 1.5rem;
+    align-items: center;
+    font-family: system-ui;
+    padding: 0.5rem;
+    padding-left: 1.5rem;
+    > * {
+        margin: 0;
+    }
+    a {
+        padding: 0.25rem 0.5rem;
+        font-size: 1.5rem;
+        text-decoration: none;
+        color: black;
+        border-radius: 0.5rem;
+        &:hover, &[aria-current=page] {
+            text-decoration: underline;
+            text-underline-offset: 0.5rem;
+        }
+    }
+}

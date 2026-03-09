@@ -1,0 +1,9 @@
+[project]
+name = "nexus"
+version = "0.1.0"
+description = "Web app that organizes and presents all components of the ViCoS toolbox"
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    "flask>=3.1.3",
+]
