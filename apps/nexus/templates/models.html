@@ -1,0 +1,14 @@
+{% extends "layout.html" %}
+
+{% block title %}Models{% endblock %}
+
+{% block content %}
+<div class="model-list wrapper">
+    {% for id, info in models.items() %}
+    <a href="/models/{{ id }}" class="model">
+        <h3>{{ info.title }}</h3>
+        <p>{{ info.description }}</p>
+    </a>
+    {% endfor %}
+</div>
+{% endblock %}

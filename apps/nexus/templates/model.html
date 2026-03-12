@@ -1,0 +1,37 @@
+{% extends "layout.html" %}
+
+{% block title %}{{ train.title }}{% endblock %}
+
+{% block content %}
+<div class="model-overview">
+    {% if train %}
+    <form method="post">
+        <fieldset>
+            {% for k, prop in train.properties.items() %}
+            <label for="{{ k }}" title="{{ prop.description }}">{{ k }}</label>
+            {% if prop.enum %}
+            <div>
+                {% for opt in prop.enum %}
+                <input type="radio" id="{{ opt }}" name="{{ k }}" value="{{ opt }}" {% if prop.default==opt %}checked{%
+                    endif %} />
+                <label for="{{ opt }}">{{ opt }}</label>
+                {% endfor %}
+            </div>
+            {% elif prop.type == "string" %}
+            <input type="text" name="{{ k }}" placeholder="{{ prop.default }}">
+            {% elif prop.type == "boolean" %}
+            <input type="checkbox" name="{{ k }}" placeholder="{{ prop.default }}">
+            {% elif prop.type == "integer" %}
+            <input type="text" inputmode="numeric" pattern="\d*" name="{{ k }}" placeholder="{{ prop.default }}">
+            {% elif prop.type == "number" %}
+            <input type="text" inputmode="numeric" pattern="\d+(.\d+)?" name="{{ k }}" placeholder="{{ prop.default }}">
+            {% else %}
+            invalid type
+            {% endif %}
+            {% endfor %}
+            <input type="submit" value="Start training">
+        </fieldset>
+    </form>
+    {% endif %}
+</div>
+{% endblock %}

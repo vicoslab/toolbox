@@ -1,0 +1,33 @@
+{% extends "layout.html" %}
+
+{% block title %}Status{% endblock %}
+
+{% block content %}
+<div class="logs wrapper">
+    <h1>Task information</h1>
+    {% if description %}
+    <p>{{ description }}</p>
+    {% if running %}
+    <button command="show-modal" commandfor="confirm-stop">Stop task</button>
+
+    <dialog id="confirm-stop">
+        <p>Are you sure you want to stop this task?</p>
+        <button commandfor="confirm-stop" command="close">No</button>
+        <form action="/task/stop" method="post">
+            <button type="submit">Yes</button>
+        </form>
+
+    </dialog>
+    {% endif %}
+    <pre>
+        {% for line in output %}
+        {{ line }}
+        {% endfor %}
+    </pre>
+    {% else %}
+    <p>
+        Task information will appear here when you begin a training run or start a inference / preannotation worker.
+    </p>
+    {% endif %}
+</div>
+{% endblock %}

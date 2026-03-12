@@ -1,7 +1,7 @@
 @import url("./properties.css");
 
 .ag-root {
-    --ag-header-background-color: green;
+    --ag-header-background-color: var(--bg-primary);
 }
 
 .du-bois-light-typography a, .du-bois-light-breadcrumb a, a {
