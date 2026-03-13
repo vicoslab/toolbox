@@ -1,0 +1,9 @@
+RUN git clone -b v3.10.1 --depth 1 https://github.com/mlflow/mlflow .
+
+COPY ${src}/*.patch .
+RUN git apply *.patch && rm *.patch
+
+RUN uv venv
+RUN uv sync
+RUN --mount=type=cache,target=/root/.yarn cd mlflow/server/js && yarn install && yarn build
+RUN uv pip install .

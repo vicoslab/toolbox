@@ -1,0 +1,12 @@
+diff --git a/label_studio/templates/base.html b/label_studio/templates/base.html
+index 8723aead0..5f6524b22 100644
+--- a/label_studio/templates/base.html
++++ b/label_studio/templates/base.html
+@@ -71,6 +71,7 @@
+   {% get_current_language as LANGUAGE_CODE %}
+   {% get_available_languages as LANGUAGES %}
+ 
++  <link href="http://localhost:8079/static/overrides-labelstudio.css" rel="stylesheet"/>
+ </head>
+ 
+ <body>

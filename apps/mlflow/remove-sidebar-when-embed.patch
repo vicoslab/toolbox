@@ -1,0 +1,14 @@
+diff --git a/mlflow/server/js/src/common/components/MlflowSidebar.tsx b/mlflow/server/js/src/common/components/MlflowSidebar.tsx
+index a590e955b..fbc750611 100644
+--- a/mlflow/server/js/src/common/components/MlflowSidebar.tsx
++++ b/mlflow/server/js/src/common/components/MlflowSidebar.tsx
+@@ -229,6 +229,9 @@ export function MlflowSidebar({
+     ],
+   );
+ 
++  if (window.location !== window.parent.location) {
++    return <></>;
++  }
+   // Workspace support
+   const workspacesEnabled = shouldEnableWorkspaces();
+   const workspaceFromUrl = extractWorkspaceFromSearchParams(searchParams);

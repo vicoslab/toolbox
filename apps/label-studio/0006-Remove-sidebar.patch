@@ -1,0 +1,55 @@
+From 1c6b5aa8a22b613f7e504e4e07a4dd12cb2105f1 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Andra=C5=BE=20Andol=C5=A1ek=20Peklaj?= <andraz.ap@pm.me>
+Date: Thu, 5 Mar 2026 16:52:39 +0100
+Subject: [PATCH 11/11] Remove sidebar
+
+---
+ .../labelstudio/src/components/Menubar/Menubar.jsx     | 10 ++++++----
+ 1 file changed, 6 insertions(+), 4 deletions(-)
+
+diff --git a/web/apps/labelstudio/src/components/Menubar/Menubar.jsx b/web/apps/labelstudio/src/components/Menubar/Menubar.jsx
+index e6cef4a15..1ad1ba19d 100644
+--- a/web/apps/labelstudio/src/components/Menubar/Menubar.jsx
++++ b/web/apps/labelstudio/src/components/Menubar/Menubar.jsx
+@@ -133,16 +133,18 @@ export const Menubar = ({ enabled, defaultOpened, defaultPinned, children, onSid
+     useMenuRef?.current?.close();
+   }, [location]);
+ 
++  const embed = window.location !== window.parent.location;
++
+   return (
+     <div className={contentClass}>
+       {enabled && (
+         <div className={menubarClass}>
+-          <Dropdown.Trigger dropdown={menuDropdownRef} closeOnClickOutside={!sidebarPinned}>
++          {!embed && <Dropdown.Trigger dropdown={menuDropdownRef} closeOnClickOutside={!sidebarPinned}>
+             <div className={`${menubarClass.elem("trigger")} main-menu-trigger`}>
+               <LSLogo className={`${menubarClass.elem("logo")}`} alt="Label Studio Logo" />
+               <Hamburger opened={sidebarOpened} />
+             </div>
+-          </Dropdown.Trigger>
++          </Dropdown.Trigger>}
+ 
+           <div className={menubarContext}>
+             <LeftContextMenu className={contextItem.mod({ left: true })} />
+@@ -176,7 +178,7 @@ export const Menubar = ({ enabled, defaultOpened, defaultPinned, children, onSid
+ 
+           {ff.isActive(ff.FF_THEME_TOGGLE) && <ThemeToggle />}
+ 
+-          <Dropdown.Trigger
++          {!embed && <Dropdown.Trigger
+             ref={useMenuRef}
+             align="right"
+             content={
+@@ -204,7 +206,7 @@ export const Menubar = ({ enabled, defaultOpened, defaultPinned, children, onSid
+               <Userpic user={user} isInProgress={isLoading} />
+               {showNewsletterDot && <div className={menubarClass.elem("userpic-badge")} />}
+             </div>
+-          </Dropdown.Trigger>
++          </Dropdown.Trigger>}
+         </div>
+       )}
+ 
+-- 
+2.53.0
+

@@ -1,0 +1,42 @@
+From 775737697a454c0cd76af81b6c31c58022cf7dcd Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Andra=C5=BE=20Andol=C5=A1ek=20Peklaj?= <andraz.ap@pm.me>
+Date: Thu, 5 Mar 2026 15:17:19 +0100
+Subject: [PATCH 11/11] Bypass login
+
+---
+ label_studio/core/views.py | 12 ++++++++++++
+ 1 file changed, 12 insertions(+)
+
+diff --git a/label_studio/core/views.py b/label_studio/core/views.py
+index 3ec16c0d5..d4e283d86 100644
+--- a/label_studio/core/views.py
++++ b/label_studio/core/views.py
+@@ -21,6 +21,9 @@ from django.views.decorators.csrf import csrf_exempt
+ from django.views.decorators.http import require_http_methods
+ from drf_spectacular.utils import extend_schema
+ from rest_framework.views import APIView
++from users.functions import login
++from users.models import User
++from organizations.models import Organization
+ 
+ logger = logging.getLogger(__name__)
+ 
+@@ -31,6 +34,15 @@ _PARAGRAPH_SAMPLE = None
+ def main(request):
+     user = request.user
+ 
++    if not user.is_authenticated:
++        if User.objects.exists():
++            user = User.objects.first()
++        else:
++            user = User.objects.create_user("user@example.com", "hackme", allow_newsletters=False, username="User")
++            user.active_organization = Organization.create_organization(created_by=user, title='Label Studio')
++            user.save(update_fields=['active_organization'])
++        login(request, user, backend='django.contrib.auth.backends.ModelBackend')
++
+     if user.is_authenticated:
+ 
+         if user.active_organization is None and 'organization_pk' not in request.session:
+-- 
+2.53.0
+
