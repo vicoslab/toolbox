@@ -66,6 +66,18 @@ index a2f7b16a3..8612a6d16 100644
              <FormattedMessage
                defaultMessage="MLflow Demo Experiment"
                description="Badge label for the demo experiment in the experiments list"
+diff --git a/mlflow/server/js/src/experiment-tracking/components/experiment-page/components/runs/cells/ModelsCellRenderer.tsx b/mlflow/server/js/src/experiment-tracking/components/experiment-page/components/runs/cells/ModelsCellRenderer.tsx
+index fa316184a..af570b112 100644
+--- a/mlflow/server/js/src/experiment-tracking/components/experiment-page/components/runs/cells/ModelsCellRenderer.tsx
++++ b/mlflow/server/js/src/experiment-tracking/components/experiment-page/components/runs/cells/ModelsCellRenderer.tsx
+@@ -158,7 +158,6 @@ const LoggedModelV3Link = ({ model }: { model: LoggedModelProto }) => {
+       </div>
+       <Link
+         to={Routes.getExperimentLoggedModelDetailsPage(model.info.experiment_id, model.info.model_id)}
+-        target="_blank"
+         css={{ textOverflow: 'ellipsis', overflow: 'hidden', cursor: 'pointer' }}
+       >
+         {model.info.name}
 diff --git a/mlflow/server/js/src/home/components/features/FeatureCard.tsx b/mlflow/server/js/src/home/components/features/FeatureCard.tsx
 index b3df57453..d1ce1df97 100644
 --- a/mlflow/server/js/src/home/components/features/FeatureCard.tsx

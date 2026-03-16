@@ -99,7 +99,7 @@ def logs():
             else:
                 out.append(line)
                 last = None
-    print(active_task, active_task["code"] is None)
+
     return render_template("logs.html", output=out, description=active_task["description"], running=active_task["code"] is None)
 
 @app.route("/task/stop", methods=["POST"])

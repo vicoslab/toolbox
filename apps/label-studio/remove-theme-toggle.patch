@@ -1,0 +1,13 @@
+diff --git a/web/libs/core/src/lib/utils/feature-flags/ff.ts b/web/libs/core/src/lib/utils/feature-flags/ff.ts
+index dcf275e69..f59d53358 100644
+--- a/web/libs/core/src/lib/utils/feature-flags/ff.ts
++++ b/web/libs/core/src/lib/utils/feature-flags/ff.ts
+@@ -12,7 +12,7 @@ const FLAGS_OVERRIDE: Record<string, boolean> = {
+   // Add your flags overrides as following:
+   // [FF_FLAG_NAME]: boolean
+   [FF_NEW_STORAGES]: true,
+-  [FF_THEME_TOGGLE]: true,
++  [FF_THEME_TOGGLE]: false,
+ };
+ 
+ /**
