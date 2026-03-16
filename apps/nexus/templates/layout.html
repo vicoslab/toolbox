@@ -14,19 +14,14 @@
         <a href="/label" {% if request.endpoint=='label' %}aria-current="page" {% endif %}>Labeling</a>
         <a href="/dashboard" {% if request.endpoint=='dashboard' %}aria-current="page" {% endif %}>Experiments</a>
         <a href="/models" {% if request.endpoint=='models' %}aria-current="page" {% endif %}>Models</a>
-        <a href="/task/logs" id="status">Status</a>
+        <a href="/task/logs" id="status"></a>
     </nav>
 
     <main>
         {% block content %}{% endblock %}
     </main>
 
-    <script>
-        const el = document.getElementById("status");
-        const check = async () => el.innerText = await fetch("/task/status").then(x => x.text());
-        check();
-        setInterval(check, 5000);
-    </script>
+    <script src="/static/status.js"></script>
 </body>
 
 </html>

@@ -68,8 +68,8 @@ def status():
     if active_task["process"] is not None:
         active_task["code"] = active_task["process"].poll()
         if active_task["code"] == None:
-            return "🟡 Running"
-    return "🟢 Idle" if active_task["code"] == 0 else "🔴 Exited"
+            return "running"
+    return "idle" if active_task["code"] == 0 else "exited"
 
 # regex for grouping log entries
 # if line starts with eval:, visualise: or (for example) 10/300: (from something like a tqdm batch counter)
