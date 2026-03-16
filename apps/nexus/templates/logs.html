@@ -23,6 +23,7 @@
         {% for line in output %}
         {{ line }}
         {% endfor %}
+        <div id="anchor"/>
     </pre>
     {% else %}
     <p>
@@ -30,4 +31,7 @@
     </p>
     {% endif %}
 </div>
+<script>
+    document.querySelector(".logs > pre > #anchor").scrollIntoView()
+</script>
 {% endblock %}
