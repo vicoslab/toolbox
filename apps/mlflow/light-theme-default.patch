@@ -1,0 +1,14 @@
+diff --git a/mlflow/server/js/src/common/hooks/useMLflowDarkTheme.tsx b/mlflow/server/js/src/common/hooks/useMLflowDarkTheme.tsx
+index 013625077..bf952e1d5 100644
+--- a/mlflow/server/js/src/common/hooks/useMLflowDarkTheme.tsx
++++ b/mlflow/server/js/src/common/hooks/useMLflowDarkTheme.tsx
+@@ -27,8 +27,7 @@ export const useMLflowDarkTheme = (): [
+     if (darkModePref !== null) {
+       return darkModePref === 'true';
+     }
+-    // Otherwise, use the system preference as a default.
+-    return window.matchMedia('(prefers-color-scheme: dark)').matches || false;
++    return false;
+   });
+ 
+   useEffect(() => {
