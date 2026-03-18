@@ -3,6 +3,10 @@ function get_fragments {
     find $1 -name Dockerfile.fragment -execdir bash -c 'basename $PWD' \; | sort
 }
 
+target=$1
+if [[ -z $target ]]; then
+    target=.*
+fi
 models=$(get_fragments models)
 apps=$(get_fragments apps)
 
@@ -25,15 +29,19 @@ echo "RUN . \$HOME/.nvm/nvm.sh && nvm install 24 && corepack enable yarn && \
     ln -s \$(which node) /root/.local/bin/node"
 
 for model in $models; do
-    echo "ARG src=models/$model"
-    echo "WORKDIR /opt/models/$model"
-    sed "s|^RUN uv|$RUNUV|" models/$model/Dockerfile.fragment
+    if [[ $model =~ $target ]]; then
+        echo "ARG src=models/$model"
+        echo "WORKDIR /opt/models/$model"
+        sed "s|^RUN uv|$RUNUV|" models/$model/Dockerfile.fragment
+    fi
 done
 
 for app in $apps; do
-    echo "ARG src=apps/$app"
-    echo "WORKDIR /opt/apps/$app"
-    sed "s|^RUN uv|$RUNUV|" apps/$app/Dockerfile.fragment
+    if [[ $app =~ $target ]]; then
+        echo "ARG src=apps/$app"
+        echo "WORKDIR /opt/apps/$app"
+        sed "s|^RUN uv|$RUNUV|" apps/$app/Dockerfile.fragment
+    fi
 done
 
 echo "COPY ./supervisord.conf /etc/supervisord.conf"

@@ -28,7 +28,7 @@ def dashboard():
 MODEL_DIR = Path(os.getenv("MODEL_DIR"))
 model_manifest = {}
 for p in sorted(MODEL_DIR.iterdir()):
-    manifest = p / "manifest.json"
+    manifest = p / "model.json"
     model = {}
     if manifest.exists():
         model["train"] = json.loads(manifest.read_text())
@@ -51,8 +51,8 @@ def models():
 
 @app.route("/models/<id>", methods=["GET", "POST"])
 def model(id):
-    command = [MODEL_DIR / id / "train"]
-    if len(request.form) > 0:
+    command = [MODEL_DIR / id / "train.py"]
+    if request.method == "POST":
         for k, v in request.form.items():
             if v != "":
                 command.extend(["--" + k, v])

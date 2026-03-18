@@ -5,11 +5,7 @@ all:
 
 .phony: %
 % : models/%/Dockerfile.fragment
-	docker build -t aibox-model-$@ -f- . << EOF
-		FROM $(ROOT)
-		ARG src=models/$@
-		$(cat models/$@/Dockerfile.fragment)
-		EOF
+	ROOT=$(ROOT) ./collect.sh "$@" | docker build -t "aibox-model-$@" -f- .
 
 publish:
 	docker tag aibox 192.168.1.114:5000/aibox
