@@ -166,6 +166,9 @@ dialog {
         width: fit-content;
         max-width: 100%;
     }
+    dialog {
+        margin: auto;
+    }
     > pre {
         overflow: auto;
         background-color: rgb(50, 50, 60);
