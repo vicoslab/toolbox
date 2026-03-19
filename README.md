@@ -16,3 +16,10 @@ You will likely need to run some or all of the other components to test the func
 # usage for other devices varies
 docker run --rm -it --network host --ipc host -v /path/to/datasets:/data --env-file .env --device gpus=all aibox
 ```
+
+## Persistence
+In order to persist label-studio projects, mlflow runs, etc., a docker volume is needed: `docker volume create toolbox-persist`.
+This volume should be mounted to `/persist` when running containers, and additional environment variables must be passed to set the data dirs:
+```bash
+docker run --rm -it --network host --ipc host -v /path/to/datasets:/data --env-file .env --env-file .env.persist --device nvidia.com/gpu=all --mount type=volume,src=toolbox-persist,dst=/persist aibox
+``

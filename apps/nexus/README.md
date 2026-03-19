@@ -9,5 +9,10 @@ $ uv sync
 
 Run development server:
 ```bash
-$ uv run flask run --port 8079 --debug
+$ uv run flask --app nexus run --port 8079 --debug
+```
+
+Run in docker:
+```bash
+docker exec -it (docker ps -q --filter "ancestor=aibox") bash -c "cd /opt/apps/nexus && MODEL_DIR=/opt/models uv run flask --app nexus run --port 8079 --debug"
 ```
