@@ -28,6 +28,8 @@ echo "RUN . \$HOME/.nvm/nvm.sh && nvm install 24 && corepack enable yarn && \
     ln -s \$(which yarn) /root/.local/bin/yarn && \
     ln -s \$(which node) /root/.local/bin/node"
 
+echo "COPY apps/modelargs /opt/apps/modelargs"
+
 for model in $models; do
     if [[ $model =~ $target ]]; then
         echo "ARG src=models/$model"

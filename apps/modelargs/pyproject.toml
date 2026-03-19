@@ -1,0 +1,4 @@
+[project]
+name = "modelargs"
+version = "0.1.0"
+description = "Minimal translation layer for model.json into argparse"
