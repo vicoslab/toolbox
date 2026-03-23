@@ -1,0 +1,32 @@
+{
+    debug
+}
+{$DOMAIN} {
+    @options {
+        method OPTIONS
+    }
+
+    handle @options {
+        header {
+            Access-Control-Allow-Origin *
+            Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
+            Access-Control-Allow-Headers *
+        }
+        respond "" 204
+    }
+    route {
+        header {
+            Access-Control-Allow-Origin *
+            Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
+            Access-Control-Allow-Headers *
+        }
+
+        handle_path /app/label-studio* {
+            reverse_proxy localhost:8080
+        }
+        handle /app/mlflow* {
+            reverse_proxy localhost:8081
+        }
+        reverse_proxy localhost:8079
+    }
+}

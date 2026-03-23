@@ -18,3 +18,19 @@
     --color-primary-focus-outline: var(--bg-accent-active);
     --accent_color-raw: 193 55 55;
 }
+
+@font-face {
+    font-family: Figtree;
+    src: url("/app/label-studio/static/fonts/Figtree-Regular.ttf") format("truetype");
+    font-weight: normal;
+    font-style: normal;
+    font-display: swap
+}
+
+@font-face {
+    font-family: Figtree;
+    src: url("/app/label-studio/static/fonts/Figtree-SemiBold.ttf") format("truetype");
+    font-weight: 500;
+    font-style: normal;
+    font-display: swap
+}

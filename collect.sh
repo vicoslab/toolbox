@@ -46,5 +46,6 @@ for app in $apps; do
     fi
 done
 
+echo "COPY apps/caddy/Caddyfile /opt/apps/caddy"
 echo "COPY ./supervisord.conf /etc/supervisord.conf"
 echo "ENTRYPOINT [ \"supervisord\" ]"

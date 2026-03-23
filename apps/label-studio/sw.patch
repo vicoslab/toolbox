@@ -1,0 +1,13 @@
+diff --git a/web/apps/labelstudio/src/utils/service-worker.js b/web/apps/labelstudio/src/utils/service-worker.js
+index 00cf04b47..4da9d359a 100644
+--- a/web/apps/labelstudio/src/utils/service-worker.js
++++ b/web/apps/labelstudio/src/utils/service-worker.js
+@@ -21,7 +21,7 @@ function awakenServiceWorker() {
+ 
+ // sw.js and sw-fallback.js are part of the label-studio/label_studio/core/static/js/ directory
+ // and are copied with the rest of the static files when running `python manage.py collectstatic`
+-registerServiceWorker("/sw.js");
++registerServiceWorker(`${window?.APP_SETTINGS?.hostname || ""}/sw.js`);
+ 
+ // Wake up the service worker when the page becomes visible
+ // This is needed to ensure we are cleaning up cache when the user is using the application
