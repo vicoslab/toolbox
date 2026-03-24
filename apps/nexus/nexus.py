@@ -31,9 +31,10 @@ for p in sorted(MODEL_DIR.iterdir()):
     manifest = p / "model.json"
     model = {}
     if manifest.exists():
-        model["train"] = json.loads(manifest.read_text())
-        model["title"] = model["train"]["title"]
-        model["description"] = model["train"]["description"]
+        manifest = json.loads(manifest.read_text())
+        model["options"] = manifest["properties"]
+        model["title"] = manifest["title"]
+        model["description"] = manifest["description"]
     
     if model != {}:
         model_manifest[p.name] = model
@@ -51,17 +52,22 @@ def models():
 
 @app.route("/models/<id>", methods=["GET", "POST"])
 def model(id):
-    command = [MODEL_DIR / id / "train.py"]
     if request.method == "POST":
+        if "start-inference-worker" in request.form:
+            command = [os.environ["UV"], "run", "gunicorn", "--bind", ":9090", "infer:app", "--"]
+            active_task["description"] = f"Inference service worker for: `{id}`"
+        else:
+            command = ["train.py"]
+            active_task["description"] = f"Model training: `{id}`"
         for k, v in request.form.items():
-            if v != "":
+            if v != "" and k in model_manifest[id]["options"]:
                 command.extend(["--" + k, v])
         active_task["output"] = []
-        active_task["description"] = f"Model training: `{id}`"
-        active_task["process"] = Popen(command, cwd = MODEL_DIR / id, stdout = PIPE, stderr = STDOUT, text = True)
+        print(MODEL_DIR / id, command)
+        active_task["process"] = Popen(command, cwd = MODEL_DIR / id, stdout = PIPE, stderr = STDOUT, text = True, env = {})
         os.set_blocking(active_task["process"].stdout.fileno(), False)
 
-    return render_template("model.html", **model_manifest[id])
+    return render_template("model.html", **model_manifest[id], train=(MODEL_DIR / id / "train.py").exists())
 
 @app.route("/task/status")
 def status():

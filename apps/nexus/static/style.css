@@ -134,7 +134,11 @@ button, input[type="submit"] {
 }
 
 .model-overview {
+    display: flex;
     padding: 2rem;
+    overflow: auto;
+    height: 100%;
+    width: 100%;
     
     fieldset {
         width: fit-content;
@@ -143,6 +147,46 @@ button, input[type="submit"] {
         gap: 0.5rem;
         input {
             width: fit-content;
+        }
+    }
+
+    > .inference {
+        padding: 0 1rem;
+        flex-grow: 1;
+        > #results {
+            .group {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 1rem;
+            }
+            hr {
+                width: 50%;
+                margin: 1rem auto;
+            }
+        }
+        #form-inference {
+            fieldset {
+                padding: 2rem;
+                position: relative;
+                display: flex;
+                flex-direction: column;
+                width: 100%;
+                align-items: center;
+                input[type="file"] {
+                    display: none;
+                }
+                label {
+                    position: absolute;
+                    inset: 0;
+                }
+            }
+        }
+        &::after {
+            width: 100%;
+            height: 2rem;
+            content: "";
+            position: relative;
+            display: block;
         }
     }
 }

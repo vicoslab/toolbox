@@ -1,13 +1,12 @@
 {% extends "layout.html" %}
 
-{% block title %}{{ train.title }}{% endblock %}
+{% block title %}{{ options.title }}{% endblock %}
 
 {% block content %}
 <div class="model-overview">
-    {% if train %}
     <form method="post">
         <fieldset>
-            {% for k, prop in train.properties.items() %}
+            {% for k, prop in options.items() %}
             <label for="{{ k }}" title="{{ prop.description }}">{{ k }}</label>
             {% if prop.enum %}
             <div>
@@ -29,9 +28,50 @@
             invalid type
             {% endif %}
             {% endfor %}
-            <input type="submit" value="Start training">
+            {% if train %}
+            <input type="submit" name="start-train" value="Start training">
+            {% endif %}
+            <input type="submit" name="start-inference-worker" value="Start inference worker">
         </fieldset>
     </form>
-    {% endif %}
+    <div class="inference">
+        <div id="results"></div>
+        <form id="form-inference" action="">
+            <fieldset>
+                <label for="images"></label>
+                <span>Drag images here or click to open file selection menu</span>
+                <input id="images" type="file" name="images" multiple>
+            </fieldset>
+        </form>
+    </div>
 </div>
+<script>
+    const inference = document.getElementById("form-inference");
+    const inferenceResults = document.getElementById("results");
+    const image_input = document.getElementById("images");
+    image_input.addEventListener("change", async (e) => {
+        if (image_input.files.length <= 0) {
+            return;
+        }
+        const formData = new FormData(inference);
+
+        try {
+            const response = await fetch("/infer", {
+                method: "POST",
+                body: formData,
+            });
+            const results = await response.json();
+            let s = "";
+            let n = results?.anomaly_maps?.length || 0;
+            for (let i = 0; i < n; i++) {
+                s += `<div><center>${results.scores[i].toFixed(3)}</center><img src="data:image/webp;base64,${results.anomaly_maps[i]}"></div>`;
+            }
+            inferenceResults.innerHTML += "<div class=group>" + s + "</div><hr>";
+            inference.reset();
+        } catch (e) {
+            console.error(e);
+        }
+        image_input.value = null;
+    });
+</script>
 {% endblock %}
