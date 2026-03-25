@@ -5,6 +5,10 @@ from pathlib import Path
 from subprocess import Popen, PIPE, STDOUT
 import re
 
+import mlflow
+mlflow.set_tracking_uri("http://localhost:8081")
+ARTIFACTS = os.getenv("MLFLOW_ARTIFACTS_DESTINATION", "")
+
 app = Flask(__name__)
 
 @app.route("/")
@@ -61,9 +65,16 @@ def model(id):
             active_task["description"] = f"Model training: `{id}`"
         for k, v in request.form.items():
             if v != "" and k in model_manifest[id]["options"]:
+                if v.startswith("mlflow-artifacts:") and ARTIFACTS:
+                    v = v.replace("mlflow-artifacts:", ARTIFACTS, count=1)
+                elif v.startswith("run:/") and ARTIFACTS:
+                    run_name, rest = v[5:].split("/", maxsplit=1)
+                    runs = mlflow.search_runs(filter_string=f"run_name = '{run_name}'", experiment_names=["SuperSimpleNet"], max_results=1, output_format="list")
+                    if len(runs) > 0:
+                        info = runs[0].info
+                        v = f"{ARTIFACTS}/{info.experiment_id}/{info.run_id}/artifacts/{rest}"
                 command.extend(["--" + k, v])
         active_task["output"] = []
-        print(MODEL_DIR / id, command)
         active_task["process"] = Popen(command, cwd = MODEL_DIR / id, stdout = PIPE, stderr = STDOUT, text = True, env = {})
         os.set_blocking(active_task["process"].stdout.fileno(), False)
 
@@ -111,7 +122,7 @@ def logs():
 @app.route("/task/stop", methods=["POST"])
 def kill():
     if active_task["process"] is not None:
-        active_task["process"].kill()
+        active_task["process"].terminate()
         # hardcode because process would still respond as alive right now
         active_task["code"] = -9
     return redirect("/task/logs")
