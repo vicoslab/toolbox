@@ -1,6 +1,3 @@
-{
-    debug
-}
 {$DOMAIN} {
     @options {
         method OPTIONS
