@@ -29,6 +29,7 @@ echo "RUN . \$HOME/.nvm/nvm.sh && nvm install 24 && corepack enable yarn && \
     ln -s \$(which node) /root/.local/bin/node"
 
 echo "COPY apps/modelargs /opt/apps/modelargs"
+echo "COPY apps/optimizer /opt/apps/optimizer"
 
 for model in $models; do
     if [[ $model =~ $target ]]; then

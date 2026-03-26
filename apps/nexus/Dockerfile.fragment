@@ -5,4 +5,4 @@ COPY ${src}/nexus.py ${src}/uv.lock ${src}/pyproject.toml .
 RUN uv venv
 RUN uv sync
 
-RUN uv pip install gunicorn
+RUN uv pip install gunicorn /opt/apps/optimizer
