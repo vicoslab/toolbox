@@ -1,0 +1,11 @@
+[project]
+name = "ls-utils"
+version = "0.1.0"
+description = "Dummy package to track dependencies for label studio utility script collection"
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    "label-studio-sdk>=2.0.19",
+    "numpy>=2.4.3",
+    "pillow>=12.1.1",
+]

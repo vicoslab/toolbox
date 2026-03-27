@@ -1,0 +1,1 @@
+These are utility scripts for managing label studio projects (e.g. creating, exporting). Not meant to be used as a real package, but its a pyproject just to keep track of dependencies.

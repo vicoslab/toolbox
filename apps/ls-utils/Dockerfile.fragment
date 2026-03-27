@@ -1,0 +1,2 @@
+COPY ${src}/export.py ${src}/uv.lock ${src}/pyproject.toml .
+RUN uv sync

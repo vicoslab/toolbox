@@ -80,6 +80,26 @@ def model(id):
 
     return render_template("model.html", **model_manifest[id], train=(MODEL_DIR / id / "train.py").exists())
 
+@app.route("/export", methods=["POST"])
+def export():
+    try:
+        env = { "PROJECT_ID": str(int(request.json)) }
+    except:
+        if type(request.json) == dict:
+            env = {
+                "PROJECT_ID": str(int(request.json["id"])),
+                "EXPORT_DIR": request.json["dir"],
+            }
+        else:
+            return "Request body must be int or object", 400
+    command = ["uv", "run", "export.py"]
+    active_task["description"] = f"Export worker for project {env['PROJECT_ID']}"
+    active_task["output"] = []
+    active_task["process"] = Popen(command, cwd = "../ls-utils", stdout = PIPE, stderr = STDOUT, text = True, env = { **os.environ, **env })
+    os.set_blocking(active_task["process"].stdout.fileno(), False)
+
+    return "", 204
+
 @app.route("/task/status")
 def status():
     if active_task["process"] is not None:
