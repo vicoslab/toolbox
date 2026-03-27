@@ -1,4 +1,4 @@
-RUN git clone -b 1.22.0 --depth 1 https://github.com/HumanSignal/label-studio .
+ADD https://github.com/HumanSignal/label-studio.git#1.22.0 .
 
 COPY ${src}/*.patch .
 RUN git apply *.patch && rm *.patch
