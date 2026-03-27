@@ -58,10 +58,10 @@ def models():
 def model(id):
     if request.method == "POST":
         if "start-inference-worker" in request.form:
-            command = [os.environ["UV"], "run", "gunicorn", "--bind", ":9090", "infer:app", "--"]
+            command = ["uv", "run", "gunicorn", "--bind", ":9090", "infer:app", "--"]
             active_task["description"] = f"Inference service worker for: `{id}`"
         else:
-            command = ["train.py"]
+            command = ["uv", "run", "train.py"]
             active_task["description"] = f"Model training: `{id}`"
         for k, v in request.form.items():
             if v != "" and k in model_manifest[id]["options"]:
@@ -75,7 +75,8 @@ def model(id):
                         v = f"{ARTIFACTS}/{info.experiment_id}/{info.run_id}/artifacts/{rest}"
                 command.extend(["--" + k, v])
         active_task["output"] = []
-        active_task["process"] = Popen(command, cwd = MODEL_DIR / id, stdout = PIPE, stderr = STDOUT, text = True, env = {})
+        env = { k: v for (k,v) in os.environ.items() if k != "VIRTUAL_ENV" }
+        active_task["process"] = Popen(command, cwd = MODEL_DIR / id, stdout = PIPE, stderr = STDOUT, text = True, env = env)
         os.set_blocking(active_task["process"].stdout.fileno(), False)
 
     return render_template("model.html", **model_manifest[id], train=(MODEL_DIR / id / "train.py").exists())
