@@ -9,6 +9,10 @@ import mlflow
 mlflow.set_tracking_uri("http://localhost:8081")
 ARTIFACTS = os.getenv("MLFLOW_ARTIFACTS_DESTINATION", "")
 
+# make sure virutal env doesn't bleed into subprocesses
+if "VIRTUAL_ENV" in os.environ:
+    del os.environ["VIRTUAL_ENV"]
+
 app = Flask(__name__)
 
 @app.route("/")
@@ -23,7 +27,11 @@ def index():
 
 @app.route("/label")
 def label():
-    return render_template("label-studio.html")
+    page = ""
+    if "id" in request.args:
+        page = f"/projects/{int(request.args['id'])}"
+    
+    return render_template("label-studio.html", page=page)
 
 @app.route("/dashboard")
 def dashboard():
@@ -75,11 +83,40 @@ def model(id):
                         v = f"{ARTIFACTS}/{info.experiment_id}/{info.run_id}/artifacts/{rest}"
                 command.extend(["--" + k, v])
         active_task["output"] = []
-        env = { k: v for (k,v) in os.environ.items() if k != "VIRTUAL_ENV" }
-        active_task["process"] = Popen(command, cwd = MODEL_DIR / id, stdout = PIPE, stderr = STDOUT, text = True, env = env)
+        active_task["process"] = Popen(command, cwd = MODEL_DIR / id, stdout = PIPE, stderr = STDOUT, text = True)
         os.set_blocking(active_task["process"].stdout.fileno(), False)
 
     return render_template("model.html", **model_manifest[id], train=(MODEL_DIR / id / "train.py").exists())
+
+@app.route("/create", methods=["POST"])
+def create():
+    if type(request.json) == dict:
+        env = {
+            "TASK": request.json["task"],
+            "DATASET": request.json["dataset"],
+        }
+        if "title" in request.json:
+            env["PROJECT_TITLE"] = request.json["title"]
+    else:
+        return "Request body must be an object with keys 'task' and 'dataset'. Can optionally include 'title'.", 400
+    command = ["uv", "run", "create.py"]
+    active_task["description"] = f"Project creation"
+    active_task["output"] = []
+    active_task["process"] = Popen(command, cwd = "../ls-utils", stdout = PIPE, stderr = STDOUT, text = True, env = { **os.environ, **env })
+    id = None
+    while line_in := active_task["process"].stdout.readline():
+        active_task["output"].append(line_in)
+        try:
+            id = int(line_in)
+            break
+        except:
+            pass
+    os.set_blocking(active_task["process"].stdout.fileno(), False)
+
+    if id is None:
+        return "Project could not be created", 400
+
+    return redirect("/label?id=" + str(id))
 
 @app.route("/export", methods=["POST"])
 def export():
