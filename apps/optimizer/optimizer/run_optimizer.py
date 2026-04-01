@@ -61,6 +61,7 @@ def run_optimization(output_dir: Path, params: dict, num_runs: int):
             'num_cameras':      params['num_cameras'],
             'camera_positions': result['cameras'],
             'pct_covered':      round(result['pct_covered'], 2),
+            'avrg_incidence':   result['mean_quality'],
             'plot':             plot_filename,
         })
  

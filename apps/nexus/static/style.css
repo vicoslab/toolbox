@@ -175,3 +175,110 @@ dialog {
         color: rgb(232, 232, 232);
     }
 }
+
+.kv-list {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    gap: 0.15rem 1rem;
+    margin: 0.5rem 0 1rem;
+    font-family: monospace;
+    font-size: 0.9rem;
+}
+
+.kv-list dt {
+    text-align: right;
+    color: rgb(95, 114, 129);
+    white-space: nowrap;
+}
+
+.kv-list dt::after {
+    content: ":";
+}
+
+.kv-list dd {
+    margin: 0;
+}
+
+.run-list {
+    display: flex;
+    flex-direction: row;
+    overflow-x: auto;
+    gap: 8px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 1rem;
+}
+
+.run-btn {
+    display: flex;
+    flex-direction: column;
+    padding: 8px 16px;
+    border: 1px solid var(--border);
+    background: transparent;
+    cursor: pointer;
+    white-space: nowrap;
+    min-width: 80px;        
+    flex-shrink: 0;
+}
+
+.run-btn:hover {
+    background-color: var(--bg-accent-hover);
+}
+
+.run-btn.active {
+    background-color: var(--bg-accent-hover);
+    border-bottom: 3px solid var(--border);
+    font-weight: bold;
+}
+
+.run-number {
+    font-weight: bold;
+}
+
+.run-meta {
+    font-size: 0.8em;
+    color: rgb(95, 114, 129);
+}
+
+.run-content {
+    display: none;
+}
+
+.run-content.active {
+    display: block;
+}
+
+.camera-grid {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 1rem;
+}
+
+.camera-card {
+    border: 1px solid var(--border);
+    padding: 10px 16px;
+    min-width: 120px;
+}
+
+.camera-title {
+    font-weight: bold;
+    margin-bottom: 6px;
+}
+
+.camera-card table {
+    border-collapse: collapse;
+}
+
+.camera-card th {
+    text-align: right;
+    padding-right: 8px;
+    color: rgb(95, 114, 129);
+    font-weight: normal;
+    font-family: monospace;
+}
+
+.camera-card td {
+    font-family: monospace;
+}

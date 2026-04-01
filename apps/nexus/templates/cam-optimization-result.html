@@ -10,22 +10,23 @@
     <!-- Scrollable list -->
     <div class="run-list">
         {% for run in runs %}
-        <button 
+        <button
             class="run-btn {% if loop.first %}active{% endif %}"
             onclick="showRun({{ loop.index0 }})">
             <span class="run-number">Run {{ loop.index }}</span>
-            <span class="run-meta">{{ run.pct_covered }}% covered · {{ run.timestamp }}</span>
+            <span class="run-meta">{{ run.pct_covered }}% covered</span>
         </button>
         {% endfor %}
     </div>
 
     <div>
         <h3> Parameters </h3>
-        <p>
-            {% for k,v in params.items() %}
-                {{k}}:  {{v}}<br>
+        <dl class="kv-list">
+            {% for k, v in params.items() %}
+            <dt>{{ k }}</dt>
+            <dd>{{ v }}</dd>
             {% endfor %}
-        </p>
+        </dl>
     </div>
 
     <!-- Result content -->
@@ -33,10 +34,14 @@
     <div class="run-content {% if loop.first %}active{% endif %}" id="run-{{ loop.index0 }}">
 
         <h3>Camera Results</h3>
-        <p>
-            coverage:         {{ run.pct_covered }}%<br>
-            timestamp:        {{ run.timestamp }}            
-        </p>
+        <dl class="kv-list">
+            <dt>Coverage</dt>
+            <dd>{{ run.pct_covered }}%</dd>
+            <dt>Avg incidence angle</dt>
+            <dd>{{ "%.2f"|format(run.avrg_incidence) }}&deg;</dd>
+            <dt>Timestamp</dt>
+            <dd>{{ run.timestamp }}</dd>
+        </dl>
 
         <h3>Camera Positions</h3>
         <div class="camera-grid">
@@ -86,89 +91,5 @@
 </script>
 
 <script src="/static/optimizer-status.js"></script>
-
-
-<style>
-    /* scrollable horizontal list of run buttons */
-    .run-list {
-        display: flex;
-        flex-direction: row;
-        overflow-x: auto;        /* horizontal scroll if too many runs */
-        gap: 8px;
-        padding-bottom: 8px;
-        border-bottom: 1px solid #ccc;
-        margin-bottom: 16px;
-    }
-
-    .run-btn {
-        display: flex;
-        flex-direction: column;
-        padding: 8px 16px;
-        border: 1px solid #ccc;
-        background: white;
-        cursor: pointer;
-        white-space: nowrap;
-        min-width: 120px;
-    }
-
-    .run-btn.active {
-        background: #f0f0f0;
-        border-bottom: 3px solid black;
-        font-weight: bold;
-    }
-
-    .run-number {
-        font-weight: bold;
-    }
-
-    .run-meta {
-        font-size: 0.8em;
-        color: #666;
-    }
-
-    /* content area */
-    .run-content {
-        display: none;
-    }
-
-    .run-content.active {
-        display: block;
-    }
-
-    /* Camera Blcok */
-    .camera-grid {
-        display: flex;
-        flex-direction: row;
-        flex-wrap: wrap;
-        gap: 12px;
-        margin-bottom: 16px;
-    }
-
-    .camera-card {
-        border: 1px solid #ccc;
-        padding: 10px 16px;
-        min-width: 120px;
-    }
-
-    .camera-title {
-        font-weight: bold;
-        margin-bottom: 6px;
-    }
-
-    .camera-card table {
-        border-collapse: collapse;
-    }
-
-    .camera-card th {
-        text-align: right;
-        padding-right: 8px;
-        color: #666;
-        font-weight: normal;
-    }
-
-    .camera-card td {
-        font-family: monospace;
-    }
-</style>
 
 {% endblock %}

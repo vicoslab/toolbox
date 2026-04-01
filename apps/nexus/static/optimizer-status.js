@@ -9,7 +9,7 @@ const checkStatus = async () => {
         setTimeout(checkStatus, 5000)
     }
     else {
-        badge.textContent = '✅ Done'
+        badge.textContent = '🟢 Idle'
         badge.style.color = 'green'
     }
 }
