@@ -29,12 +29,14 @@ echo "RUN . \$HOME/.nvm/nvm.sh && nvm install 24 && corepack enable yarn && \
     ln -s \$(which node) /root/.local/bin/node"
 
 echo "COPY apps/modelargs /opt/apps/modelargs"
+echo "ADD https://github.com/HumanSignal/label-studio-ml-backend.git /opt/apps/label-studio-ml-backend"
 
 for model in $models; do
     if [[ $model =~ $target ]]; then
         echo "ARG src=models/$model"
         echo "WORKDIR /opt/models/$model"
         sed "s|^RUN uv|$RUNUV|" models/$model/Dockerfile.fragment
+        echo
     fi
 done
 
@@ -43,6 +45,7 @@ for app in $apps; do
         echo "ARG src=apps/$app"
         echo "WORKDIR /opt/apps/$app"
         sed "s|^RUN uv|$RUNUV|" apps/$app/Dockerfile.fragment
+        echo
     fi
 done
 
