@@ -1,0 +1,23 @@
+diff --git a/web/apps/labelstudio/src/pages/DataManager/DataManager.jsx b/web/apps/labelstudio/src/pages/DataManager/DataManager.jsx
+index 8a03d8a9e..45e6d1d05 100644
+--- a/web/apps/labelstudio/src/pages/DataManager/DataManager.jsx
++++ b/web/apps/labelstudio/src/pages/DataManager/DataManager.jsx
+@@ -151,16 +151,13 @@ export const DataManagerPage = ({ ...props }) => {
+     });
+ 
+     if (interactiveBacked) {
+-      dataManager.on("lsf:regionFinishedDrawing", (reg, group) => {
++      dataManager.on("onEntityCreate", region => {
+         const { lsf, task, currentAnnotation: annotation } = dataManager.lsf;
+-        const ids = group.map((r) => r.cleanId);
+-        const result = annotation.serializeAnnotation().filter((res) => ids.includes(res.id));
+-
+         const suggestionsRequest = api.callApi("mlInteractive", {
+           params: { pk: interactiveBacked.id },
+           body: {
+             task: task.id,
+-            context: { result },
++            context: { region },
+           },
+         });
+ 
