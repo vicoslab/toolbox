@@ -196,6 +196,7 @@ class CameraOptimizer:
         return {
             'cameras': np.array(self.placed_cameras).tolist(),
             'coverage_scores': self.coverage_scores.cpu().numpy().tolist(),
+            'mean_quality': np.acos(self.coverage_scores[self.coverage_scores > 0.0].mean().item()) * 180 / np.pi,
             'log': self.log,
             'pct_covered': (self.coverage_scores > 0).float().mean().item() * 100,
         }
@@ -300,7 +301,7 @@ class CameraOptimizer:
             self._single_camera_objective,
             bounds,
             args    = (self.tensors, self.conf, self.coverage_scores, self.device),
-            popsize = 20,
+            popsize = 40,
             maxiter = 1000,
             seed    = self.seed + i,
             workers = 1,
@@ -336,14 +337,16 @@ class CameraOptimizer:
         params = torch.as_tensor(params_flat, dtype=torch.float32, device=device).unsqueeze(0)
         _, inc_quality = CameraOptimizer._get_coverage(params, tensors, conf, device)
         gain = (inc_quality[0] - coverage_scores).clamp(min=0).sum().item()
-        if gain > 1e-6:
-            return -gain
+
         x, y, theta, *_ = params_flat
-        angle_to_centroid = np.arctan2(-y, -x)   
+        angle_to_centroid = np.arctan2(-y, -x)
         angle_error = abs(np.arctan2(
             np.sin(theta - angle_to_centroid),
             np.cos(theta - angle_to_centroid)
-        ))  
+        ))
+        if gain > 1e-6:
+            angular_penalty = gain * 2.50 * (angle_error / np.pi)
+            return -gain + angular_penalty
         return 1000.0 + angle_error * 100
 
     @staticmethod
