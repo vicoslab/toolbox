@@ -5,4 +5,4 @@ all:
 
 .phony: %
 % : models/%/Dockerfile.fragment
-	ROOT=$(ROOT) ./collect.sh "$@" | docker build -t "toolbox-model-$@" -f- .
+	ROOT=$(ROOT) ./collect.sh "$@" | docker build -t toolbox-model -f- .
