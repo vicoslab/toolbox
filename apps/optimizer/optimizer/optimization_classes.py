@@ -6,6 +6,7 @@ from typing import Optional
 import torch
 import numpy as np
 import json
+import warnings
 
 import shapely
 from shapely.plotting import plot_polygon, plot_line
@@ -28,6 +29,22 @@ class CameraConfig:
     @classmethod
     def from_json(cls, d):
         return cls(**d)
+    
+    def validate(self):
+        issues = []
+        if self.focal_length <= 0:
+            issues.append(f"focal_length={self.focal_length} — must be > 0, will cause division by zero")
+        if self.sensor_width <= 0:
+            issues.append(f"sensor_width={self.sensor_width} — must be > 0")
+        if self.pixel_size <= 0:
+            issues.append(f"pixel_size={self.pixel_size} — must be > 0, will cause division by zero")
+        if self.f_number <= 0:
+            issues.append(f"f_number={self.f_number} — must be > 0, will cause division by zero")
+        if self.max_pixel_on_obj <= 0:
+            issues.append(f"max_pixel_on_obj={self.max_pixel_on_obj} — must be > 0, nothing will pass resolution check")
+        for msg in issues:
+            warnings.warn(f"CameraConfig: {msg}", UserWarning, stacklevel=2)
+        return issues
 
 
 @dataclass
@@ -136,6 +153,29 @@ class SceneConfig:
             cam_conf        = CameraConfig.from_json(d['cam_conf']),
             num_cameras     = d['num_cameras'],
         )
+    
+    def validate(self):
+        issues = []
+        if self.num_cameras <= 0:
+            issues.append(f"num_cameras={self.num_cameras} — optimization will do nothing")
+
+        box_edges = [(-self.box_width/2, -self.box_height/2),
+                     (-self.box_width/2, self.box_height/2),
+                     (self.box_width/2, -self.box_height/2),
+                     (self.box_width/2, self.box_height/2)]
+        for pt in box_edges:
+            if self.obj_poly.contains(Point(pt)):
+                issues.append(
+                    f"Box point: {pt} is contained inside the polygon! Part of the object will not be seen - "
+                    f"or - cameras will be placed inside the object."
+                )
+
+        cam_issues = self.cam_conf.validate()
+        issues.extend(cam_issues)
+
+        for msg in issues:
+            warnings.warn(f"SceneConfig: {msg}", UserWarning, stacklevel=2)
+        return issues
 
 
 

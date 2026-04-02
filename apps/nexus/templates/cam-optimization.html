@@ -9,26 +9,26 @@
      <form method="POST" enctype="multipart/form-data">
         <fieldset>
             <label for="num_cameras">Number of Cameras</label><br>
-            <input type="text" inputmode="numeric" pattern="\d*" id="num_cameras" name="num_cameras" placeholder="6" required><br>
+            <input type="number" min="1" step="1" id="num_cameras" name="num_cameras" placeholder="6" required><br>
 
             <label for="num_runs">Number of Runs</label><br>
-            <input type="text" inputmode="numeric" pattern="\d*" id="num_runs" name="num_runs" placeholder="1" required><br>
+            <input type="number" min="1" step="1" id="num_runs" name="num_runs" placeholder="1" required><br>
         </fieldset>
         <fieldset>
             <label for="focal_length">Focal length [in mm]</label><br>
-            <input type="text" inputmode="numeric" pattern="\d+(\.\d+)?" id="focal_length" name="focal_length" placeholder="50.0" required><br>
+            <input type="number" min="0.001" step="any" id="focal_length" name="focal_length" placeholder="50.0" required><br>
 
             <label for="sensor_width">Sensor width [in mm]</label><br>
-            <input type="text" inputmode="numeric" pattern="\d+(\.\d+)?" id="sensor_width" name="sensor_width" placeholder="60.0" required><br>
+            <input type="number" min="0.001" step="any" id="sensor_width" name="sensor_width" placeholder="60.0" required><br>
 
             <label for="f_number">Aperature</label><br>
-            <input type="text" inputmode="numeric" pattern="\d+(\.\d+)?" id="f_number" name="f_number" placeholder="8.0" required><br>
+            <input type="number" min="0.1" step="any" id="f_number" name="f_number" placeholder="8.0" required><br>
 
             <label for="pixel_size">Pixel size [in mm]</label><br>
-            <input type="text" inputmode="numeric" pattern="\d+(\.\d+)?" id="pixel_size" name="pixel_size" placeholder="0.007" required><br>
+            <input type="number" min="0.0001" step="any" id="pixel_size" name="pixel_size" placeholder="0.007" required><br>
 
             <label for="max_pixel_on_obj">Max pixel size on ojbect [in mm]</label><br>
-            <input type="text" inputmode="numeric" pattern="\d+(\.\d+)?" id="max_pixel_on_obj" name="max_pixel_on_obj" placeholder="0.5" required><br>
+            <input type="number" min="0.0001" step="any" id="max_pixel_on_obj" name="max_pixel_on_obj" placeholder="0.5" required><br>
 
             <label for="optimize_focus">
                 <input type="checkbox" id="optimize_focus" name="optimize_focus">
@@ -40,18 +40,18 @@
             <input type="file" id="svg_file" name="svg_file" accept=".svg" required><br>
             
             <label for="resolution_mm">Desired object resolution [in mm]</label><br>
-            <input type="text" inputmode="numeric" pattern="\d+(\.\d+)?" id="resolution_mm" name="resolution_mm" placeholder="1.0" required><br>
+            <input type="number" min="0.01" step="any" id="resolution_mm" name="resolution_mm" placeholder="1.0" required><br>
 
             <label for="object_width">Real object width [in mm]</label><br>
-            <input type="text" inputmode="numeric" pattern="\d+(\.\d+)?" id="object_width" name="object_width" placeholder="1000.0" required><br>
+            <input type="number" min="0.001" step="any" id="object_width" name="object_width" placeholder="1000.0" required><br>
 
             <label for="box_width">Restricted area width [in mm]</label><br>
-            <input type="text" inputmode="numeric" pattern="\d+(\.\d+)?" id="box_width" name="box_width" placeholder="3000.0" required><br>
+            <input type="number" min="0.001" step="any" id="box_width" name="box_width" placeholder="3000.0" required><br>
 
             <label for="box_height">Restricted area height [in mm]</label><br>
-            <input type="text" inputmode="numeric" pattern="\d+(\.\d+)?" id="box_height" name="box_height" placeholder="3000.0" required><br>
+            <input type="number" min="0.001" step="any" id="box_height" name="box_height" placeholder="3000.0" required><br>
         </fieldset>
-        <button type="submit">Run Optimizer</button>
+        <button type="submit">Run Greedy Optimizer</button>
      </form>
 
      {% if past_runs %}
@@ -66,4 +66,15 @@
      </ul>
      {% endif %}
 </div>
+
+<style>
+    input[type="number"] {
+        -moz-appearance: textfield;
+    }
+
+    input[type="number"]::-webkit-outer-spin-button,
+    input[type="number"]::-webkit-inner-spin-button {
+        -webkit-appearance: none;
+    }
+</style>
 {% endblock %}

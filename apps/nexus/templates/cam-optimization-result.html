@@ -5,8 +5,19 @@
 {% block content %}
 <div class="wrapper">
     <h2>{{ title }}</h2> <span id="status-badge" data-id="{{ id }}"></span>
-    <p>{{ runs|length}} optimization run(s)</p>
+    
+    {% if warnings %}
+    <div class="warning-list">
+        <strong>Warnings</strong>
+        <ul>
+            {% for w in warnings %}
+            <li>{{ w }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
 
+    <p>{{ runs|length}} optimization run(s)</p>
     <!-- Scrollable list -->
     <div class="run-list">
         {% for run in runs %}

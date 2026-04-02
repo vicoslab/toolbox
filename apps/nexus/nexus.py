@@ -7,6 +7,7 @@ import re
 import threading
 import hashlib
 from optimizer.run_optimizer import run_optimization
+from optimizer.optimization_classes import SceneConfig, CameraConfig
 
 app = Flask(__name__)
 
@@ -187,6 +188,27 @@ def camera_optimization():
                 'svg_filename': svg_file.filename,
                 **params,
             }, indent=2))
+
+            cam_conf = CameraConfig(
+                focal_length     = params['focal_length'],
+                sensor_width     = params['sensor_width'],
+                pixel_size       = params['pixel_size'],
+                f_number         = params['f_number'],
+                max_pixel_on_obj = params['max_pixel_on_obj'],
+                optimize_focus   = params['optimize_focus'],
+            )
+            scene = SceneConfig.from_svg(
+                svg_file      = str(result_dir / 'object.svg'),
+                real_width_mm = params['real_width_mm'],
+                box_width     = params['box_width'],
+                box_height    = params['box_height'],
+                cam_conf      = cam_conf,
+                num_cameras   = params['num_cameras'],
+                res_mm        = params['resolution_mm'],
+            )
+            issues = scene.validate()
+            if issues:
+                (result_dir / 'warnings.json').write_text(json.dumps(issues, indent=2))
         
         launch_optimization(result_dir, params, num_runs, f"Camera optimization: {svg_file.filename}")
         return redirect(f'/optimize/{result_id}')
@@ -216,8 +238,10 @@ def camera_optimization_result(id):
     params     = json.loads((result_dir / 'params.json').read_text())
     runs_file  = result_dir / 'runs.json'
     runs       = json.loads(runs_file.read_text()) if runs_file.exists() else []
+    warnings_file = result_dir / 'warnings.json'
+    warnings      = json.loads(warnings_file.read_text()) if warnings_file.exists() else []
  
-    return render_template('cam-optimization-result.html', id=id, title=params['title'], params=params, runs=runs)
+    return render_template('cam-optimization-result.html', id=id, title=params['title'], params=params, runs=runs, warnings=warnings)
 
 
 @app.route("/optimize/<id>/plot/<int:run_index>")
