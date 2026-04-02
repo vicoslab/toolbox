@@ -44,7 +44,7 @@ def parse(schema):
                     raise ValueError(f'Invalid boolean value for property `{k}`')
                 args['type'] = lambda x: x == 'true' or not x == 'false' or err()
             else:
-                raise ValueError(f'Property `{k}` has unexpected type: {v['type']}`')
+                raise ValueError(f'Property `{k}` has unexpected type: {v["type"]}`')
 
         parser.add_argument('--' + k, **args)
 
