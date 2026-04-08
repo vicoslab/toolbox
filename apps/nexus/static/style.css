@@ -172,12 +172,6 @@ button, input[type="submit"] {
                 flex-direction: column;
                 width: 100%;
                 align-items: center;
-                input[type="file"] {
-                    opacity: 0;
-                    position: absolute;
-                    inset: 0;
-                    width: 100%;
-                }
             }
         }
         &::after {

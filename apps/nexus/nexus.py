@@ -47,6 +47,8 @@ for p in sorted(MODEL_DIR.iterdir()):
         model["options"] = manifest["properties"]
         model["title"] = manifest["title"]
         model["description"] = manifest["description"]
+        with open(p / "ui.html") as f:
+            model["form"] = f.read()
     
     if model != {}:
         model_manifest[p.name] = model

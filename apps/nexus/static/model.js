@@ -1,0 +1,315 @@
+const inferenceResults = document.getElementById("results");
+
+async function makeRequest(form, action) {
+    const formData = new FormData(form);
+    try {
+        const response = await fetch("/infer", {
+            method: "POST",
+            body: formData,
+        });
+        await response.json().then(response => action(inferenceResults, formData, response));
+        form.reset();
+    } catch (e) {
+        console.error(e);
+    }
+}
+
+class ImageInput extends HTMLElement {
+    static formAssociated = true;
+
+    constructor() {
+        super();
+        this.internals_ = this.attachInternals();
+    }
+
+    connectedCallback() {
+        const shadow = this.attachShadow({ mode: "open" });
+
+        const label = document.createElement("span");
+        label.innerText = this.getAttribute("placeholder") || "Drag images here or click to open file selection menu";
+
+        const input = document.createElement("input");
+        input.setAttribute("type", "file");
+
+        if (this.hasAttribute("multiple")) {
+            input.setAttribute("multiple", "");
+        }
+
+        const wrapper = document.createElement("div");
+        wrapper.style.position = "relative";
+        wrapper.style.display = "none";
+
+        const image = document.createElement("img");
+
+        const slot = document.createElement("slot");
+        const overlay = document.createElement("div");
+        overlay.classList.add("overlay");
+        overlay.append(slot);
+
+        const close = document.createElement("button");
+        close.id = "close";
+        close.addEventListener("click", e => {
+            e.preventDefault();
+            this.internals_.form.reset();
+            image.src = "";
+            input.style.display = "";
+            label.style.display = "";
+            wrapper.style.display = "none";
+        });
+
+        overlay.append(slot, close);
+        wrapper.append(image, overlay);
+
+        const form = this.internals_.form || (() => { throw new Error("Inference input must be part of a form") })();
+        const name = this.getAttribute("name") || (() => { throw new Error("Inference input must have a name") })();
+        input.addEventListener("change", async (e) => {
+
+            const data = new FormData();
+            for (const file of input.files) {
+                data.append(name, file, file.name);
+            }
+            this.internals_.setFormValue(data);
+
+            if (typeof this.onInference === "function") {
+                if (input.files.length <= 0) {
+                    return;
+                }
+                makeRequest(form, this.onInference);
+                input.value = null;
+            } else if (input.files.length == 1) {
+                const file = input.files.item(0);
+                image.src = URL.createObjectURL(file);
+                wrapper.style.display = "";
+                input.style.display = "none";
+                label.style.display = "none";
+            }
+        });
+
+        const style = document.createElement("style");
+        style.textContent = `
+            input[type="file"] {
+                opacity: 0;
+                position: absolute;
+                inset: 0;
+                width: 100%;
+            }
+            #close {
+                position: absolute;
+                top: 0;
+                right: 0;
+            }
+            img {
+                object-fit: contain;
+                max-width: 100%;
+            }
+            .overlay {
+                position: "absolute";
+                inset: 0;
+                pointerEvents: "all";
+            }
+        `;
+
+        shadow.append(label, input, wrapper, style);
+    }
+}
+
+class BBoxInput extends HTMLElement {
+    static formAssociated = true;
+
+    constructor() {
+        super();
+        this.startX = null;
+        this.startY = null;
+        this.dragging = false;
+        this.internals_ = this.attachInternals();
+    }
+
+    connectedCallback() {
+        const shadow = this.attachShadow({ mode: "open" });
+        const area = document.createElement("div");
+        area.classList.add("area");
+
+        const box = document.createElement("div");
+        box.style.display = "none";
+        box.classList.add("box");
+        area.append(box);
+
+        const form = this.internals_.form || (() => { throw new Error("Inference input must be part of a form") })();
+        const draw = (x, y) => {
+            box.style.width = Math.abs(x - this.startX) + "px";
+            box.style.height = Math.abs(y - this.startY) + "px";
+            box.style.left = Math.min(x, this.startX) + "px";
+            box.style.top = Math.min(y, this.startY) + "px";
+        }
+        const handleStart = ({ clientX, clientY }) => {
+            const rect = area.getBoundingClientRect();
+            this.startX = clientX - rect.left;
+            this.startY = clientY - rect.top;
+            draw(this.startX, this.startY);
+            box.style.display = "";
+            this.dragging = true;
+        }
+        const handleEnd = ({ clientX, clientY }) => {
+            this.dragging = false;
+            const { left, top, width, height } = area.getBoundingClientRect();
+            const x = clientX - left;
+            const y = clientY - top;
+            const bbox = [
+                Math.min(x, this.startX) / width,
+                Math.min(y, this.startY) / height,
+                Math.abs(x - this.startX) / width,
+                Math.abs(y - this.startY) / height
+            ];
+            this.internals_.setFormValue(JSON.stringify(bbox));
+            if (typeof this.onInference === "function") {
+                makeRequest(form, this.onInference);
+            }
+        }
+        const handleMove = ({ clientX, clientY }) => {
+            if (!this.dragging) return;
+            const rect = area.getBoundingClientRect();
+            draw(clientX - rect.left, clientY - rect.top);
+        }
+
+        area.addEventListener("touchstart", handleStart);
+        area.addEventListener("touchmove", handleMove);
+        area.addEventListener("touchend", handleEnd);
+        area.addEventListener("mousedown", handleStart);
+        area.addEventListener("mousemove", handleMove);
+        area.addEventListener("mouseup", handleEnd);
+
+        const style = document.createElement("style");
+        style.textContent = `
+            .area {
+                position: absolute;
+                inset: 0;
+            }
+            .box {
+                position: absolute;
+                border: 1px solid orange;
+                boxSizing: border-box;
+            }
+        `;
+
+        shadow.append(area, style);
+    }
+}
+
+class ShowMasks extends HTMLElement {
+    constructor() {
+        super();
+    }
+
+    connectedCallback() {
+        if (!this.reference) {
+            throw new Error("Cannot create ShowMasks without reference");
+        }
+        if (!this.masks) {
+            throw new Error("Cannot create ShowMasks without masks");
+        }
+        const shadow = this.attachShadow({ mode: "open" });
+        const wrapper = document.createElement("div");
+        wrapper.classList.add("wrapper");
+
+        const images = document.createElement("div");
+        images.classList.add("images");
+        const reference = document.createElement("img");
+        reference.src = URL.createObjectURL(this.reference);
+        reference.classList.add("reference");
+        const colors = Array.from(this.masks, () => Math.random() * 360);
+        const masks = this.masks
+            .map((mask, i) => {
+                const maskWrapper = document.createElement("div");
+                maskWrapper.classList.add("maskWrapper");
+                maskWrapper.style = `--mask-color: hsl(${colors[i]} 100% 50%)`;
+
+                const img = document.createElement("img");
+                img.src = `data: image / webp; base64, ${mask}`;
+                img.classList.add("mask");
+                maskWrapper.append(img);
+                return maskWrapper;
+            });
+        images.append(reference, ...masks);
+
+        const tags = document.createElement("div");
+        tags.classList.add("tags");
+        const labels = masks.map((mask, i) => {
+            const tag = document.createElement("button");
+            tag.innerText = `#${i}`;
+            tag.addEventListener("click", e => {
+                masks[i].classList.toggle("hidden");
+            });
+            tag.style = `--bg-accent-default: hsl(${colors[i]} 100% 50% / 0.3); --bg-accent-hover: hsl(${colors[i]} 100% 50% / 0.6); --bg-accent-active: hsl(${colors[i]} 100% 80%);`;
+            return tag;
+        });
+        tags.append(...labels);
+        wrapper.append(images, tags);
+
+        const style = document.createElement("style");
+        style.textContent = `
+            button {
+                padding: 0.5rem 1rem;
+                display: inline-block;
+                background-color: var(--bg-accent-default);
+                border: 1px solid black;
+                &:hover {
+                    background-color: var(--bg-accent-hover);
+                }
+                &:active {
+                    background-color: var(--bg-accent-active);
+                }
+            }
+            .wrapper {
+                display: flex;
+            }
+
+            .tags {
+                flex-basis: 25%;
+                padding: 0.5rem;
+
+                >* {
+                    margin: 0.25rem;
+                }
+            }
+
+            .images {
+                position: relative;
+                flex-basis: 75%;
+            }
+
+            .reference {
+                object-fit: contain;
+                max-width: 100%;
+            }
+
+            .masks {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 1px;
+            }
+
+            .maskWrapper {
+                position: absolute;
+                inset: 0;
+                mix-blend-mode: lighten;
+                opacity: 0.6;
+                background-color: var(--mask-color, white);
+            }
+
+            .mask {
+                max-width: 100%;
+                mix-blend-mode: multiply;
+                object-fit: contain;
+            }
+
+            .hidden {
+                opacity: 0;
+            }
+        `;
+        shadow.append(wrapper, style);
+    }
+}
+
+customElements.define("infer-image", ImageInput);
+customElements.define("infer-bbox", BBoxInput);
+customElements.define("show-masks", ShowMasks);
