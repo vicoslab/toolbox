@@ -10,7 +10,9 @@
 
 
     <nav>
-        <h2>ViCoS Toolbox</h2>
+        <a href="/" {% if request.endpoint=='index' %}aria-current="page" {% endif %} style="font-weight: 600;">
+            ViCoS Toolbox
+        </a>
         <a href="/label" {% if request.endpoint=='label' %}aria-current="page" {% endif %}>Labeling</a>
         <a href="/dashboard" {% if request.endpoint=='dashboard' %}aria-current="page" {% endif %}>Experiments</a>
         <a href="/models" {% if request.endpoint=='models' %}aria-current="page" {% endif %}>Models</a>

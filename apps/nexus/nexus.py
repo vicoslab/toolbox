@@ -17,13 +17,7 @@ app = Flask(__name__)
 
 @app.route("/")
 def index():
-    return """
-    <h2>Available pages</h2>
-    <ul>
-        <li><a href="/label">LabelStudio</a></li>
-        <li><a href="/dashboard">MLFlow</a></li>
-    </ul>
-    """
+    return render_template("index.html")
 
 @app.route("/label")
 def label():
