@@ -13,30 +13,30 @@
     <nav>
         {% if "tour" in params %}
         {% set newparams = params.copy() %}
+        {% set _ = newparams.pop("tour") %}
         <ul class="tour">
-            {% if params.tour > 0 %}
-            {% set _=newparams.update({"tour": newparams.tour - 1}) %}
-            {% set id, step_name, step_endpoint=tour_steps[newparams.tour] %}
-            <a role="listitem" href="{{ url_for(step_endpoint, **newparams) }}">Previous</a>
-            {% endif %}
             {% for (id, step_name, step_endpoint) in tour_steps %}
             {% if params.tour == id %}{% set current = " current" %}{% else %}{% set current = "" %}{% endif %}
             {% if step_endpoint == "model" and "model" not in params %}
             <a role="listitem" class="tour-step disabled{{ current }}" href="#"
                 data-step-name="{{ step_name }}">{{step_name }}</a>
             {% else %}
-            <a role="listitem" class="tour-step{{ current }}" href="{{ url_for(step_endpoint, **params) }}"
-                data-step-name="{{ step_name }}">{{ step_name }}</a>
+            <a role="listitem" class="tour-step{{ current }}"
+                href="{{ url_for(step_endpoint, tour = id, **newparams) }}" data-step-name="{{ step_name }}">{{
+                step_name }}</a>
             {% endif %}
             {% endfor %}
-            {% if params.tour < tour_steps|length - 1 %} {% set id, step_name, step_endpoint=tour_steps[params.tour + 1]
-                %} {% if step_endpoint !="model" or "model" in params %} {% set _=newparams.update({"tour": id}) %} <a
-                role="listitem" href="{{ url_for(step_endpoint, **newparams) }}">
-                Next</a>
-                {% endif %}
-                {% else %}
-                <a role="listitem" href="{{ url_for('index') }}">Finish</a>
-                {% endif %}
+            <button role="listitem" class="tour-step" command="show-modal" commandfor="finish-tour"
+                data-step-name="Finish tour">Finish tour</button>
+
+            <dialog id="finish-tour">
+                <p>Finish tour?</p>
+                <button commandfor="finish-tour" command="close">No</button>
+                <form action="{{ url_for(request.endpoint, **newparams) }}">
+                    <button type="submit">Yes</button>
+                </form>
+
+            </dialog>
         </ul>
         {% else %}
         <a href="/" {% if request.endpoint=='index' %}aria-current="page" {% endif %} style="font-weight: 600;">
