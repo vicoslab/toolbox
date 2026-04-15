@@ -3,6 +3,7 @@
 
 <head>
     <title>{% block title %}{% endblock %} - ViCoS</title>
+    <meta name="referrer" content="no-referrer" />
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 
@@ -10,13 +11,42 @@
 
 
     <nav>
+        {% if "tour" in params %}
+        {% set newparams = params.copy() %}
+        <ul class="tour">
+            {% if params.tour > 0 %}
+            {% set _=newparams.update({"tour": newparams.tour - 1}) %}
+            {% set id, step_name, step_endpoint=tour_steps[newparams.tour] %}
+            <a role="listitem" href="{{ url_for(step_endpoint, **newparams) }}">Previous</a>
+            {% endif %}
+            {% for (id, step_name, step_endpoint) in tour_steps %}
+            {% if params.tour == id %}{% set current = " current" %}{% else %}{% set current = "" %}{% endif %}
+            {% if step_endpoint == "model" and "model" not in params %}
+            <a role="listitem" class="tour-step disabled{{ current }}" href="#"
+                data-step-name="{{ step_name }}">{{step_name }}</a>
+            {% else %}
+            <a role="listitem" class="tour-step{{ current }}" href="{{ url_for(step_endpoint, **params) }}"
+                data-step-name="{{ step_name }}">{{ step_name }}</a>
+            {% endif %}
+            {% endfor %}
+            {% if params.tour < tour_steps|length - 1 %} {% set id, step_name, step_endpoint=tour_steps[params.tour + 1]
+                %} {% if step_endpoint !="model" or "model" in params %} {% set _=newparams.update({"tour": id}) %} <a
+                role="listitem" href="{{ url_for(step_endpoint, **newparams) }}">
+                Next</a>
+                {% endif %}
+                {% else %}
+                <a role="listitem" href="{{ url_for('index') }}">Finish</a>
+                {% endif %}
+        </ul>
+        {% else %}
         <a href="/" {% if request.endpoint=='index' %}aria-current="page" {% endif %} style="font-weight: 600;">
             ViCoS Toolbox
         </a>
         <a href="/label" {% if request.endpoint=='label' %}aria-current="page" {% endif %}>Labeling</a>
         <a href="/dashboard" {% if request.endpoint=='dashboard' %}aria-current="page" {% endif %}>Experiments</a>
         <a href="/models" {% if request.endpoint=='models' %}aria-current="page" {% endif %}>Models</a>
-        <a href="/task/logs" id="status"></a>
+        {% endif %}
+        <a href="{{ url_for('logs', **params) }}" id="status"></a>
     </nav>
 
     <main>

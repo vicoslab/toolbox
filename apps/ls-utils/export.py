@@ -32,7 +32,7 @@ while job.status not in ('completed', 'failed'):
 if job.status == 'failed':
     print('Export failed: {job}')
     exit(1)
-print('\nExport finished')
+print('\nGot data from label studio')
 
 # Parse into json
 with io.BytesIO() as b:
@@ -69,26 +69,29 @@ for task in j:
     _, relpath = task['image']
     item = { 'image_path': '../' + relpath }
     
-    if 'tag' in task:
-        brushlabels = None
+    if 'labels' in task:
+        labels = None
         mask = None
-        for tag in task['tag']:
-            if 'brushlabels' in tag:
-                if brushlabels is None:
+        for tag in task['labels']:
+            if tag['format'] == 'rle':
+                if labels is None:
                     width = tag['original_width']
                     height = tag['original_height']
-                    brushlabels = tag['brushlabels']
+                    labels = tag['labels']
                     mask = np.reshape(brush.decode_rle(tag['rle']), [height, width, 4])[:, :, 3]
-                elif brushlabels != tag['brushlabels']:
-                    print(f'Warning: mixing different brushlabels in `{relpath}`')
+                elif labels != tag['labels']:
+                    print(f'Warning: mixing different labels in `{relpath}`')
                 else:
                     mask += np.reshape(brush.decode_rle(tag['rle']), [height, width, 4])[:, :, 3]
         filename = (EXPORT_DIR / relpath).with_suffix('.label.png')
         filename.parent.mkdir(parents=True, exist_ok=True)
         Image.fromarray(mask).save(filename)
+        item['label'] = 'abnormal' if mask.sum() > 0 else 'normal'
         item['mask_path'] = str(filename.relative_to(EXPORT_DIR))
     
     data.append(item)
 
 with open(EXPORT_DIR / 'manifest.json', 'w') as f:
     json.dump({ 'data': data }, f)
+
+print(f"Project {PROJECT_ID} successfully exported to '{EXPORT_DIR}'")

@@ -90,11 +90,70 @@ button, input[type="submit"], .button {
     border: 1px solid black;
     color: black;
     text-decoration: none;
+    font-size: 0.8rem;
+    font-weight: 600;
     &:hover {
         background-color: var(--bg-accent-hover);
     }
     &:active {
         background-color: var(--bg-accent-active);
+    }
+}
+
+.tour {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    list-style: none;
+    .tour-step {
+        padding: 0;
+        width: 1.25rem;
+        height: 1.25rem;
+        border-radius: 50%;
+        background-color: var(--fg-accent-active);
+        font-size: 0;
+        display: flex;
+        align-items: center;
+        &.current {
+            border: 2px solid var(--fg-accent-active);
+            background-color: white;
+            width: auto;
+            height: auto;
+            font-size: 1.2rem;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0;
+            &::after {
+                display: none;
+            }
+        }
+        &:hover:not(.current)::after {
+            content: attr(data-step-name);
+            position: absolute;
+            font-size: 1rem;
+            width: auto;
+            text-wrap: nowrap;
+            z-index: 1;
+            pointer-events: none;
+            transform: translateX(-50%);
+            left: 50%;
+            top: 150%;
+            background-color: var(--bg-accent-hover);
+            border: 1px solid var(--fg-accent-active);
+            padding: 0.25rem 0.5rem;
+        }
+    }
+    .tour-step + .tour-step::before {
+        content: "";
+        position: absolute;
+        left: -1rem;
+        z-index: -1;
+        width: 1rem;
+        height: 0.3rem;
+        background-color: var(--fg-accent-active);
+    }
+    .current ~ .tour-step {
+        background-color: transparent;
+        border: 3px solid var(--fg-accent-active);
     }
 }
 
@@ -109,6 +168,7 @@ button, input[type="submit"], .button {
 .model-list {
     display: flex;
     flex-wrap: wrap;
+    gap: 0.5rem;
 
     .model {
         display: block;
@@ -135,16 +195,35 @@ button, input[type="submit"], .button {
     }
 }
 
+fieldset {
+    display: grid;
+    margin: 0;
+    grid-template-columns: auto 1fr;
+    gap: 0.5rem;
+    input[type="checkbox"] {
+        width: fit-content;
+    }
+}
+
 .model-overview {
     display: flex;
-    
-    fieldset {
-        width: fit-content;
-        display: grid;
-        grid-template-columns: auto 1fr;
-        gap: 0.5rem;
-        input {
-            width: fit-content;
+    flex-wrap: wrap;
+
+    .model-sidebar {
+        width: 30rem;
+    }
+
+    .tour-dataset {
+        background-color: #ffefef;
+        padding: 0.5rem 1rem;
+        border: 1px solid var(--border);
+        margin-bottom: 0.5rem;
+
+        blockquote {
+            margin: 0 0.5rem;
+            padding: 0.25rem 0.5rem;
+            background-color: #f7dfdf;
+            border-left: 2px solid rgb(121, 121, 121);
         }
     }
 
@@ -182,7 +261,7 @@ button, input[type="submit"], .button {
     }
 }
 
-.home {
+.text-layout {
     max-width: 60rem;
     margin: auto;
     a:not([class]) {

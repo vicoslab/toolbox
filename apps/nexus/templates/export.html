@@ -1,0 +1,24 @@
+{% extends "layout.html" %}
+
+{% block title %}Homepage{% endblock %}
+
+{% block content %}
+<div class="wrapper">
+    <div class="text-layout">
+        <h3>Export annotations</h3>
+        <p>
+            By default, export will use current project {% if params.project %}({{ params.project }}){% endif %} and
+            /path/to/dataset/.export-<i>date</i>-<i>time</i>.
+        </p>
+        <form action="{{ url_for('export', **params) }}" method="post">
+            <fieldset>
+                <label for="project">Project</label>
+                <input type="text" inputmode="numeric" pattern="\d*" name="project">
+                <label for="dir">Dataset path</label>
+                <input type="text" name="dir">
+                <input type="submit" value="Start export">
+            </fieldset>
+        </form>
+    </div>
+</div>
+{% endblock %}

@@ -4,36 +4,76 @@
 
 {% block content %}
 <div class="model-overview wrapper">
-    <form method="post">
-        <fieldset>
-            {% for k, prop in options.items() %}
-            <label for="{{ k }}" title="{{ prop.description }}">{{ k }}</label>
-            {% if prop.enum %}
-            <div>
-                {% for opt in prop.enum %}
-                <input type="radio" id="{{ opt }}" name="{{ k }}" value="{{ opt }}" {% if prop.default==opt %}checked{%
-                    endif %} />
-                <label for="{{ opt }}">{{ opt }}</label>
+    <div class="model-sidebar">
+        {% if params.tour == tour_enum.DATASET.value and "manifest" in options %}
+        <div class="tour-dataset">
+            <h3>Tour: dataset</h3>
+            <p>
+                To accomodate for different kinds of datasets and tasks, models are prepared to only require a single
+                file
+                called a manifest, which should contain all necessary information to load in data for training.
+            </p>
+            <p>
+                Description from '{{ title }}':
+            <blockquote>
+                {{ options["manifest"]["description"] }}
+            </blockquote>
+            </p>
+            <p>
+                If your dataset is already annotated, prepare a manifest for it, after which you can start a
+                training run below. Otherwise,
+                <button command="show-modal" commandfor="create-project"
+                    style="display: block; margin: 1rem auto;">Create a labeling project</button>
+
+                <dialog id="create-project">
+                    <h3>Create project</h3>
+                    <form action="{{ url_for('dataset', **params)}}" method="post">
+                        <fieldset style="border: none;">
+                            <label for="name">Name</label>
+                            <input type="text" name="title">
+                            <label for="path">Path</label>
+                            <input type="text" name="dataset">
+                        </fieldset>
+                        <button type="button" commandfor="create-project" command="close">Cancel</button>
+                        <button type="submit">Create</button>
+                    </form>
+
+                </dialog>
+            </p>
+        </div>
+        {% endif %}
+        <form method="post">
+            <fieldset>
+                {% for k, prop in options.items() %}
+                <label for="{{ k }}" title="{{ prop.description }}">{{ k }}</label>
+                {% if prop.enum %}
+                <div>
+                    {% for opt in prop.enum %}
+                    <input type="radio" id="{{ opt }}" name="{{ k }}" value="{{ opt }}" {% if prop.default==opt
+                        %}checked{% endif %} />
+                    <label for="{{ opt }}">{{ opt }}</label>
+                    {% endfor %}
+                </div>
+                {% elif prop.type == "string" %}
+                <input type="text" name="{{ k }}" placeholder="{{ prop.default }}">
+                {% elif prop.type == "boolean" %}
+                <input type="checkbox" name="{{ k }}" placeholder="{{ prop.default }}">
+                {% elif prop.type == "integer" %}
+                <input type="text" inputmode="numeric" pattern="\d*" name="{{ k }}" placeholder="{{ prop.default }}">
+                {% elif prop.type == "number" %}
+                <input type="text" inputmode="numeric" pattern="\d+(.\d+)?" name="{{ k }}"
+                    placeholder="{{ prop.default }}">
+                {% else %}
+                invalid type
+                {% endif %}
                 {% endfor %}
-            </div>
-            {% elif prop.type == "string" %}
-            <input type="text" name="{{ k }}" placeholder="{{ prop.default }}">
-            {% elif prop.type == "boolean" %}
-            <input type="checkbox" name="{{ k }}" placeholder="{{ prop.default }}">
-            {% elif prop.type == "integer" %}
-            <input type="text" inputmode="numeric" pattern="\d*" name="{{ k }}" placeholder="{{ prop.default }}">
-            {% elif prop.type == "number" %}
-            <input type="text" inputmode="numeric" pattern="\d+(.\d+)?" name="{{ k }}" placeholder="{{ prop.default }}">
-            {% else %}
-            invalid type
-            {% endif %}
-            {% endfor %}
-            {% if train %}
-            <input type="submit" name="start-train" value="Start training">
-            {% endif %}
-            <input type="submit" name="start-inference-worker" value="Start inference worker">
-        </fieldset>
-    </form>
+                {% if train %}
+                <input type="submit" name="start-train" value="Start training">
+                {% endif %}
+                <input type="submit" name="start-inference-worker" value="Start inference worker">
+            </fieldset>
+        </form>
+    </div>
     <div class="inference">
         <div id="results"></div>
         <form id="form-inference" action="">

@@ -1,13 +1,39 @@
-from flask import Flask, render_template, request, redirect
+from flask import Flask, render_template, request, redirect, url_for
 import json
 import os
 from pathlib import Path
 from subprocess import Popen, PIPE, STDOUT
 import re
+from enum import Enum
 
 import mlflow
 mlflow.set_tracking_uri("http://localhost:8081")
 ARTIFACTS = os.getenv("MLFLOW_ARTIFACTS_DESTINATION", "")
+
+class TourStep(Enum):
+    START = 0
+    MODEL_SELECTION = 1
+    DATASET = 2
+    LABELING = 3
+    EXPORT = 4
+    TRAINING = 5
+    MONITORING = 6
+    INFERENCE = 7
+
+TOUR_STEPS = [
+    (TourStep.START.value, "Introduction", "tour"),
+    (TourStep.MODEL_SELECTION.value, "Select model", "models"),
+    (TourStep.DATASET.value, "Pick dataset", "model"),
+    (TourStep.LABELING.value, "Label images", "label"),
+    (TourStep.EXPORT.value, "Export annotations", "export"),
+    (TourStep.TRAINING.value, "Start training", "model"),
+    (TourStep.MONITORING.value, "Monitor run", "dashboard"),
+    (TourStep.INFERENCE.value, "Inference", "model"),
+]
+
+dataset_tasks = {
+    "super-simple-net": "anomaly-detection",
+}
 
 # make sure virutal env doesn't bleed into subprocesses
 if "VIRTUAL_ENV" in os.environ:
@@ -15,21 +41,45 @@ if "VIRTUAL_ENV" in os.environ:
 
 app = Flask(__name__)
 
+def propagate():
+    r = {}
+    try:
+        r["tour"] = int(request.args["tour"])
+        for attr in ["model", "project", "experiment"]:
+            if attr in request.args:
+                r[attr] = request.args[attr]
+    except:
+        pass
+    return r
+
+@app.context_processor
+def inject_stage_and_region():
+    return dict(tour_steps=TOUR_STEPS, tour_enum=TourStep)
+
 @app.route("/")
 def index():
-    return render_template("index.html")
+    return render_template("index.html", params=propagate())
+
+@app.route("/tour")
+def tour():
+    return render_template("tour.html", params=propagate())
 
 @app.route("/label")
 def label():
     page = ""
-    if "id" in request.args:
-        page = f"/projects/{int(request.args['id'])}"
+    if project := request.args.get("project"):
+        page = f"/projects/{int(project)}"
     
-    return render_template("label-studio.html", page=page)
+    return render_template("label-studio.html", page=page, params=propagate())
 
 @app.route("/dashboard")
 def dashboard():
-    return render_template("mlflow.html")
+    page = ""
+    if ex := request.args.get("experiment", ""):
+        page += f"/#/experiments/{int(ex)}"
+        if run := request.args.get("run", ""):
+            page += f"/runs/{run}"
+    return render_template("mlflow.html", page=page, params=propagate())
 
 MODEL_DIR = Path(os.getenv("MODEL_DIR"))
 model_manifest = {}
@@ -51,24 +101,28 @@ active_task = {
     "description": "",
     "output": [],
     "process": None,
+    "run_url": None,
     "code": 0,
 }
 
 @app.route("/models")
 def models():
-    return render_template("models.html", models=model_manifest)
+    return render_template("models.html", models=model_manifest, params=propagate())
 
-@app.route("/models/<id>", methods=["GET", "POST"])
-def model(id):
+@app.route("/models/<model>", methods=["GET", "POST"])
+def model(model):
+    params = propagate()
+    params["model"] = model
+
     if request.method == "POST":
         if "start-inference-worker" in request.form:
             command = ["uv", "run", "gunicorn", "--bind", ":9090", "infer:app", "--"]
-            active_task["description"] = f"Inference service worker for: `{id}`"
+            active_task["description"] = f"Inference service worker for: `{model}`"
         else:
             command = ["uv", "run", "train.py"]
-            active_task["description"] = f"Model training: `{id}`"
+            active_task["description"] = f"Model training: `{model}`"
         for k, v in request.form.items():
-            if v != "" and k in model_manifest[id]["options"]:
+            if v != "" and k in model_manifest[model]["options"]:
                 if v.startswith("mlflow-artifacts:") and ARTIFACTS:
                     v = v.replace("mlflow-artifacts:", ARTIFACTS, count=1)
                 elif v.startswith("run:/") and ARTIFACTS:
@@ -79,25 +133,47 @@ def model(id):
                         v = f"{ARTIFACTS}/{info.experiment_id}/{info.run_id}/artifacts/{rest}"
                 command.extend(["--" + k, v])
         active_task["output"] = []
-        active_task["process"] = Popen(command, cwd = MODEL_DIR / id, stdout = PIPE, stderr = STDOUT, text = True)
+        active_task["run_url"] = None
+        active_task["process"] = Popen(command, cwd = MODEL_DIR / model, stdout = PIPE, stderr = STDOUT, text = True)
         os.set_blocking(active_task["process"].stdout.fileno(), False)
 
-    return render_template("model.html", **model_manifest[id], train=(MODEL_DIR / id / "train.py").exists())
+        # skip labeling steps
+        if params.get("tour", "") == TourStep.DATASET.value:
+            params["tour"] = TourStep.TRAINING.value
 
-@app.route("/create", methods=["POST"])
-def create():
-    if type(request.json) == dict:
+        return redirect(url_for("logs", **params))
+
+    return render_template("model.html", **model_manifest[model], train=(MODEL_DIR / model / "train.py").exists(), params=params)
+
+@app.route("/dataset", methods=["POST"])
+def dataset():
+    if request.is_json:
+        data = request.json
+    else:
+        data = request.form.to_dict()
+
+    if type(data) == dict:
+        if "task" in data:
+            task = data["task"]
+        elif (model := request.args.get("model", "")) in dataset_tasks:
+            task = dataset_tasks[model]
+        else:
+            return "Request body must contain key 'task' or known model must be provided in query parameter 'model'.", 400
+        if not (dataset := data.get("dataset", "")):
+            return "Request body must contain key 'dataset' containing path to dataset.", 400
         env = {
-            "TASK": request.json["task"],
-            "DATASET": request.json["dataset"],
+            "TASK": task,
+            "DATASET": dataset,
         }
-        if "title" in request.json:
-            env["PROJECT_TITLE"] = request.json["title"]
+        if title := data.get("title", ""):
+            env["PROJECT_TITLE"] = title
     else:
         return "Request body must be an object with keys 'task' and 'dataset'. Can optionally include 'title'.", 400
+
     command = ["uv", "run", "create.py"]
     active_task["description"] = f"Project creation"
     active_task["output"] = []
+    active_task["run_url"] = None
     active_task["process"] = Popen(command, cwd = "../ls-utils", stdout = PIPE, stderr = STDOUT, text = True, env = { **os.environ, **env })
     id = None
     while line_in := active_task["process"].stdout.readline():
@@ -112,27 +188,35 @@ def create():
     if id is None:
         return "Project could not be created", 400
 
-    return redirect("/label?id=" + str(id))
+    params = propagate()
+    if params.get("tour", "") == TourStep.DATASET.value:
+        params["tour"] = TourStep.LABELING.value
+    return redirect(url_for("label", project=id, **params))
 
-@app.route("/export", methods=["POST"])
+@app.route("/export", methods=["GET", "POST"])
 def export():
-    try:
-        env = { "PROJECT_ID": str(int(request.json)) }
-    except:
-        if type(request.json) == dict:
-            env = {
-                "PROJECT_ID": str(int(request.json["id"])),
-                "EXPORT_DIR": request.json["dir"],
-            }
+    if request.method == "POST":
+        if request.is_json:
+            data = request.json
         else:
-            return "Request body must be int or object", 400
-    command = ["uv", "run", "export.py"]
-    active_task["description"] = f"Export worker for project {env['PROJECT_ID']}"
-    active_task["output"] = []
-    active_task["process"] = Popen(command, cwd = "../ls-utils", stdout = PIPE, stderr = STDOUT, text = True, env = { **os.environ, **env })
-    os.set_blocking(active_task["process"].stdout.fileno(), False)
+            data = request.form.to_dict()
+        
+        env = {}
+        if (project := data.get("project", "")) or (project := request.args.get("project", "")):
+            env["PROJECT_ID"] = project
+        else:
+            return "Project id must be passed as 'project' in body or through query params.", 400
+        if export_dir := data.get("dir", ""):
+            env["EXPORT_DIR"] = export_dir
 
-    return "", 204
+        command = ["uv", "run", "export.py"]
+        active_task["description"] = f"Export worker for project {env['PROJECT_ID']}"
+        active_task["output"] = []
+        active_task["run_url"] = None
+        active_task["process"] = Popen(command, cwd = "../ls-utils", stdout = PIPE, stderr = STDOUT, text = True, env = { **os.environ, **env })
+        os.set_blocking(active_task["process"].stdout.fileno(), False)
+
+    return render_template("export.html", params=propagate())
 
 @app.route("/task/status")
 def status():
@@ -146,9 +230,11 @@ def status():
 # if line starts with eval:, visualise: or (for example) 10/300: (from something like a tqdm batch counter)
 # consecutive log lines get grouped up (most recent one is shown)
 tqdm_header = re.compile(r"^(\d+)/(\d+):|^(eval):|^(visualise):")
+mlflow_info = re.compile(r"^Experiment (\d+): Run ([a-f0-9]+)$")
 
 @app.route("/task/logs")
 def logs():
+    params = propagate()
     out = active_task["output"]
 
     m = tqdm_header.match(out[-1]) if len(out) else None
@@ -159,8 +245,7 @@ def logs():
             line = line.strip()
             if len(line) == 0:
                 continue
-            m = tqdm_header.match(line)
-            if m:
+            if m := tqdm_header.match(line):
                 gs = m.groups()
                 if gs == last:
                     out[-1] = line
@@ -168,10 +253,14 @@ def logs():
                     out.append(line)
                 last = gs
             else:
+                if m := mlflow_info.match(line):
+                    experiment, run = m.groups()
+                    override = { **params, "tour": TourStep.MONITORING.value } if params.get("tour", "") == TourStep.TRAINING.value else params
+                    active_task["run_url"] = url_for("dashboard", **{ "experiment": experiment, "run": run, **override })
                 out.append(line)
                 last = None
 
-    return render_template("logs.html", output=out, description=active_task["description"], running=active_task["code"] is None)
+    return render_template("logs.html", output=out, description=active_task["description"], running=active_task["code"] is None, run_shortcut=active_task["run_url"], params=params)
 
 @app.route("/task/stop", methods=["POST"])
 def kill():
@@ -179,4 +268,4 @@ def kill():
         active_task["process"].terminate()
         # hardcode because process would still respond as alive right now
         active_task["code"] = -9
-    return redirect("/task/logs")
+    return redirect(url_for("logs", **propagate()))

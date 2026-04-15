@@ -7,18 +7,23 @@
     <h1>Task information</h1>
     {% if description %}
     <p>{{ description }}</p>
-    {% if running %}
-    <button command="show-modal" commandfor="confirm-stop">Stop task</button>
+    <div>
+        {% if run_shortcut %}
+        <a href="{{ run_shortcut }}" class="button">Open run</a>
+        {% endif %}
+        {% if running %}
+        <button command="show-modal" commandfor="confirm-stop">Stop task</button>
 
-    <dialog id="confirm-stop">
-        <p>Are you sure you want to stop this task?</p>
-        <button commandfor="confirm-stop" command="close">No</button>
-        <form action="/task/stop" method="post">
-            <button type="submit">Yes</button>
-        </form>
+        <dialog id="confirm-stop">
+            <p>Are you sure you want to stop this task?</p>
+            <button commandfor="confirm-stop" command="close">No</button>
+            <form action="{{ url_for('kill', **params) }}" method="post">
+                <button type="submit">Yes</button>
+            </form>
 
-    </dialog>
-    {% endif %}
+        </dialog>
+        {% endif %}
+    </div>
     <pre>
         {% for line in output %}
         {{ line }}

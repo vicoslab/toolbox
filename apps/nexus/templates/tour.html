@@ -1,0 +1,17 @@
+{% extends "layout.html" %}
+
+{% block title %}Tour{% endblock %}
+
+{% block content %}
+<div class="wrapper">
+    <div class="text-layout">
+        <h2>Welcome to the tour</h2>
+        <ul>
+            {% for id, title, endpoint in tour_steps %}
+            <li>{{ title }}</li>
+            {% endfor %}
+        </ul>
+        <a class="button" href="{{ url_for('models', tour=tour_enum.MODEL_SELECTION.value)}}">Next</a>
+    </div>
+</div>
+{% endblock %}
