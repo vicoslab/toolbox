@@ -75,9 +75,9 @@ def label():
 @app.route("/dashboard")
 def dashboard():
     page = ""
-    if ex := request.args.get("experiment", ""):
+    if ex := request.args.get("experiment"):
         page += f"/#/experiments/{int(ex)}"
-        if run := request.args.get("run", ""):
+        if run := request.args.get("run"):
             page += f"/runs/{run}"
     return render_template("mlflow.html", page=page, params=propagate())
 
@@ -138,7 +138,7 @@ def model(model):
         os.set_blocking(active_task["process"].stdout.fileno(), False)
 
         # skip labeling steps
-        if params.get("tour", "") == TourStep.DATASET.value:
+        if params.get("tour") == TourStep.DATASET.value:
             params["tour"] = TourStep.TRAINING.value
 
         return redirect(url_for("logs", **params))
@@ -155,17 +155,17 @@ def dataset():
     if type(data) == dict:
         if "task" in data:
             task = data["task"]
-        elif (model := request.args.get("model", "")) in dataset_tasks:
+        elif (model := request.args.get("model")) in dataset_tasks:
             task = dataset_tasks[model]
         else:
             return "Request body must contain key 'task' or known model must be provided in query parameter 'model'.", 400
-        if not (dataset := data.get("dataset", "")):
+        if not (dataset := data.get("dataset")):
             return "Request body must contain key 'dataset' containing path to dataset.", 400
         env = {
             "TASK": task,
             "DATASET": dataset,
         }
-        if title := data.get("title", ""):
+        if title := data.get("title"):
             env["PROJECT_TITLE"] = title
     else:
         return "Request body must be an object with keys 'task' and 'dataset'. Can optionally include 'title'.", 400
@@ -189,7 +189,7 @@ def dataset():
         return "Project could not be created", 400
 
     params = propagate()
-    if params.get("tour", "") == TourStep.DATASET.value:
+    if params.get("tour") == TourStep.DATASET.value:
         params["tour"] = TourStep.LABELING.value
     return redirect(url_for("label", project=id, **params))
 
@@ -202,11 +202,11 @@ def export():
             data = request.form.to_dict()
         
         env = {}
-        if (project := data.get("project", "")) or (project := request.args.get("project", "")):
+        if (project := data.get("project")) or (project := request.args.get("project")):
             env["PROJECT_ID"] = project
         else:
             return "Project id must be passed as 'project' in body or through query params.", 400
-        if export_dir := data.get("dir", ""):
+        if export_dir := data.get("dir"):
             env["EXPORT_DIR"] = export_dir
 
         command = ["uv", "run", "export.py"]
@@ -255,7 +255,7 @@ def logs():
             else:
                 if m := mlflow_info.match(line):
                     experiment, run = m.groups()
-                    override = { **params, "tour": TourStep.MONITORING.value } if params.get("tour", "") == TourStep.TRAINING.value else params
+                    override = { **params, "tour": TourStep.MONITORING.value } if params.get("tour") == TourStep.TRAINING.value else params
                     active_task["run_url"] = url_for("dashboard", **{ "experiment": experiment, "run": run, **override })
                 out.append(line)
                 last = None
