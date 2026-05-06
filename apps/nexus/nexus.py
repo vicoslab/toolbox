@@ -101,9 +101,52 @@ active_task = {
     "description": "",
     "output": [],
     "process": None,
-    "run_url": None,
+    "run_info": None,
     "code": 0,
 }
+
+# regex for grouping log entries
+# if line starts with eval:, visualise: or (for example) 10/300: (from something like a tqdm batch counter)
+# consecutive log lines get grouped up (most recent one is shown)
+tqdm_header = re.compile(r"^(\d+)/(\d+):|^(eval):|^(visualise):")
+mlflow_info = re.compile(r"^Experiment (\d+): Run ([a-f0-9]+)$")
+
+def refresh_logs():
+    if active_task["process"]:
+        out = active_task["output"]
+
+        m = tqdm_header.match(out[-1]) if len(out) else None
+        last = m.groups() if m else None
+
+        while line := active_task["process"].stdout.readline():
+            line = line.strip()
+            if len(line) == 0:
+                continue
+            if m := tqdm_header.match(line):
+                gs = m.groups()
+                if gs == last:
+                    out[-1] = line
+                else:
+                    out.append(line)
+                last = gs
+            else:
+                if m := mlflow_info.match(line):
+                    active_task["run_info"] = m.groups()
+                out.append(line)
+                last = None
+
+# debug mode is single-threaded, which makes it hang
+if not app.debug:
+    from threading import Thread
+    import time
+
+    def monitor_task():
+        while True:
+            time.sleep(1)
+            refresh_logs()
+
+    # this is needed because task's writes will start blocking if output is not consumed
+    Thread(target=monitor_task, daemon=True).start()
 
 @app.route("/models")
 def models():
@@ -133,7 +176,7 @@ def model(model):
                         v = f"{ARTIFACTS}/{info.experiment_id}/{info.run_id}/artifacts/{rest}"
                 command.extend(["--" + k, v])
         active_task["output"] = []
-        active_task["run_url"] = None
+        active_task["run_info"] = None
         active_task["process"] = Popen(command, cwd = MODEL_DIR / model, stdout = PIPE, stderr = STDOUT, text = True)
         os.set_blocking(active_task["process"].stdout.fileno(), False)
 
@@ -173,7 +216,7 @@ def dataset():
     command = ["uv", "run", "create.py"]
     active_task["description"] = f"Project creation"
     active_task["output"] = []
-    active_task["run_url"] = None
+    active_task["run_info"] = None
     active_task["process"] = Popen(command, cwd = "../ls-utils", stdout = PIPE, stderr = STDOUT, text = True, env = { **os.environ, **env })
     id = None
     while line_in := active_task["process"].stdout.readline():
@@ -212,7 +255,7 @@ def export():
         command = ["uv", "run", "export.py"]
         active_task["description"] = f"Export worker for project {env['PROJECT_ID']}"
         active_task["output"] = []
-        active_task["run_url"] = None
+        active_task["run_info"] = None
         active_task["process"] = Popen(command, cwd = "../ls-utils", stdout = PIPE, stderr = STDOUT, text = True, env = { **os.environ, **env })
         os.set_blocking(active_task["process"].stdout.fileno(), False)
 
@@ -226,41 +269,21 @@ def status():
             return "running"
     return "idle" if active_task["code"] == 0 else "exited"
 
-# regex for grouping log entries
-# if line starts with eval:, visualise: or (for example) 10/300: (from something like a tqdm batch counter)
-# consecutive log lines get grouped up (most recent one is shown)
-tqdm_header = re.compile(r"^(\d+)/(\d+):|^(eval):|^(visualise):")
-mlflow_info = re.compile(r"^Experiment (\d+): Run ([a-f0-9]+)$")
-
 @app.route("/task/logs")
 def logs():
+    if app.debug: # in production mode this gets refreshed in a thread
+        refresh_logs()
+
     params = propagate()
-    out = active_task["output"]
 
-    m = tqdm_header.match(out[-1]) if len(out) else None
-    last = m.groups() if m else None
+    override = { **params, "tour": TourStep.MONITORING.value } if params.get("tour") == TourStep.TRAINING.value else params
+    if active_task["run_info"]:
+        override["experiment"], override["run"] = active_task["run_info"]
+        run_url = url_for("dashboard", **override)
+    else:
+        run_url = None
 
-    if active_task["process"]:
-        while line := active_task["process"].stdout.readline():
-            line = line.strip()
-            if len(line) == 0:
-                continue
-            if m := tqdm_header.match(line):
-                gs = m.groups()
-                if gs == last:
-                    out[-1] = line
-                else:
-                    out.append(line)
-                last = gs
-            else:
-                if m := mlflow_info.match(line):
-                    experiment, run = m.groups()
-                    override = { **params, "tour": TourStep.MONITORING.value } if params.get("tour") == TourStep.TRAINING.value else params
-                    active_task["run_url"] = url_for("dashboard", **{ "experiment": experiment, "run": run, **override })
-                out.append(line)
-                last = None
-
-    return render_template("logs.html", output=out, description=active_task["description"], running=active_task["code"] is None, run_shortcut=active_task["run_url"], params=params)
+    return render_template("logs.html", output=active_task["output"], description=active_task["description"], running=active_task["code"] is None, run_shortcut=run_url, params=params)
 
 @app.route("/task/stop", methods=["POST"])
 def kill():
