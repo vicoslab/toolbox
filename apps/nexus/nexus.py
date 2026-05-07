@@ -81,6 +81,7 @@ def dashboard():
             page += f"/runs/{run}"
     return render_template("mlflow.html", page=page, params=propagate())
 
+CACHE = Path(os.getenv("TOOLBOX_CACHE"))
 MODEL_DIR = Path(os.getenv("MODEL_DIR"))
 model_manifest = {}
 for p in sorted(MODEL_DIR.iterdir()):
@@ -177,7 +178,7 @@ def model(model):
                 command.extend(["--" + k, v])
         active_task["output"] = []
         active_task["run_info"] = None
-        active_task["process"] = Popen(command, cwd = MODEL_DIR / model, stdout = PIPE, stderr = STDOUT, text = True)
+        active_task["process"] = Popen(command, cwd = MODEL_DIR / model, stdout = PIPE, stderr = STDOUT, text = True, env={ **os.environ, "VIRTUAL_ENV": CACHE / model / ".venv" })
         os.set_blocking(active_task["process"].stdout.fileno(), False)
 
         # skip labeling steps

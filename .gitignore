@@ -18,3 +18,5 @@ wheels/
 .installed.cfg
 *.egg
 MANIFEST
+
+Dockerfile.generated
