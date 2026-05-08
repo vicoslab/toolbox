@@ -1,12 +1,8 @@
 # Toolbox
-ViCoS toolbox is a collection of tools and models packaged as a docker image.
+ViCoS toolbox is a collection of tools packaged as a docker image, alongside installation and inference/training scripts for models.
 
 ## Building
-The docker image is built by collecting dockerfile fragments for the various tools. Tools *should* install their dependencies using `RUN uv` (this exact form, as it gets replaced with flags for caching), where uv is used to make sure tools share dependencies where possible. A single docker image is used to fascilitate sharing between components and avoid the burden of orchestration.
-
-To build the entire image, run `make`.
-
-To build just a single model, run `make <model-name>`.
+Currently, everything is part of a single image to simplify deployment (since the apps are only single-tenant, its easier to manage as a whole unit).
 
 ## Running
 
@@ -22,4 +18,10 @@ In order to persist label-studio projects, mlflow runs, etc., a docker volume is
 This volume should be mounted to `/persist` when running containers, and additional environment variables must be passed to set the data dirs:
 ```bash
 docker run --rm -it --network host --ipc host -v /path/to/datasets:/data --env-file .env --env-file .env.persist --device nvidia.com/gpu=all --mount type=volume,src=toolbox-persist,dst=/persist toolbox
-``
+```
+
+## Caching
+When installing models, they place their source files, managed python versions and dependencies into `/cache`. In order to persist this state across container runs, you should also mount this directory somewhere:
+```bash
+docker run --rm -it --network host --ipc host -v /path/to/datasets:/data --env-file .env --env-file .env.persist --device nvidia.com/gpu=all -v ~/.cache/toolbox:/cache --mount type=volume,src=toolbox-persist,dst=/persist toolbox
+```
