@@ -8,7 +8,7 @@ from enum import Enum
 
 import mlflow
 mlflow.set_tracking_uri("http://localhost:8081")
-ARTIFACTS = os.getenv("MLFLOW_ARTIFACTS_DESTINATION", "")
+ARTIFACTS = os.getenv("MLFLOW_ARTIFACTS_DESTINATION")
 
 class TourStep(Enum):
     START = 0
@@ -153,41 +153,90 @@ if not app.debug:
 def models():
     return render_template("models.html", models=model_manifest, params=propagate())
 
+def start_task(command, cwd, description, extra_env={}):
+    active_task["description"] = description
+    active_task["output"] = []
+    active_task["run_info"] = None
+    active_task["process"] = Popen(command, cwd = cwd, stdout = PIPE, stderr = STDOUT, text = True, env={ **os.environ, **extra_env })
+    os.set_blocking(active_task["process"].stdout.fileno(), False)
+
+def build_model_options(options, values):
+    flags = []
+    for k, v in values:
+        if v != "" and k in options:
+            if v.startswith("mlflow-artifacts:") and ARTIFACTS:
+                v = v.replace("mlflow-artifacts:", ARTIFACTS, count=1)
+            elif v.startswith("run:/") and ARTIFACTS:
+                run_name, rest = v[5:].split("/", maxsplit=1)
+                runs = mlflow.search_runs(filter_string=f"run_name = '{run_name}'", experiment_names=["SuperSimpleNet"], max_results=1, output_format="list")
+                if len(runs) > 0:
+                    info = runs[0].info
+                    v = f"{ARTIFACTS}/{info.experiment_id}/{info.run_id}/artifacts/{rest}"
+            flags.extend(["--" + k, v])
+    return flags
+
 @app.route("/models/<model>", methods=["GET", "POST"])
 def model(model):
+    return render_template(
+        "model.html",
+        **model_manifest[model],
+        installed=(CACHE / model).exists(),
+        train=(MODEL_DIR / model / "train.py").exists(),
+        params={ **propagate(), "model": model }
+    )
+
+@app.route("/model/<model>/infer", methods=["POST"])
+def model_infer(model):
+    if model not in model_manifest:
+        return f"Model '{model}' does not exist", 404
+
+    flags = build_model_options(model_manifest[model]["options"], request.form.items())
+    start_task(
+        ["uv", "run", "gunicorn", "--bind", ":9090", "infer:app", "--"] + flags,
+        MODEL_DIR / model,
+        f"Inference service worker for: `{model}`",
+        { "VIRTUAL_ENV": CACHE / model / ".venv" }
+    )
+
     params = propagate()
     params["model"] = model
+    if params.get("tour") == TourStep.MONITORING.value:
+        params["tour"] = TourStep.INFERENCE.value
+    return redirect(url_for("logs", **params))
 
-    if request.method == "POST":
-        if "start-inference-worker" in request.form:
-            command = ["uv", "run", "gunicorn", "--bind", ":9090", "infer:app", "--"]
-            active_task["description"] = f"Inference service worker for: `{model}`"
-        else:
-            command = ["uv", "run", "train.py"]
-            active_task["description"] = f"Model training: `{model}`"
-        for k, v in request.form.items():
-            if v != "" and k in model_manifest[model]["options"]:
-                if v.startswith("mlflow-artifacts:") and ARTIFACTS:
-                    v = v.replace("mlflow-artifacts:", ARTIFACTS, count=1)
-                elif v.startswith("run:/") and ARTIFACTS:
-                    run_name, rest = v[5:].split("/", maxsplit=1)
-                    runs = mlflow.search_runs(filter_string=f"run_name = '{run_name}'", experiment_names=["SuperSimpleNet"], max_results=1, output_format="list")
-                    if len(runs) > 0:
-                        info = runs[0].info
-                        v = f"{ARTIFACTS}/{info.experiment_id}/{info.run_id}/artifacts/{rest}"
-                command.extend(["--" + k, v])
-        active_task["output"] = []
-        active_task["run_info"] = None
-        active_task["process"] = Popen(command, cwd = MODEL_DIR / model, stdout = PIPE, stderr = STDOUT, text = True, env={ **os.environ, "VIRTUAL_ENV": CACHE / model / ".venv" })
-        os.set_blocking(active_task["process"].stdout.fileno(), False)
+@app.route("/model/<model>/train", methods=["POST"])
+def model_train(model):
+    if model not in model_manifest:
+        return f"Model '{model}' does not exist", 404
 
-        # skip labeling steps
-        if params.get("tour") == TourStep.DATASET.value:
-            params["tour"] = TourStep.TRAINING.value
+    flags = build_model_options(model_manifest[model]["options"], request.form.items())
+    start_task(
+        ["uv", "run", "train.py"] + flags,
+        MODEL_DIR / model,
+        f"Model training: `{model}`",
+        { "VIRTUAL_ENV": CACHE / model / ".venv" }
+    )
 
-        return redirect(url_for("logs", **params))
+    params = propagate()
+    params["model"] = model
+    # skip labeling steps
+    if params.get("tour") == TourStep.DATASET.value:
+        params["tour"] = TourStep.TRAINING.value
+    return redirect(url_for("logs", **params))
 
-    return render_template("model.html", **model_manifest[model], train=(MODEL_DIR / model / "train.py").exists(), params=params)
+@app.route("/model/<model>/install", methods=["POST"])
+def model_install(model):
+    if model not in model_manifest:
+        return f"Model '{model}' does not exist", 404
+
+    if (CACHE / model).exists():
+        print(f"Skipping installation request for `{model}`")
+        return render_template("model.html", **model_manifest[model], installed=(CACHE / model).exists(), train=(MODEL_DIR / model / "train.py").exists(), params=params)
+
+    params = propagate()
+    params["model"] = model
+    start_task(["bash", "-c", "./setup.sh"], MODEL_DIR / model, f"Installing model: `{model}`")
+    return redirect(url_for("logs", **params))
 
 @app.route("/dataset", methods=["POST"])
 def dataset():

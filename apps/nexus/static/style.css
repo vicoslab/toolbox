@@ -210,6 +210,9 @@ fieldset {
 .model-overview {
     display: flex;
     flex-wrap: wrap;
+    .model-installation {
+        margin: 0 auto;
+    }
 
     .model-sidebar {
         width: 30rem;
