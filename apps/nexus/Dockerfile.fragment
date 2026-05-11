@@ -1,6 +1,0 @@
-COPY ${src}/templates ./templates
-COPY ${src}/static ./static
-COPY ${src}/nexus.py ${src}/uv.lock ${src}/pyproject.toml .
-
-RUN uv sync
-RUN uv pip install gunicorn

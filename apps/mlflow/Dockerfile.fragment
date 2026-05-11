@@ -1,8 +1,0 @@
-ADD https://github.com/mlflow/mlflow.git#v3.10.1 .
-
-COPY ${src}/*.patch .
-RUN git apply *.patch && rm *.patch
-
-RUN uv sync
-RUN --mount=type=cache,target=/root/.yarn cd mlflow/server/js && yarn install && yarn build
-RUN uv pip install .

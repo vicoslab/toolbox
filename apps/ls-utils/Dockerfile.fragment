@@ -1,3 +1,0 @@
-COPY ${src}/templates ./templates
-COPY ${src}/export.py ${src}/create.py ${src}/uv.lock ${src}/pyproject.toml .
-RUN uv sync
