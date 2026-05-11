@@ -1,0 +1,12 @@
+diff --git a/Dockerfile b/Dockerfile
+index a107cfb..5def7a8 100644
+--- a/Dockerfile
++++ b/Dockerfile
+@@ -74,6 +74,7 @@ ENV PYTHONUNBUFFERED=1 \
+     POETRY_HOME="/opt/poetry" \
+     POETRY_VIRTUALENVS_IN_PROJECT=true \
+     POETRY_VIRTUALENVS_PREFER_ACTIVE_PYTHON=true \
++    POETRY_VIRTUALENVS_OPTIONS_ALWAYS_COPY=true \
+     PATH="/opt/poetry/bin:$PATH"
+ 
+ RUN apk add --no-cache \
