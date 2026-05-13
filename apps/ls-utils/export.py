@@ -73,21 +73,37 @@ for task in j:
         labels = None
         mask = None
         for tag in task['labels']:
-            if tag['format'] == 'rle':
+            if rle := tag.get('rle'):
                 if labels is None:
                     width = tag['original_width']
                     height = tag['original_height']
                     labels = tag['labels']
-                    mask = np.reshape(brush.decode_rle(tag['rle']), [height, width, 4])[:, :, 3]
+                    mask = np.reshape(brush.decode_rle(rle), [height, width, 4])[:, :, 3]
                 elif labels != tag['labels']:
-                    print(f'Warning: mixing different labels in `{relpath}`')
+                    print(f'Warning (skipping): mixing different labels in `{relpath}`')
                 else:
-                    mask += np.reshape(brush.decode_rle(tag['rle']), [height, width, 4])[:, :, 3]
-        filename = (EXPORT_DIR / relpath).with_suffix('.label.png')
-        filename.parent.mkdir(parents=True, exist_ok=True)
-        Image.fromarray(mask).save(filename)
-        item['label'] = 'abnormal' if mask.sum() > 0 else 'normal'
-        item['mask_path'] = str(filename.relative_to(EXPORT_DIR))
+                    mask += np.reshape(brush.decode_rle(rle), [height, width, 4])[:, :, 3]
+            elif verts := tag.get('vertices'):
+                if len(verts) != 2:
+                    print(f'Warning (skipping): vertices len != 2')
+                    continue
+                print(verts)
+
+                if 'points' not in item:
+                    item['points'] = []
+                    size = {
+                        'x': tag['original_width'],
+                        'y': tag['original_height'],   
+                    }
+                
+                item['points'].append([int(v[p]/100*size[p]) for v in verts for p in ['x', 'y']])
+
+        if mask:
+            filename = (EXPORT_DIR / relpath).with_suffix('.label.png')
+            filename.parent.mkdir(parents=True, exist_ok=True)
+            Image.fromarray(mask).save(filename)
+            item['label'] = 'abnormal' if mask.sum() > 0 else 'normal'
+            item['mask_path'] = str(filename.relative_to(EXPORT_DIR))
     
     data.append(item)
 

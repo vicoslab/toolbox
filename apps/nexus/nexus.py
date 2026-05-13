@@ -33,6 +33,7 @@ TOUR_STEPS = [
 
 dataset_tasks = {
     "super-simple-net": "anomaly-detection",
+    "cedirnet": "orientation-estimation",
 }
 
 # make sure virutal env doesn't bleed into subprocesses
