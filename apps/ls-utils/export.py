@@ -87,7 +87,6 @@ for task in j:
                 if len(verts) != 2:
                     print(f'Warning (skipping): vertices len != 2')
                     continue
-                print(verts)
 
                 if 'points' not in item:
                     item['points'] = []
