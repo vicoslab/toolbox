@@ -285,7 +285,8 @@ def dataset():
     params = propagate()
     if params.get("tour") == TourStep.DATASET.value:
         params["tour"] = TourStep.LABELING.value
-    return redirect(url_for("label", project=id, **params))
+    params["project"] = id
+    return redirect(url_for("label", **params))
 
 @app.route("/export", methods=["GET", "POST"])
 def export():
