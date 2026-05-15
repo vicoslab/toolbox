@@ -236,7 +236,7 @@ def model_install(model):
 
     params = propagate()
     params["model"] = model
-    start_task(["bash", "-c", "./setup.sh"], MODEL_DIR / model, f"Installing model: `{model}`")
+    start_task(["bash", "-c", f"./setup.sh && echo \"Finished installing '{model}'\""], MODEL_DIR / model, f"Installing model: `{model}`")
     return redirect(url_for("logs", **params))
 
 @app.route("/dataset", methods=["POST"])
