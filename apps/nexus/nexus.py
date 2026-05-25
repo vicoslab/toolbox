@@ -145,7 +145,8 @@ if not app.debug:
     def monitor_task():
         while True:
             time.sleep(1)
-            refresh_logs()
+            if active_task["process"] and not os.get_blocking(active_task["process"].stdout.fileno()):
+                refresh_logs()
 
     # this is needed because task's writes will start blocking if output is not consumed
     Thread(target=monitor_task, daemon=True).start()
