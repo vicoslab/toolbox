@@ -66,7 +66,7 @@
                 {% elif prop.type == "string" %}
                 <input type="text" name="{{ k }}" placeholder="{{ prop.default }}">
                 {% elif prop.type == "boolean" %}
-                <input type="checkbox" name="{{ k }}" placeholder="{{ prop.default }}">
+                <input type="checkbox" name="{{ k }}" {% if prop.default %}checked{% endif %}>
                 {% elif prop.type == "integer" %}
                 <input type="text" inputmode="numeric" pattern="\d*" name="{{ k }}" placeholder="{{ prop.default }}">
                 {% elif prop.type == "number" %}
