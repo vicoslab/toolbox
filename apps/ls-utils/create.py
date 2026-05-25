@@ -13,10 +13,10 @@ from PIL import Image
 from threading import Thread
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
-DATASET_DIR = Path(os.getenv('LOCAL_FILES_DOCUMENT_ROOT'))
-API_KEY = os.getenv('LABEL_STUDIO_USER_TOKEN')
-TASK = os.getenv('TASK')
-DATASET = os.getenv('DATASET')
+DATASET_DIR = Path(os.environ['LOCAL_FILES_DOCUMENT_ROOT'])
+API_KEY = os.environ['LABEL_STUDIO_USER_TOKEN']
+TASK = os.environ['TASK']
+DATASET = os.environ['DATASET']
 PROJECT_TITLE = os.getenv('PROJECT_TITLE')
 
 ls = LabelStudio(base_url='http://localhost:8080', api_key=API_KEY)

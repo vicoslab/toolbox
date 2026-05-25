@@ -10,9 +10,10 @@ import re
 import numpy as np
 from PIL import Image
 
-DATASET_DIR = Path(os.getenv('LOCAL_FILES_DOCUMENT_ROOT'))
-API_KEY = os.getenv('LABEL_STUDIO_USER_TOKEN')
-PROJECT_ID = os.getenv('PROJECT_ID')
+DATASET_DIR = Path(os.environ['LOCAL_FILES_DOCUMENT_ROOT'])
+API_KEY = os.environ['LABEL_STUDIO_USER_TOKEN']
+PROJECT_ID = os.environ['PROJECT_ID']
+TASK = os.environ['TASK']
 
 date = datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
 
@@ -69,9 +70,10 @@ for task in j:
     _, relpath = task['image']
     item = { 'image_path': '../' + relpath }
     
+    labels = None
+    mask = None
+    points = None
     if 'labels' in task:
-        labels = None
-        mask = None
         for tag in task['labels']:
             if rle := tag.get('rle'):
                 if labels is None:
@@ -88,25 +90,33 @@ for task in j:
                     print(f'Warning (skipping): vertices len != 2')
                     continue
 
-                if 'points' not in item:
-                    item['points'] = []
+                if points is None:
+                    points = []
                     size = {
                         'x': tag['original_width'],
                         'y': tag['original_height'],   
                     }
                 
-                item['points'].append([int(v[p]/100*size[p]) for v in verts for p in ['x', 'y']])
+                points.append([int(v[p]/100*size[p]) for v in verts for p in ['x', 'y']])
 
-        if mask:
+    if TASK == 'anomaly-detection':
+        if mask is not None:
             filename = (EXPORT_DIR / relpath).with_suffix('.label.png')
             filename.parent.mkdir(parents=True, exist_ok=True)
             Image.fromarray(mask).save(filename)
             item['label'] = 'abnormal' if mask.sum() > 0 else 'normal'
             item['mask_path'] = str(filename.relative_to(EXPORT_DIR))
+        elif task['annotator'] is not None:
+            item['label'] = 'normal'
+    elif TASK == 'orientation-estimation':
+        if points is not None:
+            item['points'] = points
     
     data.append(item)
 
-with open(EXPORT_DIR / 'manifest.json', 'w') as f:
+manifest = str(EXPORT_DIR / 'manifest.json')
+with open(manifest, 'w') as f:
     json.dump({ 'data': data }, f)
 
 print(f"Project {PROJECT_ID} successfully exported to '{EXPORT_DIR}'")
+print(f"Manifest:", manifest)

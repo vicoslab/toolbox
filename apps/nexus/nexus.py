@@ -298,10 +298,17 @@ def export():
             data = request.form.to_dict()
         
         env = {}
+
+        if (task := data.get("task")) or (task := dataset_tasks.get(request.args.get("model"))):
+            env["TASK"] = task
+        else:
+            return "Request body must contain key 'task' or known model must be provided in query parameter 'model'.", 400
+
         if (project := data.get("project")) or (project := request.args.get("project")):
             env["PROJECT_ID"] = project
         else:
             return "Project id must be passed as 'project' in body or through query params.", 400
+
         if export_dir := data.get("dir"):
             env["EXPORT_DIR"] = export_dir
 
