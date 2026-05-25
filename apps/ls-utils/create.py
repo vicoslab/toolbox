@@ -36,7 +36,7 @@ import_storage = ls.import_storage.local.create(
     path=str(DATASET_DIR / DATASET),
     # recursive_scan=True,
     use_blob_urls=True,
-    regex_filter=".*(jpe?g|png)"
+    regex_filter="[^.]*.(jpe?g|png)"
 )
 # TODO: test this once recursive_scan is available, and make api enddpoint set this process to nonblocking
 ls.import_storage.local.sync(import_storage.id)
