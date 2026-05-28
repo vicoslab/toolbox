@@ -5,6 +5,7 @@ from pathlib import Path
 from subprocess import Popen, PIPE, STDOUT
 import re
 from enum import Enum
+from datetime import datetime
 
 import mlflow
 mlflow.set_tracking_uri("http://localhost:8081")
@@ -168,20 +169,29 @@ def build_model_options(options, values):
         if v != "" and k in options:
             if v.startswith("mlflow-artifacts:") and ARTIFACTS:
                 v = v.replace("mlflow-artifacts:", ARTIFACTS, count=1)
-            elif v.startswith("run:/") and ARTIFACTS:
-                run_name, rest = v[5:].split("/", maxsplit=1)
-                runs = mlflow.search_runs(filter_string=f"run_name = '{run_name}'", experiment_names=["SuperSimpleNet"], max_results=1, output_format="list")
-                if len(runs) > 0:
-                    info = runs[0].info
-                    v = f"{ARTIFACTS}/{info.experiment_id}/{info.run_id}/artifacts/{rest}"
             flags.extend(["--" + k, v])
     return flags
 
 @app.route("/models/<model>", methods=["GET", "POST"])
 def model(model):
+    runs = mlflow.search_runs(experiment_names=[model_manifest[model]["title"]], max_results=100, output_format="list")
+    completions = {}
+    if len(runs) > 0 and ARTIFACTS:
+        for k, v in model_manifest[model]["options"].items():
+            if format := v.get("format"):
+                if format.startswith("file:"):
+                    _completions = []
+                    for run in runs:
+                        files = list(Path(ARTIFACTS).glob(f"{run.info.experiment_id}/{run.info.run_id}/artifacts/**/{format[5:]}"))
+                        if len(files) > 0:
+                            _completions.append((f"{datetime.fromtimestamp(run.info.start_time / 1000).strftime('%Y-%m-%d %H-%M')} :: {run.info.run_name}", [(file.name, f"mlflow-artifacts:/{file.relative_to(ARTIFACTS)}") for file in files]))
+                    if len(_completions) > 0:
+                        completions[k] = _completions
+
     return render_template(
         "model.html",
         **model_manifest[model],
+        completions=completions,
         installed=(CACHE / model).exists(),
         train=(MODEL_DIR / model / "train.py").exists(),
         params={ **propagate(), "model": model }

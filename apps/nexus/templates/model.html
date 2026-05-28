@@ -64,7 +64,25 @@
                     {% endfor %}
                 </div>
                 {% elif prop.type == "string" %}
+                {% if k in completions %}
+                {# https://stackoverflow.com/questions/264640/how-can-i-create-an-editable-dropdownlist-in-html #}
+                <div class="dropdown">
+                    <input type="text" name="{{ k }}" placeholder="{{ prop.default }}">
+                    <select
+                        onchange="this.previousElementSibling.value=this.value; this.previousElementSibling.focus(); this.value = null">
+                        <option value="">-- Select weights from completed runs --</option>
+                        {% for group, vals in completions[k] %}
+                        <optgroup label="{{ group }}">
+                            {% for name, v in vals %}
+                            <option value="{{ v }}">{{ name }}</option>
+                            {% endfor %}
+                        </optgroup>
+                        {% endfor %}
+                    </select>
+                </div>
+                {% else %}
                 <input type="text" name="{{ k }}" placeholder="{{ prop.default }}">
+                {% endif %}
                 {% elif prop.type == "boolean" %}
                 <input type="checkbox" name="{{ k }}" {% if prop.default %}checked{% endif %}>
                 {% elif prop.type == "integer" %}
@@ -101,4 +119,23 @@
 <script>
     window.addEventListener("load", () => autofillSetup("{{ title }}"));
 </script>
+<style>
+    .dropdown {
+        position: relative;
+    }
+
+    .dropdown select {
+        width: 100%;
+    }
+
+    .dropdown>* {
+        box-sizing: border-box;
+        height: 1.5em;
+    }
+
+    .dropdown input {
+        position: absolute;
+        width: calc(100% - 20px);
+    }
+</style>
 {% endblock %}
