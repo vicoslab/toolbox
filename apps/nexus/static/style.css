@@ -171,6 +171,7 @@ button, input[type="submit"], .button {
     display: flex;
     flex-wrap: wrap;
     gap: 0.5rem;
+    align-content: start;
 
     .model {
         display: block;
