@@ -22,14 +22,16 @@ def parse(schema):
     for k, v in j['properties'].items():
         args = {}
 
-        if 'description' in v:
-            args['help'] = v['description']
+        if description := v.get('description'):
+            args['help'] = description
 
-        if 'default' in v:
-            args['default'] = v['default']
+        if default := v.get('default'):
+            args['default'] = default
 
-        if 'enum' in v:
-            args['choices'] = v['enum']
+        if choices := v.get('enum'):
+            args['choices'] = choices
+            if len(choices) > 0 and type(choices[0]) == int:
+                args['type'] = int
         else:
             if 'type' not in v:
                 raise ValueError(f'Invalid model schema: property `{k}` missing attribute `type`')
