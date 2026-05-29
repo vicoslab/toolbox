@@ -195,17 +195,17 @@ class BBoxInput extends HTMLElement {
     }
 }
 
-class ShowMasks extends HTMLElement {
+class ShowDetections extends HTMLElement {
     constructor() {
         super();
     }
 
     connectedCallback() {
         if (!this.reference) {
-            throw new Error("Cannot create ShowMasks without reference");
+            throw new Error("Cannot create ShowDetections without reference");
         }
-        if (!this.masks) {
-            throw new Error("Cannot create ShowMasks without masks");
+        if (!this.boxes && !this.masks) {
+            throw new Error("Cannot create ShowDetections without bounding boxes or masks");
         }
         const shadow = this.attachShadow({ mode: "open" });
         const wrapper = document.createElement("div");
@@ -233,15 +233,38 @@ class ShowMasks extends HTMLElement {
 
         const tags = document.createElement("div");
         tags.classList.add("tags");
+        const tagStyle = i => `--bg-accent-default: hsl(${colors[i]} 100% 50% / 0.3); --bg-accent-hover: hsl(${colors[i]} 100% 50% / 0.6); --bg-accent-active: hsl(${colors[i]} 100% 80%);`;
+        const tagStyleHidden = i => `--bg-accent-default: hsl(${colors[i]} 100% 0% / 0.3); --bg-accent-hover: hsl(${colors[i]} 100% 50% / 0.3); --bg-accent-active: hsl(${colors[i]} 100% 80%);`;
         const labels = masks.map((mask, i) => {
             const tag = document.createElement("button");
             tag.innerText = `#${i}`;
-            tag.addEventListener("click", e => {
-                masks[i].classList.toggle("hidden");
-            });
-            tag.style = `--bg-accent-default: hsl(${colors[i]} 100% 50% / 0.3); --bg-accent-hover: hsl(${colors[i]} 100% 50% / 0.6); --bg-accent-active: hsl(${colors[i]} 100% 80%);`;
+            tag.addEventListener("click", () => tag.style = masks[i].classList.toggle("hidden") ? tagStyleHidden(i) : tagStyle(i));
+            tag.style = tagStyle(i);
             return tag;
         });
+        if (this.scores) {
+            const sliderWrapper = document.createElement("div");
+            sliderWrapper.className = "slider-wrapper";
+            const sliderLabel = document.createElement("label");
+            sliderLabel.htmlFor = "threshold";
+            const slider = document.createElement("input");
+            slider.name = "threshold";
+            sliderWrapper.append(sliderLabel, slider);
+            slider.type = "range";
+            slider.min = 0;
+            slider.max = 1;
+            sliderLabel.textContent = `Threshold: ${slider.value}`;
+            slider.step = 0.01;
+            for (const score of this.scores) {
+                if (score < slider.min) slider.min = score;
+                else if (score > slider.max) slider.max = score;
+            }
+            slider.addEventListener("input", () => {
+                sliderLabel.textContent = `Threshold: ${slider.value}`;
+                this.scores.map((s, i) => labels[i].style = masks[i].classList.toggle("hidden", s < slider.value) ? "display: none;" : tagStyle(i))
+            });
+            tags.appendChild(sliderWrapper);
+        }
         tags.append(...labels);
         wrapper.append(images, tags);
 
@@ -305,6 +328,12 @@ class ShowMasks extends HTMLElement {
             .hidden {
                 opacity: 0;
             }
+
+            .slider-wrapper {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+            }
         `;
         shadow.append(wrapper, style);
     }
@@ -312,4 +341,4 @@ class ShowMasks extends HTMLElement {
 
 customElements.define("infer-image", ImageInput);
 customElements.define("infer-bbox", BBoxInput);
-customElements.define("show-masks", ShowMasks);
+customElements.define("show-detections", ShowDetections);
