@@ -198,6 +198,7 @@ class BBoxInput extends HTMLElement {
 class ShowDetections extends HTMLElement {
     constructor() {
         super();
+        this.defaultThreshold = 0.33;
     }
 
     connectedCallback() {
@@ -217,44 +218,75 @@ class ShowDetections extends HTMLElement {
         reference.src = URL.createObjectURL(this.reference);
         reference.classList.add("reference");
         const colors = Array.from(this.masks, () => Math.random() * 360);
-        const masks = this.masks
-            .map((mask, i) => {
-                const maskWrapper = document.createElement("div");
-                maskWrapper.classList.add("maskWrapper");
-                maskWrapper.style = `--mask-color: hsl(${colors[i]} 100% 50%)`;
-
-                const img = document.createElement("img");
-                img.src = `data: image / webp; base64, ${mask}`;
-                img.classList.add("mask");
-                maskWrapper.append(img);
-                return maskWrapper;
-            });
-        images.append(reference, ...masks);
-
-        const tags = document.createElement("div");
-        tags.classList.add("tags");
         const tagStyle = i => `--bg-accent-default: hsl(${colors[i]} 100% 50% / 0.3); --bg-accent-hover: hsl(${colors[i]} 100% 50% / 0.6); --bg-accent-active: hsl(${colors[i]} 100% 80%);`;
         const tagStyleHidden = i => `--bg-accent-default: hsl(${colors[i]} 100% 0% / 0.3); --bg-accent-hover: hsl(${colors[i]} 100% 50% / 0.3); --bg-accent-active: hsl(${colors[i]} 100% 80%);`;
-        const labels = masks.map((mask, i) => {
-            const tag = document.createElement("button");
-            tag.innerText = `#${i}`;
-            tag.addEventListener("click", () => tag.style = masks[i].classList.toggle("hidden") ? tagStyleHidden(i) : tagStyle(i));
-            tag.style = tagStyle(i);
-            return tag;
-        });
+
+        const options = document.createElement("div");
+        options.classList.add("options");
+
+        if (this.masks && this.boxes) {
+            const toggleMasks = document.createElement("input");
+            toggleMasks.type = "checkbox";
+            toggleMasks.id = "toggle-masks";
+            toggleMasks.addEventListener("input", _ => images.classList.toggle("hideMasks", toggleMasks.checked));
+            const labelMasks = document.createElement("label");
+            labelMasks.textContent = "Hide masks";
+            labelMasks.htmlFor = "toggle-masks";
+
+            const toggleBoxes = document.createElement("input");
+            toggleBoxes.type = "checkbox";
+            toggleBoxes.id = "toggle-boxes";
+            toggleBoxes.addEventListener("input", _ => images.classList.toggle("hideBoxes", toggleBoxes.checked));
+            const labelBoxes = document.createElement("label");
+            labelBoxes.textContent = "Hide boxes";
+            labelBoxes.htmlFor = "toggle-boxes";
+
+            const toggleWrapper = document.createElement("div");
+            toggleWrapper.style = "display: flex; justify-content: center; gap: 0.5rem;";
+            toggleWrapper.append(toggleMasks, labelMasks, toggleBoxes, labelBoxes);
+            options.append(toggleWrapper);
+        }
+        console.log("dt", this.defaultThreshold, this.scores)
+        let labels, masks, slider;
+        if (this.masks) {
+            masks = this.masks
+                .map((mask, i) => {
+                    const maskWrapper = document.createElement("div");
+                    maskWrapper.classList.add("maskWrapper");
+                    maskWrapper.style = `--mask-color: hsl(${colors[i]} 100% 50%)`;
+                    maskWrapper.classList.toggle("hidden", this.scores && this.scores[i] < this.defaultThreshold);
+
+                    const img = document.createElement("img");
+                    img.src = `data: image / webp; base64, ${mask}`;
+                    img.classList.add("mask");
+                    maskWrapper.append(img);
+                    return maskWrapper;
+                });
+            images.append(reference, ...masks);
+
+            labels = masks.map((mask, i) => {
+                const tag = document.createElement("button");
+                tag.innerText = `#${i}`;
+                tag.addEventListener("click", () => tag.style = mask.classList.toggle("hidden") ? tagStyleHidden(i) : tagStyle(i));
+                tag.style = this.scores && this.scores[i] < this.defaultThreshold ? "display: none;" : tagStyle(i);
+                return tag;
+            });
+        }
+
         if (this.scores) {
             const sliderWrapper = document.createElement("div");
             sliderWrapper.className = "slider-wrapper";
             const sliderLabel = document.createElement("label");
             sliderLabel.htmlFor = "threshold";
-            const slider = document.createElement("input");
+            slider = document.createElement("input");
             slider.name = "threshold";
             sliderWrapper.append(sliderLabel, slider);
             slider.type = "range";
             slider.min = 0;
             slider.max = 1;
-            sliderLabel.textContent = `Threshold: ${slider.value}`;
             slider.step = 0.01;
+            slider.value = this.defaultThreshold;
+            sliderLabel.textContent = `Threshold: ${slider.value}`;
             for (const score of this.scores) {
                 if (score < slider.min) slider.min = score;
                 else if (score > slider.max) slider.max = score;
@@ -263,11 +295,31 @@ class ShowDetections extends HTMLElement {
                 sliderLabel.textContent = `Threshold: ${slider.value}`;
                 this.scores.map((s, i) => labels[i].style = masks[i].classList.toggle("hidden", s < slider.value) ? "display: none;" : tagStyle(i))
             });
-            tags.appendChild(sliderWrapper);
+            options.appendChild(sliderWrapper);
         }
-        tags.append(...labels);
-        wrapper.append(images, tags);
+        options.append(...labels);
+        wrapper.append(images, options);
 
+        if (this.boxes) {
+            reference.addEventListener("load", _ => {
+                const { naturalWidth: width, naturalHeight: height } = reference;
+                const boxes = this.boxes.map((box, i) => {
+                    const [x1, y1, x2, y2] = box;
+                    const el = document.createElement("div");
+                    el.className = "box";
+                    el.classList.toggle("hidden", this.scores && this.scores[i] < this.defaultThreshold);
+                    el.style = `position: absolute; top: ${y1 / height * 100}%; left: ${x1 / width * 100}%; width: ${(x2 - x1) / width * 100}%; height: ${(y2 - y1) / height * 100}%; border: 1px solid red;`;
+                    return el;
+                });
+                if (slider) {
+                    slider.addEventListener("input", _ => this.scores.map((s, i) => boxes[i].classList.toggle("hidden", s < slider.value)));
+                }
+                if (labels) {
+                    labels.map((tag, i) => tag.addEventListener("click", _ => boxes[i].classList.toggle("hidden")));
+                }
+                images.append(...boxes);
+            });
+        }
         const style = document.createElement("style");
         style.textContent = `
             button {
@@ -286,7 +338,7 @@ class ShowDetections extends HTMLElement {
                 display: flex;
             }
 
-            .tags {
+            .options {
                 flex-basis: 25%;
                 padding: 0.5rem;
 
@@ -297,7 +349,7 @@ class ShowDetections extends HTMLElement {
 
             .images {
                 position: relative;
-                flex-basis: 75%;
+                height: fit-content;
             }
 
             .reference {
@@ -311,6 +363,9 @@ class ShowDetections extends HTMLElement {
                 gap: 1px;
             }
 
+            .hideMasks .maskWrapper, .hideBoxes .box {
+                opacity: 0;
+            }
             .maskWrapper {
                 position: absolute;
                 inset: 0;
