@@ -246,7 +246,6 @@ class ShowDetections extends HTMLElement {
             toggleWrapper.append(toggleMasks, labelMasks, toggleBoxes, labelBoxes);
             options.append(toggleWrapper);
         }
-        console.log("dt", this.defaultThreshold, this.scores)
         let labels, masks, slider;
         if (this.masks) {
             masks = this.masks
@@ -254,7 +253,7 @@ class ShowDetections extends HTMLElement {
                     const maskWrapper = document.createElement("div");
                     maskWrapper.classList.add("maskWrapper");
                     maskWrapper.style = `--mask-color: hsl(${colors[i]} 100% 50%)`;
-                    maskWrapper.classList.toggle("hidden", this.scores && this.scores[i] < this.defaultThreshold);
+                    maskWrapper.classList.toggle("hidden", !!this.scores && this.scores[i] < this.defaultThreshold);
 
                     const img = document.createElement("img");
                     img.src = `data: image / webp; base64, ${mask}`;
@@ -268,7 +267,7 @@ class ShowDetections extends HTMLElement {
                 const tag = document.createElement("button");
                 tag.innerText = `#${i}`;
                 tag.addEventListener("click", () => tag.style = mask.classList.toggle("hidden") ? tagStyleHidden(i) : tagStyle(i));
-                tag.style = this.scores && this.scores[i] < this.defaultThreshold ? "display: none;" : tagStyle(i);
+                tag.style = !!this.scores && this.scores[i] < this.defaultThreshold ? "display: none;" : tagStyle(i);
                 return tag;
             });
         }
@@ -307,7 +306,7 @@ class ShowDetections extends HTMLElement {
                     const [x1, y1, x2, y2] = box;
                     const el = document.createElement("div");
                     el.className = "box";
-                    el.classList.toggle("hidden", this.scores && this.scores[i] < this.defaultThreshold);
+                    el.classList.toggle("hidden", !!this.scores && this.scores[i] < this.defaultThreshold);
                     el.style = `position: absolute; top: ${y1 / height * 100}%; left: ${x1 / width * 100}%; width: ${(x2 - x1) / width * 100}%; height: ${(y2 - y1) / height * 100}%; border: 1px solid red;`;
                     return el;
                 });
