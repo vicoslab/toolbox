@@ -121,6 +121,7 @@ class BBoxInput extends HTMLElement {
         this.startX = null;
         this.startY = null;
         this.dragging = false;
+        this.boxes = [];
         this.internals_ = this.attachInternals();
     }
 
@@ -129,12 +130,18 @@ class BBoxInput extends HTMLElement {
         const area = document.createElement("div");
         area.classList.add("area");
 
-        const box = document.createElement("div");
+        let box = document.createElement("div");
         box.style.display = "none";
         box.classList.add("box");
         area.append(box);
 
+        const multiple = this.hasAttribute("multiple");
+
         const form = this.internals_.form || (() => { throw new Error("Inference input must be part of a form") })();
+        form.addEventListener("reset", _ => {
+            this.boxes = [];
+            shadow.querySelectorAll(".box").forEach(x => x.remove());
+        });
         const draw = (x, y) => {
             box.style.width = Math.abs(x - this.startX) + "px";
             box.style.height = Math.abs(y - this.startY) + "px";
@@ -154,14 +161,20 @@ class BBoxInput extends HTMLElement {
             const { left, top, width, height } = area.getBoundingClientRect();
             const x = clientX - left;
             const y = clientY - top;
-            const bbox = [
+            this.boxes.push([
                 Math.min(x, this.startX) / width,
                 Math.min(y, this.startY) / height,
                 Math.abs(x - this.startX) / width,
                 Math.abs(y - this.startY) / height
-            ];
-            this.internals_.setFormValue(JSON.stringify(bbox));
-            if (typeof this.onInference === "function") {
+            ]);
+            this.internals_.setFormValue(JSON.stringify(this.boxes));
+
+            box = document.createElement("div");
+            box.style.display = "none";
+            box.classList.add("box");
+            area.append(box);
+
+            if (!multiple && typeof this.onInference === "function") {
                 makeRequest(form, this.onInference);
             }
         }
@@ -180,6 +193,18 @@ class BBoxInput extends HTMLElement {
 
         const style = document.createElement("style");
         style.textContent = `
+            .submit {
+                border-radius: 0;
+                padding: 0.5rem 1rem;
+                border: 1px solid black;
+                background-color: white;
+                &:hover {
+                    background-color: #fae4e4;
+                }
+                position: absolute;
+                right: 0.5rem;
+                bottom: 0.5rem;
+            }
             .area {
                 position: absolute;
                 inset: 0;
@@ -192,6 +217,15 @@ class BBoxInput extends HTMLElement {
         `;
 
         shadow.append(area, style);
+
+        if (multiple && typeof this.onInference === "function") {
+            const submit = document.createElement("input");
+            submit.className = "submit";
+            submit.type = "button";
+            submit.value = "Submit";
+            submit.addEventListener("click", _ => makeRequest(form, this.onInference));
+            shadow.append(submit);
+        }
     }
 }
 
@@ -283,12 +317,13 @@ class ShowDetections extends HTMLElement {
             slider.type = "range";
             slider.min = 0;
             slider.max = 1;
-            slider.step = 0.01;
+            const step = 0.01;
+            slider.step = step;
             slider.value = this.defaultThreshold;
             sliderLabel.textContent = `Threshold: ${slider.value}`;
             for (const score of this.scores) {
                 if (score < slider.min) slider.min = score;
-                else if (score > slider.max) slider.max = score;
+                else if (score > slider.max) slider.max = score + step;
             }
             slider.addEventListener("input", () => {
                 sliderLabel.textContent = `Threshold: ${slider.value}`;
