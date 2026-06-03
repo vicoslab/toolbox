@@ -117,6 +117,7 @@
 <script src="/static/model.js"></script>
 <script src="/static/autofill.js"></script>
 <script>
+    window.endpoint = "/infer/{{ params.model }}";
     window.addEventListener("load", () => autofillSetup("{{ title }}"));
 </script>
 <style>

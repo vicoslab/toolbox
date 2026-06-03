@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, render_template, request, redirect, url_for, abort
 import json
 import os
 from pathlib import Path
@@ -100,13 +100,7 @@ for p in sorted(MODEL_DIR.iterdir()):
     if model != {}:
         model_manifest[p.name] = model
 
-active_task = {
-    "description": "",
-    "output": [],
-    "process": None,
-    "run_info": None,
-    "code": 0,
-}
+tasks = {}
 
 # regex for grouping log entries
 # if line starts with eval:, visualise: or (for example) 10/300: (from something like a tqdm batch counter)
@@ -114,14 +108,14 @@ active_task = {
 tqdm_header = re.compile(r"^(\d+)/(\d+):|^(eval):|^(visualise):")
 mlflow_info = re.compile(r"^Experiment (\d+): Run ([a-f0-9]+)$")
 
-def refresh_logs():
-    if active_task["process"]:
-        out = active_task["output"]
+def refresh_logs(task):
+    if proc := task.get("process"):
+        out = task["output"]
 
         m = tqdm_header.match(out[-1]) if len(out) else None
         last = m.groups() if m else None
 
-        while line := active_task["process"].stdout.readline():
+        while line := proc.stdout.readline():
             line = line.strip()
             if len(line) == 0:
                 continue
@@ -134,9 +128,14 @@ def refresh_logs():
                 last = gs
             else:
                 if m := mlflow_info.match(line):
-                    active_task["run_info"] = m.groups()
+                    task["run_info"] = m.groups()
                 out.append(line)
                 last = None
+
+        if (code := proc.poll()) is not None:
+            task["code"] = code
+            task["end_time"] = datetime.now()
+            task["process"] = None
 
 # debug mode is single-threaded, which makes it hang
 if not app.debug:
@@ -146,8 +145,9 @@ if not app.debug:
     def monitor_task():
         while True:
             time.sleep(1)
-            if active_task["process"] and not os.get_blocking(active_task["process"].stdout.fileno()):
-                refresh_logs()
+            for task in tasks.values():
+                if task["process"] and not os.get_blocking(task["process"].stdout.fileno()):
+                    refresh_logs(task)
 
     # this is needed because task's writes will start blocking if output is not consumed
     Thread(target=monitor_task, daemon=True).start()
@@ -156,12 +156,11 @@ if not app.debug:
 def models():
     return render_template("models.html", models=model_manifest, params=propagate())
 
-def start_task(command, cwd, description, extra_env={}):
-    active_task["description"] = description
-    active_task["output"] = []
-    active_task["run_info"] = None
-    active_task["process"] = Popen(command, cwd = cwd, stdout = PIPE, stderr = STDOUT, text = True, env={ **os.environ, **extra_env })
-    os.set_blocking(active_task["process"].stdout.fileno(), False)
+def start_task(command, cwd, description, extra_env={}, blocking=False):
+    proc = Popen(command, cwd = cwd, stdout = PIPE, stderr = STDOUT, text = True, env={ **os.environ, **extra_env })
+    tasks[proc.pid] = dict(description=description, output=[], run_info=None, process=proc, code=None, start_time=datetime.now())
+    os.set_blocking(proc.stdout.fileno(), blocking)
+    return proc.pid
 
 def build_model_options(options, values):
     flags = []
@@ -203,18 +202,27 @@ def model_infer(model):
         return f"Model '{model}' does not exist", 404
 
     flags = build_model_options(model_manifest[model]["options"], request.form.items())
-    start_task(
-        ["uv", "run", "gunicorn", "--bind", ":9090", "infer:app", "--"] + flags,
+
+    port = 9091
+    used = [task["inference"][0] for task in tasks.values() if task["process"] and "inference" in task]
+    while True:
+        if port not in used:
+            break
+        port += 1
+
+    pid = start_task(
+        ["uv", "run", "gunicorn", "--bind", f":{port}", "infer:app", "--"] + flags,
         MODEL_DIR / model,
         f"Inference service worker for: `{model}`",
         { "VIRTUAL_ENV": CACHE / model / ".venv" }
     )
+    tasks[pid]["inference"] = (port, model)
 
     params = propagate()
     params["model"] = model
     if params.get("tour") == TourStep.MONITORING.value:
         params["tour"] = TourStep.INFERENCE.value
-    return redirect(url_for("logs", **params))
+    return redirect(url_for("logs", pid=pid, **params))
 
 @app.route("/model/<model>/train", methods=["POST"])
 def model_train(model):
@@ -250,6 +258,10 @@ def model_install(model):
     start_task(["bash", "-c", f"./setup.sh && echo \"Finished installing '{model}'\""], MODEL_DIR / model, f"Installing model: `{model}`")
     return redirect(url_for("logs", **params))
 
+@app.route("/active", methods=["GET"])
+def active_models():
+    return dict([task["inference"] for task in tasks.values() if "inference" in task])
+
 @app.route("/dataset", methods=["POST"])
 def dataset():
     if request.is_json:
@@ -275,20 +287,16 @@ def dataset():
     else:
         return "Request body must be an object with keys 'task' and 'dataset'. Can optionally include 'title'.", 400
 
-    command = ["uv", "run", "create.py"]
-    active_task["description"] = f"Project creation"
-    active_task["output"] = []
-    active_task["run_info"] = None
-    active_task["process"] = Popen(command, cwd = "../ls-utils", stdout = PIPE, stderr = STDOUT, text = True, env = { **os.environ, **env })
+    task = tasks[start_task(["uv", "run", "create.py"], "../ls-utils", f"Project creation", extra_env=env, blocking=True)]
     id = None
-    while line_in := active_task["process"].stdout.readline():
-        active_task["output"].append(line_in)
+    while line_in := task["process"].stdout.readline():
+        task["output"].append(line_in)
         try:
             id = int(line_in)
             break
         except:
             pass
-    os.set_blocking(active_task["process"].stdout.fileno(), False)
+    os.set_blocking(task["process"].stdout.fileno(), False)
 
     if id is None:
         return "Project could not be created", 400
@@ -322,43 +330,39 @@ def export():
         if export_dir := data.get("dir"):
             env["EXPORT_DIR"] = export_dir
 
-        command = ["uv", "run", "export.py"]
-        active_task["description"] = f"Export worker for project {env['PROJECT_ID']}"
-        active_task["output"] = []
-        active_task["run_info"] = None
-        active_task["process"] = Popen(command, cwd = "../ls-utils", stdout = PIPE, stderr = STDOUT, text = True, env = { **os.environ, **env })
-        os.set_blocking(active_task["process"].stdout.fileno(), False)
+        start_task(["uv", "run", "export.py"], "../ls-utils", f"Export worker for project {env['PROJECT_ID']}", extra_env=env)
 
     return render_template("export.html", params=propagate())
 
 @app.route("/task/status")
 def status():
-    if active_task["process"] is not None:
-        active_task["code"] = active_task["process"].poll()
-        if active_task["code"] == None:
-            return "running"
-    return "idle" if active_task["code"] == 0 else "exited"
+    now = datetime.now()
+    timestamps = { pid: now - task.get("end_time", task["start_time"]) for pid, task in tasks.items() }
+    return render_template("status.html", tasks=tasks, timestamps=timestamps, params=propagate())
 
-@app.route("/task/logs")
-def logs():
+@app.route("/task/logs/<int:pid>")
+def logs(pid):
+    if pid not in tasks:
+        abort(404)
     if app.debug: # in production mode this gets refreshed in a thread
-        refresh_logs()
+        refresh_logs(tasks[pid])
 
     params = propagate()
 
     override = { **params, "tour": TourStep.MONITORING.value } if params.get("tour") == TourStep.TRAINING.value else params
-    if active_task["run_info"]:
-        override["experiment"], override["run"] = active_task["run_info"]
+    task = tasks[pid]
+    if info := task.get("run_info"):
+        override["experiment"], override["run"] = info
         run_url = url_for("dashboard", **override)
     else:
         run_url = None
 
-    return render_template("logs.html", output=active_task["output"], description=active_task["description"], running=active_task["code"] is None, run_shortcut=run_url, params=params)
+    return render_template("logs.html", pid=pid, output=task["output"], description=task["description"], running=task["code"] is None, run_shortcut=run_url, params=params)
 
-@app.route("/task/stop", methods=["POST"])
-def kill():
-    if active_task["process"] is not None:
-        active_task["process"].terminate()
-        # hardcode because process would still respond as alive right now
-        active_task["code"] = -9
-    return redirect(url_for("logs", **propagate()))
+@app.route("/task/stop/<int:pid>", methods=["POST"])
+def kill(pid):
+    if pid not in tasks:
+        abort(404)
+    if tasks[pid]["process"] is not None:
+        tasks[pid]["process"].terminate()
+    return redirect(url_for("logs", pid=pid, **propagate()))

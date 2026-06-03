@@ -46,7 +46,7 @@
         <a href="/dashboard" {% if request.endpoint=='dashboard' %}aria-current="page" {% endif %}>Experiments</a>
         <a href="/models" {% if request.endpoint=='models' %}aria-current="page" {% endif %}>Models</a>
         {% endif %}
-        <a href="{{ url_for('logs', **params) }}" id="status"></a>
+        <a href="{{ url_for('status', **params) }}" id="status">Status</a>
     </nav>
 
     <main>

@@ -3,7 +3,7 @@ const inferenceResults = document.getElementById("results");
 async function makeRequest(form, action) {
     const formData = new FormData(form);
     try {
-        const response = await fetch("/infer", {
+        const response = await fetch(window.endpoint, {
             method: "POST",
             body: formData,
         });

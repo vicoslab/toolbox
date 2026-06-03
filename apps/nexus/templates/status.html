@@ -1,0 +1,56 @@
+{% extends "layout.html" %}
+
+{% block title %}Status{% endblock %}
+
+{% block content %}
+<div class="status wrapper">
+    <h1>Tasks</h1>
+    <h2>Active</h2>
+    {% for pid, task in tasks.items() %}
+    {% if task.process %}
+    <a href="{{ url_for('logs', pid=pid, **params) }}" class="task">
+        {{ task.description }}
+        <span class="timestamp">Started {{ timestamps[pid] }} ago</span>
+        {% if run_shortcut %}
+        <a href="{{ run_shortcut }}" class="button">Open run</a>
+        {% endif %}
+    </a>
+    {% endif %}
+    {% endfor %}
+    <h2>Finished</h2>
+    {% for pid, task in tasks.items() %}
+    {% if not task.process %}
+    <a href="{{ url_for('logs', pid=pid, **params) }}" class="task">
+        {{ task.description }}
+        <span class="timestamp">{% if task.code == 0 %}Finished{% else %}Exited{% endif %} {{ timestamps[pid] }}
+            ago</span>
+
+        {% if run_shortcut %}
+        <a href="{{ run_shortcut }}" class="button">Open run</a>
+        {% endif %}
+    </a>
+    {% endif %}
+    {% endfor %}
+</div>
+<style>
+    .status {
+        .task {
+            display: block;
+            text-decoration: none;
+            color: black;
+            padding: 0.5rem 1rem;
+            border: 1px solid black;
+            margin-top: -1px;
+
+            &:hover {
+                background-color: var(--bg-accent-hover);
+            }
+
+            .timestamp {
+                color: gray;
+                font-size: small;
+            }
+        }
+    }
+</style>
+{% endblock %}
