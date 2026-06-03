@@ -10,6 +10,24 @@ from datetime import datetime
 import mlflow
 mlflow.set_tracking_uri("http://localhost:8081")
 ARTIFACTS = os.getenv("MLFLOW_ARTIFACTS_DESTINATION")
+CACHE = Path(os.getenv("TOOLBOX_CACHE"))
+MODEL_DIR = Path(os.getenv("MODEL_DIR"))
+model_manifest = {}
+for p in sorted(MODEL_DIR.iterdir()):
+    manifest = p / "model.json"
+    model = {}
+    if manifest.exists():
+        manifest = json.loads(manifest.read_text())
+        model["options"] = manifest["properties"]
+        model["title"] = manifest["title"]
+        model["description"] = manifest["description"]
+        with open(p / "ui.html") as f:
+            model["form"] = f.read()
+    
+    if model != {}:
+        model_manifest[p.name] = model
+
+tasks = {}
 
 class TourStep(Enum):
     START = 0
@@ -37,11 +55,53 @@ dataset_tasks = {
     "cedirnet": "orientation-estimation",
 }
 
+# inference workers for these get started automatically (if not in debug mode!)
+autostart = {
+    "geco2": {},
+}
+
 # make sure virutal env doesn't bleed into subprocesses
 if "VIRTUAL_ENV" in os.environ:
     del os.environ["VIRTUAL_ENV"]
 
+def start_task(command, cwd, description, extra_env={}, blocking=False):
+    proc = Popen(command, cwd = cwd, stdout = PIPE, stderr = STDOUT, text = True, env={ **os.environ, **extra_env })
+    tasks[proc.pid] = dict(description=description, output=[], run_info=None, process=proc, code=None, start_time=datetime.now())
+    os.set_blocking(proc.stdout.fileno(), blocking)
+    return proc.pid
+
+def build_model_options(options, values):
+    flags = []
+    for k, v in values:
+        if v != "" and k in options:
+            if v.startswith("mlflow-artifacts:") and ARTIFACTS:
+                v = v.replace("mlflow-artifacts:", ARTIFACTS, count=1)
+            flags.extend(["--" + k, v])
+    return flags
+
+def create_inference_worker(model, options):
+    flags = build_model_options(model_manifest[model]["options"], options)
+
+    port = 9091
+    used = [task["inference"][0] for task in tasks.values() if task["process"] and "inference" in task]
+    while True:
+        if port not in used:
+            break
+        port += 1
+
+    pid = start_task(
+        ["uv", "run", "gunicorn", "--bind", f":{port}", "infer:app", "--"] + flags,
+        MODEL_DIR / model,
+        f"Inference service worker for: `{model}`",
+        { "VIRTUAL_ENV": CACHE / model / ".venv" }
+    )
+    tasks[pid]["inference"] = (port, model)
+    return pid
+
 app = Flask(__name__)
+if not app.debug:
+    for model, options in autostart.items():
+        create_inference_worker(model, options)
 
 def propagate():
     r = {}
@@ -82,25 +142,6 @@ def dashboard():
         if run := request.args.get("run"):
             page += f"/runs/{run}"
     return render_template("mlflow.html", page=page, params=propagate())
-
-CACHE = Path(os.getenv("TOOLBOX_CACHE"))
-MODEL_DIR = Path(os.getenv("MODEL_DIR"))
-model_manifest = {}
-for p in sorted(MODEL_DIR.iterdir()):
-    manifest = p / "model.json"
-    model = {}
-    if manifest.exists():
-        manifest = json.loads(manifest.read_text())
-        model["options"] = manifest["properties"]
-        model["title"] = manifest["title"]
-        model["description"] = manifest["description"]
-        with open(p / "ui.html") as f:
-            model["form"] = f.read()
-    
-    if model != {}:
-        model_manifest[p.name] = model
-
-tasks = {}
 
 # regex for grouping log entries
 # if line starts with eval:, visualise: or (for example) 10/300: (from something like a tqdm batch counter)
@@ -156,21 +197,6 @@ if not app.debug:
 def models():
     return render_template("models.html", models=model_manifest, params=propagate())
 
-def start_task(command, cwd, description, extra_env={}, blocking=False):
-    proc = Popen(command, cwd = cwd, stdout = PIPE, stderr = STDOUT, text = True, env={ **os.environ, **extra_env })
-    tasks[proc.pid] = dict(description=description, output=[], run_info=None, process=proc, code=None, start_time=datetime.now())
-    os.set_blocking(proc.stdout.fileno(), blocking)
-    return proc.pid
-
-def build_model_options(options, values):
-    flags = []
-    for k, v in values:
-        if v != "" and k in options:
-            if v.startswith("mlflow-artifacts:") and ARTIFACTS:
-                v = v.replace("mlflow-artifacts:", ARTIFACTS, count=1)
-            flags.extend(["--" + k, v])
-    return flags
-
 @app.route("/models/<model>", methods=["GET", "POST"])
 def model(model):
     runs = mlflow.search_runs(experiment_names=[model_manifest[model]["title"]], max_results=100, output_format="list")
@@ -201,22 +227,7 @@ def model_infer(model):
     if model not in model_manifest:
         return f"Model '{model}' does not exist", 404
 
-    flags = build_model_options(model_manifest[model]["options"], request.form.items())
-
-    port = 9091
-    used = [task["inference"][0] for task in tasks.values() if task["process"] and "inference" in task]
-    while True:
-        if port not in used:
-            break
-        port += 1
-
-    pid = start_task(
-        ["uv", "run", "gunicorn", "--bind", f":{port}", "infer:app", "--"] + flags,
-        MODEL_DIR / model,
-        f"Inference service worker for: `{model}`",
-        { "VIRTUAL_ENV": CACHE / model / ".venv" }
-    )
-    tasks[pid]["inference"] = (port, model)
+    pid = create_inference_worker(model, request.form.items())
 
     params = propagate()
     params["model"] = model
