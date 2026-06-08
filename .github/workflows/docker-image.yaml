@@ -21,10 +21,17 @@ jobs:
     steps:
       - name: Make some extra space
         run: |
-          rm -rf /usr/share/dotnet
-          rm -rf /opt/ghc
-          rm -rf "/usr/local/share/boost"
-          [[ -n "${AGENT_TOOLSDIRECTORY:-}" ]] && rm -rf "${AGENT_TOOLSDIRECTORY}"
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /opt/ghc
+          sudo rm -rf "/usr/local/share/boost"
+          [[ -n "${AGENT_TOOLSDIRECTORY:-}" ]] && sudo rm -rf "${AGENT_TOOLSDIRECTORY}"
+          sudo rm -rf /opt/microsoft
+          sudo rm -rf /opt/google
+          sudo rm -rf /usr/lib/firefox
+          sudo rm -rf /usr/lib/jvm
+          sudo rm -rf /usr/share/swift
+          sudo rm -rf /usr/local/share/powershell
+          sudo rm -rf /usr/local/julia*
 
       - name: Checkout repository
         uses: actions/checkout@v4
