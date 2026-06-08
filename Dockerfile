@@ -105,7 +105,7 @@ ARG src=apps/nexus
 WORKDIR /opt/apps/nexus
 COPY ${src}/templates ./templates
 COPY ${src}/static ./static
-COPY ${src}/nexus.py ${src}/uv.lock ${src}/pyproject.toml .
+COPY ${src}/nexus.py ${src}/gateway.py ${src}/uv.lock ${src}/pyproject.toml .
 
 RUN --mount=type=cache,target=/root/.cache/uv uv sync
 RUN --mount=type=cache,target=/root/.cache/uv uv pip install gunicorn
