@@ -24,9 +24,16 @@
         handle /app/mlflow* {
             reverse_proxy localhost:8081
         }
-        handle /infer {
+        handle /infer* {
             reverse_proxy localhost:9090
         }
         reverse_proxy localhost:8079
+    }
+}
+{$DOMAIN_PUBLIC} {
+    route {
+        handle /infer* {
+            reverse_proxy localhost:9090
+        }
     }
 }
