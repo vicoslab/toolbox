@@ -18,8 +18,9 @@
             Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
             Access-Control-Allow-Headers *
         }
-
-        reverse_proxy /app/label-studio* localhost:8080
+        handle_path /app/label-studio* {
+            reverse_proxy localhost:8080
+        }
         reverse_proxy /app/mlflow* localhost:8081
         reverse_proxy /infer* localhost:9090
         reverse_proxy localhost:8079
