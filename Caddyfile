@@ -1,4 +1,5 @@
 {$DOMAIN} {
+    file_server /static*
     @options {
         method OPTIONS
     }
@@ -18,22 +19,13 @@
             Access-Control-Allow-Headers *
         }
 
-        handle_path /app/label-studio* {
-            reverse_proxy localhost:8080
-        }
-        handle /app/mlflow* {
-            reverse_proxy localhost:8081
-        }
-        handle /infer* {
-            reverse_proxy localhost:9090
-        }
+        reverse_proxy /app/label-studio* localhost:8080
+        reverse_proxy /app/mlflow* localhost:8081
+        reverse_proxy /infer* localhost:9090
         reverse_proxy localhost:8079
     }
 }
 {$DOMAIN_PUBLIC} {
-    route {
-        handle /infer* {
-            reverse_proxy localhost:9090
-        }
-    }
+    file_server /static*
+    reverse_proxy /infer* localhost:9090
 }
