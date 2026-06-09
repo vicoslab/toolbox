@@ -52,6 +52,12 @@
     <main>
         {% block content %}{% endblock %}
     </main>
+
+    <script>
+        if (!("mlflow.workflowType_v1" in localStorage)) {
+            localStorage["mlflow.workflowType_v1"] = '"machine_learning"';
+        }
+    </script>
 </body>
 
 </html>
