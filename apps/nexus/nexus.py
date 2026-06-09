@@ -55,11 +55,6 @@ dataset_tasks = {
     "cedirnet": "orientation-estimation",
 }
 
-# inference workers for these get started automatically (if not in debug mode!)
-autostart = {
-    "geco2": {},
-}
-
 # make sure virutal env doesn't bleed into subprocesses
 if "VIRTUAL_ENV" in os.environ:
     del os.environ["VIRTUAL_ENV"]
@@ -99,9 +94,6 @@ def create_inference_worker(model, options):
     return pid
 
 app = Flask(__name__)
-if not app.debug:
-    for model, options in autostart.items():
-        create_inference_worker(model, options)
 
 def propagate():
     r = {}
