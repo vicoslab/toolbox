@@ -241,7 +241,7 @@ def model_train(model):
         return f"Model '{model}' does not exist", 404
 
     flags = build_model_options(model_manifest[model]["options"], request.form.items())
-    start_task(
+    pid = start_task(
         ["uv", "run", "train.py"] + flags,
         MODEL_DIR / model,
         f"Model training: `{model}`",
@@ -253,7 +253,7 @@ def model_train(model):
     # skip labeling steps
     if params.get("tour") == TourStep.DATASET.value:
         params["tour"] = TourStep.TRAINING.value
-    return redirect(url_for("logs", **params))
+    return redirect(url_for("logs", pid=pid, **params))
 
 @app.route("/model/<model>/install", methods=["POST"])
 def model_install(model):
@@ -266,8 +266,8 @@ def model_install(model):
 
     params = propagate()
     params["model"] = model
-    start_task(["bash", "-c", f"./setup.sh && echo \"Finished installing '{model}'\""], MODEL_DIR / model, f"Installing model: `{model}`")
-    return redirect(url_for("logs", **params))
+    pid = start_task(["bash", "-c", f"./setup.sh && echo \"Finished installing '{model}'\""], MODEL_DIR / model, f"Installing model: `{model}`")
+    return redirect(url_for("logs", pid=pid, **params))
 
 @app.route("/active", methods=["GET"])
 def active_models():
