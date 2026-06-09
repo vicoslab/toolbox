@@ -411,6 +411,7 @@ class ShowDetections extends HTMLElement {
             }
 
             .images {
+                overflow: hidden;
                 position: relative;
                 height: fit-content;
                 width: fit-content;
