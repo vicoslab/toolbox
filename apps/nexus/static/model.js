@@ -92,6 +92,7 @@ class ImageInput extends HTMLElement {
                 position: absolute;
                 inset: 0;
                 width: 100%;
+                margin: 0 10%;
             }
             #close {
                 position: absolute;
@@ -370,10 +371,13 @@ class ShowDetections extends HTMLElement {
             }
             .wrapper {
                 display: flex;
+                flex-wrap: wrap;
+                justify-content: center;
             }
 
             .options {
                 flex-basis: 25%;
+                flex-grow: 1;
                 padding: 0.5rem;
 
                 >* {
@@ -384,6 +388,7 @@ class ShowDetections extends HTMLElement {
             .images {
                 position: relative;
                 height: fit-content;
+                width: fit-content;
             }
 
             .reference {

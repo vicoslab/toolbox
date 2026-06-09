@@ -209,14 +209,12 @@ fieldset {
 }
 
 .model-overview {
-    display: flex;
-    flex-wrap: wrap;
     .model-installation {
         margin: 0 auto;
     }
 
-    .model-sidebar {
-        width: 30rem;
+    .model-options {
+        margin: 0 10% 2rem 10%;
     }
 
     .tour-dataset {
@@ -234,9 +232,8 @@ fieldset {
     }
 
     > .inference {
-        padding: 0 1rem;
-        flex-grow: 1;
         > #results {
+            padding: 0 1rem;
             .group {
                 display: flex;
                 flex-wrap: wrap;
@@ -253,7 +250,7 @@ fieldset {
                 position: relative;
                 display: flex;
                 flex-direction: column;
-                width: 100%;
+                margin: 0 10%;
                 align-items: center;
             }
         }
