@@ -48,6 +48,7 @@ class ImageInput extends HTMLElement {
 
         const close = document.createElement("button");
         close.id = "close";
+        close.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 50 50" stroke-linecap="round" fill="none" stroke-width="4px" stroke="currentColor"><path d="M 15 35 L 35 15 M 15 15 L 35 35"/></svg>`;
         close.addEventListener("click", e => {
             e.preventDefault();
             this.internals_.form.reset();
@@ -98,6 +99,14 @@ class ImageInput extends HTMLElement {
                 position: absolute;
                 top: 0;
                 right: 0;
+                padding: 0;
+                border: 0;
+                width: 30px;
+                height: 30px;
+                background: #f55;
+                color: white;
+                border-radius: 50%;
+                transform: translate(50%, -50%);
             }
             img {
                 object-fit: contain;
@@ -139,10 +148,12 @@ class BBoxInput extends HTMLElement {
         const multiple = this.hasAttribute("multiple");
 
         const form = this.internals_.form || (() => { throw new Error("Inference input must be part of a form") })();
-        form.addEventListener("reset", _ => {
+        const reset = () => {
             this.boxes = [];
+            this.internals_.setFormValue("[]");
             shadow.querySelectorAll(".box").forEach(x => x.remove());
-        });
+        }
+        form.addEventListener("reset", reset);
         const draw = (x, y) => {
             box.style.width = Math.abs(x - this.startX) + "px";
             box.style.height = Math.abs(y - this.startY) + "px";
@@ -150,11 +161,14 @@ class BBoxInput extends HTMLElement {
             box.style.top = Math.min(y, this.startY) + "px";
         }
         const handleStart = ({ clientX, clientY }) => {
+            box = document.createElement("div");
+            box.classList.add("box");
+            area.append(box);
+
             const rect = area.getBoundingClientRect();
             this.startX = clientX - rect.left;
             this.startY = clientY - rect.top;
             draw(this.startX, this.startY);
-            box.style.display = "";
             this.dragging = true;
         }
         const handleEnd = ({ clientX, clientY }) => {
@@ -169,11 +183,6 @@ class BBoxInput extends HTMLElement {
                 Math.abs(y - this.startY) / height
             ]);
             this.internals_.setFormValue(JSON.stringify(this.boxes));
-
-            box = document.createElement("div");
-            box.style.display = "none";
-            box.classList.add("box");
-            area.append(box);
 
             if (!multiple && typeof this.onInference === "function") {
                 makeRequest(form, this.onInference);
@@ -194,7 +203,14 @@ class BBoxInput extends HTMLElement {
 
         const style = document.createElement("style");
         style.textContent = `
-            .submit {
+            .buttons {
+                position: absolute;
+                right: 0.5rem;
+                bottom: 0.5rem;
+                display: flex;
+                gap: 0.5rem;
+            }
+            input[type="button"] {
                 border-radius: 0;
                 padding: 0.5rem 1rem;
                 border: 1px solid black;
@@ -202,9 +218,6 @@ class BBoxInput extends HTMLElement {
                 &:hover {
                     background-color: #fae4e4;
                 }
-                position: absolute;
-                right: 0.5rem;
-                bottom: 0.5rem;
             }
             .area {
                 position: absolute;
@@ -219,13 +232,25 @@ class BBoxInput extends HTMLElement {
 
         shadow.append(area, style);
 
-        if (multiple && typeof this.onInference === "function") {
-            const submit = document.createElement("input");
-            submit.className = "submit";
-            submit.type = "button";
-            submit.value = "Submit";
-            submit.addEventListener("click", _ => makeRequest(form, this.onInference));
-            shadow.append(submit);
+        if (multiple) {
+            const buttons = document.createElement("div");
+            buttons.className = "buttons";
+
+            const clear = document.createElement("input");
+            clear.type = "button";
+            clear.value = "Clear";
+            clear.addEventListener("click", reset);
+            buttons.append(clear);
+
+            if (typeof this.onInference === "function") {
+                const submit = document.createElement("input");
+                submit.type = "button";
+                submit.value = "Submit";
+                submit.addEventListener("click", _ => makeRequest(form, this.onInference));
+                buttons.append(submit);
+            }
+
+            shadow.append(buttons);
         }
     }
 }
