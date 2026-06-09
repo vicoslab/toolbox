@@ -6,7 +6,7 @@ index eb31d860f..4adec2624 100644
    </head>
  
    <body>
-+    <link rel="stylesheet" href="http://localhost:8079/static/overrides-mlflow.css" />
++    <link rel="stylesheet" href="/static/overrides-mlflow.css" />
      <noscript> You need to enable JavaScript to run this app. </noscript>
      <div id="root" class="mlflow-ui-container"></div>
      <div id="modal" class="mlflow-ui-container"></div>

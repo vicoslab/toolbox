@@ -6,7 +6,7 @@ index 8723aead0..5f6524b22 100644
    {% get_current_language as LANGUAGE_CODE %}
    {% get_available_languages as LANGUAGES %}
  
-+  <link href="https://localhost/static/overrides-labelstudio.css" rel="stylesheet"/>
++  <link href="/static/overrides-labelstudio.css" rel="stylesheet"/>
  </head>
  
  <body>
