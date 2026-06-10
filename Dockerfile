@@ -1,4 +1,4 @@
-FROM nvidia/cuda:12.8.1-cudnn-runtime-ubuntu22.04 AS base
+FROM nvidia/cuda:13.0.3-cudnn-devel-ubuntu24.04 AS base
 
 ## Generic builder with uv and yarn
 FROM base AS builder
@@ -96,6 +96,7 @@ RUN --mount=type=cache,target=/root/.cache/uv uv sync
 ## MLFlow
 WORKDIR /opt/apps/mlflow
 COPY --from=build-mlflow /opt/apps/mlflow/.venv .venv
+COPY --from=build-mlflow /root/.local/share/uv /root/.local/share/uv
 
 ## ModelArgs
 COPY apps/modelargs /opt/apps/modelargs
