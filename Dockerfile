@@ -1,4 +1,4 @@
-FROM nvidia/cuda:13.0.3-cudnn-devel-ubuntu24.04 AS base
+FROM nvidia/cuda:13.0.3-cudnn-runtime-ubuntu24.04 AS base
 
 ## Generic builder with uv and yarn
 FROM base AS builder
@@ -112,7 +112,8 @@ RUN --mount=type=cache,target=/root/.cache/uv uv sync
 RUN --mount=type=cache,target=/root/.cache/uv uv pip install gunicorn
 
 ## Models
-COPY models /opt/models
+ARG MODELS=models
+ADD ${MODELS} /opt/models
 
 ## Cache dirs
 ENV TOOLBOX_CACHE=/cache \
