@@ -29,7 +29,12 @@
         handle_path /app/label-studio* {
             reverse_proxy localhost:8080
         }
-        reverse_proxy /app/mlflow* localhost:8081
+        handle /app/mlflow* {
+            reverse_proxy localhost:8081 {
+                # this needs to be forced for mlflow in case another proxy is in front
+                header_up X-Forwarded-Proto https
+            }
+        }
         reverse_proxy /infer* localhost:9090
         reverse_proxy localhost:8079
     }
