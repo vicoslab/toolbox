@@ -219,13 +219,13 @@ def model_infer(model):
     if model not in model_manifest:
         return f"Model '{model}' does not exist", 404
 
-    pid = create_inference_worker(model, request.form.items())
-
     params = propagate()
     params["model"] = model
+    params["pid"] = create_inference_worker(model, request.form.items())
+
     if params.get("tour") == TourStep.MONITORING.value:
         params["tour"] = TourStep.INFERENCE.value
-    return redirect(url_for("logs", pid=pid, **params))
+    return redirect(url_for("logs", **params))
 
 @app.route("/model/<model>/train", methods=["POST"])
 def model_train(model):
@@ -242,10 +242,11 @@ def model_train(model):
 
     params = propagate()
     params["model"] = model
+    params["pid"] = pid
     # skip labeling steps
     if params.get("tour") == TourStep.DATASET.value:
         params["tour"] = TourStep.TRAINING.value
-    return redirect(url_for("logs", pid=pid, **params))
+    return redirect(url_for("logs", **params))
 
 @app.route("/model/<model>/install", methods=["POST"])
 def model_install(model):
@@ -258,8 +259,8 @@ def model_install(model):
 
     params = propagate()
     params["model"] = model
-    pid = start_task(["bash", "-c", f"./setup.sh && echo \"Finished installing '{model}'\""], MODEL_DIR / model, f"Installing model: `{model}`")
-    return redirect(url_for("logs", pid=pid, **params))
+    params["pid"] = start_task(["bash", "-c", f"./setup.sh && echo \"Finished installing '{model}'\""], MODEL_DIR / model, f"Installing model: `{model}`")
+    return redirect(url_for("logs", **params))
 
 @app.route("/active", methods=["GET"])
 def active_models():
@@ -351,6 +352,7 @@ def logs(pid):
         refresh_logs(tasks[pid])
 
     params = propagate()
+    params["pid"] = pid
 
     override = { **params, "tour": TourStep.MONITORING.value } if params.get("tour") == TourStep.TRAINING.value else params
     task = tasks[pid]
@@ -360,7 +362,7 @@ def logs(pid):
     else:
         run_url = None
 
-    return render_template("logs.html", pid=pid, output=task["output"], description=task["description"], running=task["code"] is None, run_shortcut=run_url, params=params)
+    return render_template("logs.html", output=task["output"], description=task["description"], running=task["code"] is None, run_shortcut=run_url, params=params)
 
 @app.route("/task/stop/<int:pid>", methods=["POST"])
 def kill(pid):
@@ -368,4 +370,6 @@ def kill(pid):
         abort(404)
     if tasks[pid]["process"] is not None:
         tasks[pid]["process"].terminate()
-    return redirect(url_for("logs", pid=pid, **propagate()))
+    params = propagate()
+    params["pid"] = pid
+    return redirect(url_for("logs", **params))
