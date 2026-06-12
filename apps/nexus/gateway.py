@@ -23,7 +23,6 @@ if not app.debug:
             time.sleep(5)
             refresh_workers()
 
-    # this is needed because task's writes will start blocking if output is not consumed
     Thread(target=track_workers, daemon=True).start()
 
 # stub label-studio-ml-backend api endpoints
