@@ -459,6 +459,136 @@ class ShowDetections extends HTMLElement {
     }
 }
 
+async function base64ToMat(base64) {
+    return new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => resolve(cv.imread(img));
+        img.src = "data:image/webp;base64," + base64;
+    });
+}
+
+class ShowActivation extends HTMLElement {
+    constructor() {
+        super();
+        this.low = 0.5;
+        this.high = 0.7;
+        this.mode = "heatmap"; // overlay | heatmap
+    }
+
+    drawOverlay() {
+        let gray = new cv.Mat();
+        cv.cvtColor(this.map, gray, cv.COLOR_BGR2GRAY);
+
+        let componentMask = new cv.Mat();
+        cv.threshold(gray, componentMask, this.low * 255, 255, cv.THRESH_BINARY);
+
+        let labels = new cv.Mat();
+        let n = cv.connectedComponents(componentMask, labels, 8, cv.CV_32S);
+        componentMask.delete();
+
+        let highMask = new cv.Mat();
+        cv.threshold(gray, highMask, this.high * 255, 255, cv.THRESH_BINARY);
+
+        let contourCanvas = new cv.Mat.zeros(gray.rows, gray.cols, cv.CV_8UC4);
+        for (let label = 1; label < n; label++) {
+
+            let currentMask = new cv.Mat();
+            let labelMat = new cv.Mat(labels.rows, labels.cols, cv.CV_32S, new cv.Scalar(label));
+
+            cv.compare(labels, labelMat, currentMask, cv.CMP_EQ);
+            labelMat.delete();
+
+            let overlap = new cv.Mat();
+            cv.bitwise_and(currentMask, highMask, overlap);
+
+            if (cv.countNonZero(overlap) > 0) {
+
+                let contours = new cv.MatVector();
+                let hierarchy = new cv.Mat();
+
+                cv.findContours(currentMask, contours, hierarchy, cv.RETR_TREE, cv.CHAIN_APPROX_NONE);
+
+                if (contours.size() > 0) {
+                    cv.drawContours(contourCanvas, contours, 0, new cv.Scalar(255, 0, 0, 255), 5);
+                }
+
+                contours.delete();
+                hierarchy.delete();
+            }
+
+            overlap.delete();
+            currentMask.delete();
+        }
+        cv.imshow(this.canvas, contourCanvas);
+
+        contourCanvas.delete();
+        highMask.delete();
+        labels.delete();
+        gray.delete();
+    }
+
+    drawHeatmap() {
+        let gray = new cv.Mat();
+        cv.cvtColor(this.map, gray, cv.COLOR_BGR2GRAY);
+
+        let mapped = new cv.Mat();
+        cv.applyColorMap(gray, mapped, cv.COLORMAP_JET);
+        cv.cvtColor(mapped, mapped, cv.COLOR_BGR2RGBA);
+
+        if (this.low > 0) {
+            let channels = new cv.MatVector();
+            let alpha = new cv.Mat();
+            cv.threshold(gray, alpha, this.low * 255, 255, cv.THRESH_TOZERO);
+            cv.split(mapped, channels);
+            channels.set(3, alpha);
+            alpha.delete();
+            cv.merge(channels, mapped);
+
+            const imageData = new ImageData(
+                new Uint8ClampedArray(mapped.data),
+                mapped.cols,
+                mapped.rows
+            );
+
+            this.canvas.getContext("2d").putImageData(imageData, 0, 0);
+        } else {
+            cv.imshow(this.canvas, mapped);
+        }
+
+        mapped.delete();
+        gray.delete();
+    }
+
+    draw() {
+        switch (this.mode) {
+            case "overlay": return this.drawOverlay();
+            case "heatmap": return this.drawHeatmap();
+            default: throw new Error("Unknown mode for ShowActivation");
+        }
+    }
+
+    async connectedCallback() {
+        if (!this.map) {
+            throw new Error("Cannot create ShowActivation without activation map");
+        }
+        this.map = await base64ToMat(this.map);
+
+        const shadow = this.attachShadow({ mode: "open" });
+
+        this.canvas = document.createElement("canvas");
+        this.canvas.width = this.map.cols;
+        this.canvas.height = this.map.rows;
+        this.draw();
+
+        shadow.append(this.canvas);
+    }
+
+    disconnectedCallback() {
+        this.map.delete();
+    }
+}
+
 customElements.define("infer-image", ImageInput);
 customElements.define("infer-bbox", BBoxInput);
 customElements.define("show-detections", ShowDetections);
+customElements.define("show-activation", ShowActivation);
