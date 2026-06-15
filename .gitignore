@@ -19,4 +19,4 @@ wheels/
 *.egg
 MANIFEST
 
-Dockerfile.generated
+opencv.js

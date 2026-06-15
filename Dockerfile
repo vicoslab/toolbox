@@ -62,7 +62,7 @@ FROM base
 RUN --mount=target=/var/lib/apt/lists,type=cache,sharing=locked --mount=target=/var/cache/apt,type=cache,sharing=locked \
     rm -f /etc/apt/apt.conf.d/docker-clean && \
     apt update && \
-    apt install -y git nano curl make supervisor ffmpeg libsm6 libxext6
+    apt install -y git nano curl make supervisor ffmpeg libsm6 libxext6 unzip
 
 RUN curl -LsSf https://astral.sh/uv/install.sh | sh
 ENV PATH="/root/.local/bin:$PATH"
@@ -106,6 +106,10 @@ ARG src=apps/nexus
 WORKDIR /opt/apps/nexus
 COPY ${src}/templates ./templates
 COPY ${src}/static ./static
+
+ADD https://github.com/opencv/opencv/releases/download/5.0.0/opencv-5.0.0-docs.zip opencv.zip
+RUN unzip -p opencv.zip js/bin/opencv.js > static/opencv.js && rm opencv.zip
+
 COPY ${src}/nexus.py ${src}/gateway.py ${src}/uv.lock ${src}/pyproject.toml .
 
 RUN --mount=type=cache,target=/root/.cache/uv uv sync

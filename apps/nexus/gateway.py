@@ -88,6 +88,7 @@ def infer(model):
                     </fieldset>
                 </form>
             </body>
+            <script src="/static/opencv.js"></script>
             <script src="/static/model.js"></script>
             <script>window.endpoint = "{model}"</script>
             <style>
