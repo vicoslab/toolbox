@@ -641,6 +641,21 @@ class ShowActivation extends HTMLElement {
             high.step = 0.01;
             high.value = this.high;
 
+            const period = 50; // time that needs to elapse between two events
+            function debounced() {
+                if (!debounced.lock) {
+                    debounced.lock = setTimeout(() => {
+                        const state = { low: low.value, high: high.value, mode: dialog.querySelector("input:checked").value };
+                        dialog.dispatchEvent(new CustomEvent("settingsUpdate", { detail: state }));
+                        debounced.last = Date.now();
+                        debounced.lock = null;
+                    }, period - (Date.now() - debounced.last));
+                }
+            }
+            debounced.last = Date.now();
+            low.addEventListener("input", debounced);
+            high.addEventListener("input", debounced);
+
             const modes = [].concat(...["overlay", "heatmap"].map(mode => {
                 const id = `${this._key}-mode-${mode}`;
                 const el = document.createElement("input");
@@ -649,6 +664,7 @@ class ShowActivation extends HTMLElement {
                 el.value = mode;
                 el.name = "mode";
                 if (this.mode === mode) el.checked = true;
+                el.addEventListener("change", debounced);
 
                 const label = document.createElement("label");
                 label.htmlFor = id;
@@ -666,13 +682,14 @@ class ShowActivation extends HTMLElement {
                     if (x.tagName === "INPUT") {
                         x.checked = x.value === saved.mode;
                     }
-                })
+                });
             });
 
             const cancel = document.createElement("button");
             cancel.commandForElement = dialog;
             cancel.command = "close";
             cancel.innerText = "Cancel";
+            cancel.addEventListener("click", () => dialog.dispatchEvent(new CustomEvent("settingsUpdate", { detail: JSON.parse(localStorage.getItem(this._key)) })));
 
             const submit = document.createElement("button");
             submit.innerText = "Ok";
