@@ -1,4 +1,6 @@
 :root, html > body {
+    --brand-primary: oklch(79.214% 0.11998 20.054);
+    --brand-secondary: oklch(67.841% 0.18816 23.544);
     --bg-primary: white; /*#950606*/
     --fg-accent-default: #c13737; 
     --fg-accent-hover: #d32a2a;

@@ -14,7 +14,7 @@ body {
     display: grid;
     grid-template-rows: 3rem 1fr;
     margin: 0;
-    background-color: oklch(79.214% 0.11998 20.054);
+    background: linear-gradient(to bottom right, var(--brand-primary), var(--brand-secondary));
     /* background-color: rgb(255, 158, 158); */
     /* background-color: rgb(232, 232, 232); */
 }
