@@ -100,6 +100,13 @@ button, input[type="submit"], .button {
     }
 }
 
+.settings {
+    background-color: var(--bg-primary) !important;
+    &:hover {
+        background-color: var(--bg-accent-hover) !important;
+    }
+}
+
 .tour {
     display: flex;
     align-items: center;
