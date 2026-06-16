@@ -264,7 +264,7 @@ def model_install(model):
 
 @app.route("/active", methods=["GET"])
 def active_models():
-    return dict([task["inference"] for task in tasks.values() if "inference" in task])
+    return dict([task["inference"] for task in tasks.values() if "inference" in task and task["process"] is not None])
 
 @app.route("/dataset", methods=["POST"])
 def dataset():
