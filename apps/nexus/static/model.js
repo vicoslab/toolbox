@@ -7,7 +7,7 @@ async function makeRequest(form, action) {
             method: "POST",
             body: formData,
         });
-        await response.json().then(response => action(inferenceResults, formData, response));
+        await response.json().then(response => inferenceResults.replaceChildren(...[action(formData, response)].flat()));
         form.reset();
     } catch (e) {
         console.error(e);
