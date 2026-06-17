@@ -81,10 +81,10 @@ def infer(model):
         <!DOCTYPE html>
         <html>
             <body>
-                <div id="results" style="position: relative;"></div>
                 <form action="">
                     <fieldset>
                         {forms[model]}
+                        <div class="toolbar"></div>
                     </fieldset>
                 </form>
             </body>

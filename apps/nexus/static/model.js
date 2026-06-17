@@ -7,8 +7,8 @@ async function makeRequest(form, action) {
             method: "POST",
             body: formData,
         });
+        form.dispatchEvent(new Event("infer"));
         await response.json().then(response => inferenceResults.replaceChildren(...[action(formData, response)].flat()));
-        form.reset();
     } catch (e) {
         console.error(e);
     }
@@ -38,15 +38,12 @@ class ImageInput extends HTMLElement {
         const wrapper = document.createElement("div");
         wrapper.style.position = "relative";
         wrapper.style.display = "none";
+        wrapper.style.pointerEvents = "none";
 
         const image = document.createElement("img");
-
         const slot = document.createElement("slot");
-        const overlay = document.createElement("div");
-        overlay.classList.add("overlay");
-        overlay.append(slot);
-
         const close = document.createElement("button");
+        close.style.display = "none";
         close.id = "close";
         close.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 50 50" stroke-linecap="round" fill="none" stroke-width="4px" stroke="currentColor"><path d="M 15 35 L 35 15 M 15 15 L 35 35"/></svg>`;
         close.addEventListener("click", e => {
@@ -56,12 +53,18 @@ class ImageInput extends HTMLElement {
             input.style.display = "";
             label.style.display = "";
             wrapper.style.display = "none";
+            close.style.display = "none";
+            inferenceResults.replaceChildren();
         });
+        document.querySelector(".toolbar").append(close);
 
-        overlay.append(slot, close);
+        const overlay = document.createElement("div");
+        overlay.classList.add("overlay");
+        overlay.append(slot);
         wrapper.append(image, overlay);
 
         const form = this.internals_.form || (() => { throw new Error("Inference input must be part of a form") })();
+        form.addEventListener("infer", () => image.src = ""); // custom event
         const name = this.getAttribute("name") || (() => { throw new Error("Inference input must have a name") })();
         input.addEventListener("change", async (e) => {
 
@@ -75,12 +78,15 @@ class ImageInput extends HTMLElement {
                 if (input.files.length <= 0) {
                     return;
                 }
+                wrapper.style.display = "";
+                label.style.display = "none";
                 makeRequest(form, this.onInference);
                 input.value = null;
             } else if (input.files.length == 1) {
                 const file = input.files.item(0);
                 image.src = URL.createObjectURL(file);
                 wrapper.style.display = "";
+                close.style.display = "";
                 input.style.display = "none";
                 label.style.display = "none";
             }
@@ -93,20 +99,13 @@ class ImageInput extends HTMLElement {
                 position: absolute;
                 inset: 0;
                 width: 100%;
-                margin: 0 10%;
             }
             #close {
-                position: absolute;
-                top: 0;
-                right: 0;
                 padding: 0;
                 border: 0;
                 width: 30px;
                 height: 30px;
-                background: #f55;
-                color: white;
-                border-radius: 50%;
-                transform: translate(50%, -50%);
+                pointer-events: auto;
             }
             img {
                 object-fit: contain;
@@ -138,6 +137,7 @@ class BBoxInput extends HTMLElement {
     connectedCallback() {
         const shadow = this.attachShadow({ mode: "open" });
         const area = document.createElement("div");
+        area.style.pointerEvents = "auto";
         area.classList.add("area");
 
         let box = document.createElement("div");
@@ -145,15 +145,31 @@ class BBoxInput extends HTMLElement {
         box.classList.add("box");
         area.append(box);
 
+        const slot = document.createElement("slot");
+        slot.style.display = "none";
+
         const multiple = this.hasAttribute("multiple");
+        const buttons = document.createElement("div");
+        buttons.style.pointerEvents = "auto";
+        buttons.className = "buttons";
 
         const form = this.internals_.form || (() => { throw new Error("Inference input must be part of a form") })();
         const reset = () => {
             this.boxes = [];
             this.internals_.setFormValue("[]");
             shadow.querySelectorAll(".box").forEach(x => x.remove());
-        }
+            area.style.display = "";
+            slot.style.display = "none";
+            buttons.style.display = "";
+        };
         form.addEventListener("reset", reset);
+        form.addEventListener("infer", () => {
+            area.style.display = "none";
+            buttons.style.display = "none";
+            if (typeof this.onInference === "function") {
+                slot.style.display = "";
+            }
+        });
         const draw = (x, y) => {
             box.style.width = Math.abs(x - this.startX) + "px";
             box.style.height = Math.abs(y - this.startY) + "px";
@@ -230,12 +246,9 @@ class BBoxInput extends HTMLElement {
             }
         `;
 
-        shadow.append(area, style);
+        shadow.append(area, slot, style);
 
         if (multiple) {
-            const buttons = document.createElement("div");
-            buttons.className = "buttons";
-
             const clear = document.createElement("input");
             clear.type = "button";
             clear.value = "Clear";
@@ -257,22 +270,18 @@ class BBoxInput extends HTMLElement {
 
 function settings(id) {
     const dialog = document.createElement("dialog");
+    dialog.style.pointerEvents = "auto";
     dialog.id = id;
 
     const button = document.createElement("button");
     button.className = "settings";
-    button.command = "show-modal";
-    button.commandForElement = dialog;
+    button.addEventListener("click", e => {
+        e.preventDefault();
+        dialog.showModal();
+    });
     // FIXME: path generated by chatgpt, we can do better
     button.innerHTML = `<svg viewBox = "0 0 24 24" fill="currentColor"><path d="M19.14,12.94a7.43,7.43,0,0,0,.05-.94,7.43,7.43,0,0,0-.05-.94l2.03-1.58a.5.5,0,0,0,.12-.64l-1.92-3.32a.5.5,0,0,0-.6-.22L16.39,6.3a7.28,7.28,0,0,0-1.63-.94L14.4,2.81a.5.5,0,0,0-.49-.41H10.09a.5.5,0,0,0-.49.41L9.24,5.36a7.28,7.28,0,0,0-1.63.94L5.23,5.3a.5.5,0,0,0-.6.22L2.71,8.84a.5.5,0,0,0,.12.64l2.03,1.58a7.43,7.43,0,0,0-.05.94,7.43,7.43,0,0,0,.05.94L2.83,14.52a.5.5,0,0,0-.12.64l1.92,3.32a.5.5,0,0,0,.6.22l2.38-1a7.28,7.28,0,0,0,1.63.94l.36,2.55a.5.5,0,0,0,.49.41h3.82a.5.5,0,0,0,.49-.41l.36-2.55a7.28,7.28,0,0,0,1.63-.94l2.38,1a.5.5,0,0,0,.6-.22l1.92-3.32a.5.5,0,0,0-.12-.64ZM12,15.5A3.5,3.5,0,1,1,15.5,12,3.5,3.5,0,0,1,12,15.5Z"></path></svg>`;
     button.title = "Settings";
-    button.style.position = "absolute";
-    button.style.top = "0.5rem";
-    button.style.right = "0.5rem";
-    button.style.width = "2.5rem";
-    button.style.height = "2.5rem";
-    button.style.padding = "0.25rem";
-    button.style.background = "#46b8fd";
 
     return { button, dialog };
 }
@@ -308,12 +317,13 @@ class ShowDetections extends HTMLElement {
         reference.classList.add("reference");
         const colors = Array.from(this.masks, () => Math.random() * 360);
         const tagStyle = i => `--bg-accent-default: hsl(${colors[i]} 100% 50% / 0.3); --bg-accent-hover: hsl(${colors[i]} 100% 50% / 0.6); --bg-accent-active: hsl(${colors[i]} 100% 80%);`;
-        const tagStyleHidden = i => `--bg-accent-default: hsl(${colors[i]} 100% 0% / 0.3); --bg-accent-hover: hsl(${colors[i]} 100% 50% / 0.3); --bg-accent-active: hsl(${colors[i]} 100% 80%);`;
+        const tagStyleHidden = i => `--bg-accent-default: hsl(${colors[i]} 100% 0% / 0.3); --bg-accent-hover: hsl(${colors[i]} 100% 0% / 0.4); --bg-accent-active: hsl(${colors[i]} 100% 0% / 0.5);`;
 
         let settingsDialog = document.getElementById(this._key);
         if (!settingsDialog) {
             const { button, dialog } = settings(this._key);
             settingsDialog = dialog;
+            this._removeSettings = () => { button.remove(); dialog.remove(); };
 
             const toggleMasks = document.createElement("input");
             toggleMasks.type = "checkbox";
@@ -360,34 +370,40 @@ class ShowDetections extends HTMLElement {
                 toggleBoxes.checked = saved.hideBoxes;
                 toggleMasks.checked = saved.hideMasks;
                 slider.value = saved.threshold;
-                dialog.dispatchEvent(new CustomEvent("settingsUpdate", { detail: saved }))
+                dialog.dispatchEvent(new CustomEvent("settingsUpdate", { detail: saved }));
             });
 
             const cancel = document.createElement("button");
-            cancel.commandForElement = dialog;
-            cancel.command = "close";
             cancel.innerText = "Cancel";
-            cancel.addEventListener("click", () => dialog.dispatchEvent(new CustomEvent("settingsUpdate", { detail: JSON.parse(localStorage.getItem(this._key)) })));
+            cancel.addEventListener("click", e => {
+                e.preventDefault();
+                dialog.dispatchEvent(new CustomEvent("settingsUpdate", { detail: JSON.parse(localStorage.getItem(this._key)) }));
+                dialog.close();
+            });
 
             const submit = document.createElement("button");
             submit.innerText = "Ok";
-            submit.commandForElement = dialog;
-            submit.command = "close";
-            submit.addEventListener("click", () => {
+            submit.addEventListener("click", e => {
+                e.preventDefault();
                 const newval = { hideBoxes: toggleBoxes.checked, hideMasks: toggleMasks.checked, threshold: slider.value };
                 localStorage.setItem(this._key, JSON.stringify(newval));
                 dialog.dispatchEvent(new CustomEvent("settingsUpdate", { detail: newval }));
+                dialog.close();
             });
             const button_wrapper = document.createElement("div");
             button_wrapper.append(cancel, submit);
-            button_wrapper.style = "display: flex; justify-content: end; gap: 0.5rem; margin-top: 1rem;";
+            button_wrapper.style.display = "flex";
+            button_wrapper.style.justifyContent = "end";
+            button_wrapper.style.gap = "0.5rem";
+            button_wrapper.style.marginTop = "1rem";
 
             const settingsWrapper = document.createElement("div");
-            settingsWrapper.style = "display: flex; flex-direction: column;"
+            settingsWrapper.style.display = "flex";
+            settingsWrapper.style.flexDirection = "column";
             settingsWrapper.append(toggleWrapper, sliderLabel, slider, button_wrapper);
             dialog.append(settingsWrapper);
 
-            this.parentElement.append(button, dialog);
+            document.querySelector(".toolbar").append(button, dialog);
         }
 
         let labels, masks, boxes;
@@ -440,6 +456,7 @@ class ShowDetections extends HTMLElement {
         const labelsWrapper = document.createElement("div");
         labelsWrapper.classList.add("labels");
         labelsWrapper.append(...labels);
+        labelsWrapper.style.pointerEvents = "auto";
         wrapper.append(images, labelsWrapper);
 
 
@@ -474,15 +491,9 @@ class ShowDetections extends HTMLElement {
                     background-color: var(--bg-accent-active);
                 }
             }
-            .wrapper {
-                display: flex;
-                flex-wrap: wrap;
-                justify-content: center;
-            }
 
             .labels {
-                flex-basis: 25%;
-                flex-grow: 1;
+                margin: auto;
                 padding: 0.5rem;
 
                 >* {
@@ -495,6 +506,7 @@ class ShowDetections extends HTMLElement {
                 position: relative;
                 height: fit-content;
                 width: fit-content;
+                margin: auto;
             }
 
             .reference {
@@ -530,6 +542,10 @@ class ShowDetections extends HTMLElement {
             }
         `;
         shadow.append(wrapper, style);
+    }
+
+    disconnectedCallback() {
+        if (this._removeSettings) this._removeSettings();
     }
 }
 
@@ -663,6 +679,7 @@ class ShowActivation extends HTMLElement {
         if (!settingsDialog) {
             const { button, dialog } = settings(this._key);
             settingsDialog = dialog;
+            this._removeSettings = () => { button.remove(); dialog.remove(); };
 
             const wrapper = document.createElement("div");
             wrapper.style = "display: flex; flex-direction: column;";
@@ -738,19 +755,21 @@ class ShowActivation extends HTMLElement {
             });
 
             const cancel = document.createElement("button");
-            cancel.commandForElement = dialog;
-            cancel.command = "close";
             cancel.innerText = "Cancel";
-            cancel.addEventListener("click", () => dialog.dispatchEvent(new CustomEvent("settingsUpdate", { detail: JSON.parse(localStorage.getItem(this._key)) })));
+            cancel.addEventListener("click", e => {
+                e.preventDefault();
+                dialog.dispatchEvent(new CustomEvent("settingsUpdate", { detail: JSON.parse(localStorage.getItem(this._key)) }));
+                dialog.close();
+            });
 
             const submit = document.createElement("button");
             submit.innerText = "Ok";
-            submit.commandForElement = dialog;
-            submit.command = "close";
-            submit.addEventListener("click", () => {
+            submit.addEventListener("click", e => {
+                e.preventDefault();
                 const newval = { low: low.value, high: high.value, mode: dialog.querySelector("input:checked").value };
                 localStorage.setItem(this._key, JSON.stringify(newval));
                 dialog.dispatchEvent(new CustomEvent("settingsUpdate", { detail: newval }));
+                dialog.close();
             });
             const button_wrapper = document.createElement("div");
             button_wrapper.append(cancel, submit);
@@ -758,7 +777,7 @@ class ShowActivation extends HTMLElement {
 
             wrapper.append(low_label, low, high_label, high, modes_wrapper, button_wrapper);
             dialog.append(wrapper);
-            this.parentElement.append(button, dialog);
+            document.querySelector(".toolbar").append(button, dialog);
         }
 
         this.canvas = document.createElement("canvas");
@@ -772,6 +791,7 @@ class ShowActivation extends HTMLElement {
 
     disconnectedCallback() {
         this.map.delete();
+        if (this._removeSettings) this._removeSettings();
     }
 }
 
@@ -779,3 +799,25 @@ customElements.define("infer-image", ImageInput);
 customElements.define("infer-bbox", BBoxInput);
 customElements.define("show-detections", ShowDetections);
 customElements.define("show-activation", ShowActivation);
+
+window.addEventListener("load", () => {
+    const style = document.createElement("style");
+    style.innerText = `
+        .toolbar {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            display: flex;
+            gap: 0.5rem;
+            flex-direction: row-reverse;
+
+            > button, > input {
+                width: 2.5rem;
+                height: 2.5rem;
+                padding: 0.25rem;
+                pointer-events: auto;
+            }
+        }
+    `;
+    document.body.append(style);
+});
