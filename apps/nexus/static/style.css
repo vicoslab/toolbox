@@ -255,10 +255,7 @@ fieldset {
             fieldset {
                 padding: 2rem;
                 position: relative;
-                display: flex;
-                flex-direction: column;
                 margin: 0 10%;
-                align-items: center;
             }
         }
         &::after {

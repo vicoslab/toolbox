@@ -82,22 +82,24 @@ def infer(model):
         <html>
             <body>
                 <form action="">
-                    <fieldset>
-                        {forms[model]}
-                        <div class="toolbar"></div>
-                    </fieldset>
+                    {forms[model]}
+                    <div class="toolbar"></div>
                 </form>
             </body>
             <script src="/static/opencv.js"></script>
             <script src="/static/model.js"></script>
             <script>window.endpoint = "{model}"</script>
             <style>
-                fieldset {{
+                html, body {{
+                    height: 100%;
+                    margin: 0;
+                }}
+                form {{
                     padding: 2rem;
                     position: relative;
-                    display: flex;
-                    flex-direction: column;
-                    align-items: center;
+                    box-sizing: border-box;
+                    height: 100%;
+                    width: 100%;
                 }}
             </style>
         </html>

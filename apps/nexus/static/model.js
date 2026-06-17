@@ -26,6 +26,9 @@ class ImageInput extends HTMLElement {
         const shadow = this.attachShadow({ mode: "open" });
 
         const label = document.createElement("span");
+        label.style.display = "grid";
+        label.style.height = "100%";
+        label.style.placeItems = "center";
         label.innerText = this.getAttribute("placeholder") || "Drag images here or click to open file selection menu";
 
         const input = document.createElement("input");
