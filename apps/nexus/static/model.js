@@ -1,14 +1,13 @@
 const inferenceResults = document.getElementById("results");
 
-async function makeRequest(form, action) {
+async function makeRequest(form, action, dispatch = true) {
     const formData = new FormData(form);
     try {
         const response = await fetch(window.endpoint, {
             method: "POST",
             body: formData,
         });
-        form.dispatchEvent(new Event("infer"));
-        await response.json().then(response => inferenceResults.replaceChildren(...[action(formData, response)].flat()));
+        if (dispatch) form.dispatchEvent(new Event("infer"));
     } catch (e) {
         console.error(e);
     }
