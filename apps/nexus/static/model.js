@@ -318,7 +318,7 @@ class ShowDetections extends HTMLElement {
         const reference = document.createElement("img");
         reference.src = URL.createObjectURL(this.reference);
         reference.classList.add("reference");
-        const colors = Array.from(this.masks, () => Math.random() * 360);
+        const colors = Array.from(this.masks, (_, i) => (25 * i) % 360);
         const tagStyle = i => `--bg-accent-default: hsl(${colors[i]} 100% 50% / 0.3); --bg-accent-hover: hsl(${colors[i]} 100% 50% / 0.6); --bg-accent-active: hsl(${colors[i]} 100% 80%);`;
         const tagStyleHidden = i => `--bg-accent-default: hsl(${colors[i]} 100% 0% / 0.3); --bg-accent-hover: hsl(${colors[i]} 100% 0% / 0.4); --bg-accent-active: hsl(${colors[i]} 100% 0% / 0.5);`;
 
