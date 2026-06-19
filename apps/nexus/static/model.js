@@ -185,6 +185,7 @@ class BBoxInput extends HTMLElement {
             box.style.top = Math.min(y, this.startY) + "px";
         }
         const handleStart = ({ clientX, clientY }) => {
+            if (!multiple) reset();
             box = document.createElement("div");
             box.classList.add("box");
             area.append(box);
