@@ -303,6 +303,7 @@ class ShowDetections extends HTMLElement {
         if (!this.boxes && !this.masks) {
             throw new Error("Cannot create ShowDetections without bounding boxes or masks");
         }
+        const showSettings = !!this.settings;
 
         this._key = `toolbox-ui-${this.group}`;
         if (!localStorage.getItem(this._key)) {
@@ -323,7 +324,7 @@ class ShowDetections extends HTMLElement {
         const tagStyleHidden = i => `--bg-accent-default: hsl(${colors[i]} 100% 0% / 0.3); --bg-accent-hover: hsl(${colors[i]} 100% 0% / 0.4); --bg-accent-active: hsl(${colors[i]} 100% 0% / 0.5);`;
 
         let settingsDialog = document.getElementById(this._key);
-        if (!settingsDialog) {
+        if (showSettings && !settingsDialog) {
             const { button, dialog } = settings(this._key);
             settingsDialog = dialog;
             this._removeSettings = () => { button.remove(); dialog.remove(); };
@@ -469,16 +470,18 @@ class ShowDetections extends HTMLElement {
                 if (boxes) tag.style = boxes[i].classList.toggle("hidden") ? tagStyleHidden(i) : tagStyle(i);
             });
         });
-        settingsDialog.addEventListener("settingsUpdate", ({ detail: { hideBoxes, hideMasks, threshold } }) => {
-            images.classList.toggle("hideMasks", hideMasks);
-            images.classList.toggle("hideBoxes", hideBoxes);
-            this.scores?.forEach((s, i) => {
-                const hidden = s < threshold;
-                labels[i].style = hidden ? "display: none;" : tagStyle(i);
-                if (boxes) boxes[i].classList.toggle("hidden", hidden);
-                if (masks) masks[i].classList.toggle("hidden", hidden);
+        if (showSettings) {
+            settingsDialog.addEventListener("settingsUpdate", ({ detail: { hideBoxes, hideMasks, threshold } }) => {
+                images.classList.toggle("hideMasks", hideMasks);
+                images.classList.toggle("hideBoxes", hideBoxes);
+                this.scores?.forEach((s, i) => {
+                    const hidden = s < threshold;
+                    labels[i].style = hidden ? "display: none;" : tagStyle(i);
+                    if (boxes) boxes[i].classList.toggle("hidden", hidden);
+                    if (masks) masks[i].classList.toggle("hidden", hidden);
+                });
             });
-        });
+        }
 
         const style = document.createElement("style");
         style.textContent = `
