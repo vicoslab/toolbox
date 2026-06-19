@@ -8,6 +8,12 @@ async function makeRequest(form, action, dispatch = true) {
             body: formData,
         });
         if (dispatch) form.dispatchEvent(new Event("infer"));
+        await response.json().then(response => {
+            const elems = action(formData, response);
+            if (elems !== null) {
+                inferenceResults.replaceChildren(...[elems].flat());
+            }
+        });
     } catch (e) {
         console.error(e);
     }
