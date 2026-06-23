@@ -208,10 +208,6 @@ class BBoxInput extends HTMLElement {
                 Math.abs(y - this.startY) / height
             ]);
             this.internals_.setFormValue(JSON.stringify(this.boxes));
-
-            if (!multiple && typeof this.onInference === "function") {
-                makeRequest(form, this.onInference);
-            }
         }
         const handleMove = ({ clientX, clientY }) => {
             if (!this.dragging) return;
@@ -254,26 +250,189 @@ class BBoxInput extends HTMLElement {
                 boxSizing: border-box;
             }
         `;
+        const clear = document.createElement("input");
+        clear.type = "button";
+        clear.value = "Clear";
+        clear.addEventListener("click", reset);
+        buttons.append(clear);
 
-        shadow.append(area, slot, style);
-
-        if (multiple) {
-            const clear = document.createElement("input");
-            clear.type = "button";
-            clear.value = "Clear";
-            clear.addEventListener("click", reset);
-            buttons.append(clear);
-
-            if (typeof this.onInference === "function") {
-                const submit = document.createElement("input");
-                submit.type = "button";
-                submit.value = "Submit";
-                submit.addEventListener("click", _ => makeRequest(form, this.onInference));
-                buttons.append(submit);
-            }
-
-            shadow.append(buttons);
+        if (typeof this.onInference === "function") {
+            const submit = document.createElement("input");
+            submit.type = "button";
+            submit.value = "Submit";
+            submit.addEventListener("click", _ => makeRequest(form, this.onInference));
+            buttons.append(submit);
         }
+
+        shadow.append(area, slot, style, buttons);
+    }
+}
+
+class VideoInput extends HTMLElement {
+    static formAssociated = true;
+
+    constructor() {
+        super();
+        this.internals_ = this.attachInternals();
+    }
+
+    connectedCallback() {
+        const shadow = this.attachShadow({ mode: "open" });
+        const form = this.internals_.form || (() => { throw new Error("Inference input must be part of a form") })();
+        const name = this.getAttribute("name") || (() => { throw new Error("Inference input must have a name") })();
+
+        const label = document.createElement("span");
+        label.innerText = this.getAttribute("placeholder") || "Drag images here or click to open file selection menu";
+
+        const input = document.createElement("input");
+        input.setAttribute("type", "file");
+        const close = document.createElement("button");
+        close.style.display = "none";
+        close.id = "close";
+        close.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 50 50" stroke-linecap="round" fill="none" stroke-width="4px" stroke="currentColor"><path d="M 15 35 L 35 15 M 15 15 L 35 35"/></svg>`;
+
+        const fileOption = document.createElement("div");
+        fileOption.className = "fileOption";
+        fileOption.append(label, input);
+
+        const cameraOption = document.createElement("div");
+        cameraOption.className = "cameraOption";
+        cameraOption.innerText = "Use camera";
+
+        const inputOptions = document.createElement("div");
+        inputOptions.append(fileOption, cameraOption);
+        inputOptions.className = "inputOptions";
+
+        const video = document.createElement("video");
+        this.video = video;
+        video.style.display = "none";
+        video.controls = true;
+
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext('2d');
+
+        const slot = document.createElement("slot");
+        slot.style.display = "none";
+
+        const wrapper = document.createElement("div");
+        wrapper.style.position = "relative";
+        wrapper.append(canvas, video, slot);
+
+        const style = document.createElement("style");
+        style.innerText = `
+            .fileOption {
+                position: relative;
+                display: grid;
+                place-items: center;
+                padding 0.5rem;
+                
+                input {
+                    position: absolute;
+                    inset: 0;
+                    opacity: 0;
+                }
+            }
+            .fileOption, .cameraOption {
+                border: 1px solid black;
+                width: 15rem;
+                padding: 1rem;
+                box-sizing: border-box;
+                height: 100%;
+            }
+            .inputOptions {
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                gap: 1rem;
+            }
+            canvas {
+                position: absolute;
+                inset: 0;
+                z-index: -1;
+            }
+            video {
+                width: 100%;
+            }
+        `;
+        close.addEventListener("click", e => {
+            e.preventDefault();
+            video.pause();
+            video.src = "";
+            video.style.display = "none";
+            console.log("closed");
+            this.internals_.form.reset();
+            inputOptions.style.display = "";
+            slot.style.display = "none";
+            close.style.display = "none";
+            inferenceResults.replaceChildren();
+        });
+        document.querySelector(".toolbar").append(close);
+
+        // this should attempt to request and display images as fast as possible, without making excessive requests or lagging behind
+        this.play = async (handler) => {
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            let start = video.currentTime;
+            await video.play();
+            video.style.display = "none";
+            let dispatch = true;
+            while (!(video.ended || video.paused)) {
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                await new Promise(resolve => {
+                    canvas.toBlob(blob => {
+                        const data = new FormData();
+                        data.append(name, blob);
+                        this.internals_.setFormValue(data);
+                        resolve();
+                    }, 'image/webp');
+                });
+                await makeRequest(form, handler, dispatch = dispatch);
+                dispatch = false;
+            }
+            return { start, end: video.currentTime, src: video.src };
+        };
+
+        shadow.append(inputOptions, wrapper, style);
+
+        input.addEventListener("change", async () => {
+            const file = input.files.item(0);
+            if (file === null) {
+                return;
+            }
+            video.src = URL.createObjectURL(file);
+
+            slot.style.display = "";
+            close.style.display = "";
+            if (typeof this.onInference === "function") {
+                this.play(this.onInference);
+            } else {
+                inputOptions.style.display = "none";
+                const data = new FormData();
+                data.append(name, file);
+                this.internals_.setFormValue(data);
+                video.style.display = "";
+            }
+        });
+
+        cameraOption.addEventListener("click", async () => {
+            console.log("click");
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+            slot.style.display = "";
+            close.style.display = "";
+            inputOptions.style.display = "none";
+            video.srcObject = stream;
+        });
+
+        const setTimestamp = () => {
+            const data = new FormData();
+            for (const file of input.files) {
+                data.append(name, file, file.name);
+            }
+            data.set(`${name}-timestamp`, video.currentTime);
+            this.internals_.setFormValue(data);
+        };
+        video.addEventListener("seeked", setTimestamp);
+        video.addEventListener("pause", setTimestamp);
     }
 }
 
@@ -303,6 +462,7 @@ class ShowDetections extends HTMLElement {
     }
 
     connectedCallback() {
+        console.log("connected callback");
         if (!this.reference) {
             throw new Error("Cannot create ShowDetections without reference");
         }
@@ -469,6 +629,11 @@ class ShowDetections extends HTMLElement {
         labelsWrapper.style.pointerEvents = "auto";
         wrapper.append(images, labelsWrapper);
 
+        this.update = (new_reference, new_masks) => {
+            // todo: retire old object url
+            reference.src = URL.createObjectURL(new_reference);
+            new_masks.forEach((m, i) => masks[i].querySelector(".mask").src = `data: image / webp; base64, ${m}`);
+        };
 
         labels.map((tag, i) => {
             tag.addEventListener("click", () => {
@@ -809,6 +974,7 @@ class ShowActivation extends HTMLElement {
 
 customElements.define("infer-image", ImageInput);
 customElements.define("infer-bbox", BBoxInput);
+customElements.define("infer-video", VideoInput);
 customElements.define("show-detections", ShowDetections);
 customElements.define("show-activation", ShowActivation);
 
