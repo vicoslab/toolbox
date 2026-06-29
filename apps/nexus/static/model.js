@@ -483,7 +483,7 @@ class ShowDetections extends HTMLElement {
         const images = document.createElement("div");
         images.classList.add("images");
         const reference = document.createElement("img");
-        reference.src = URL.createObjectURL(this.reference);
+        reference.src = this.reference;
         reference.classList.add("reference");
         const colors = Array.from(this.masks, (_, i) => (25 * i) % 360);
         const tagStyle = i => `--bg-accent-default: hsl(${colors[i]} 100% 50% / 0.3); --bg-accent-hover: hsl(${colors[i]} 100% 50% / 0.6); --bg-accent-active: hsl(${colors[i]} 100% 80%);`;
@@ -586,7 +586,7 @@ class ShowDetections extends HTMLElement {
                     maskWrapper.classList.toggle("hidden", !!this.scores && this.scores[i] < this.defaultThreshold);
 
                     const img = document.createElement("img");
-                    img.src = `data: image / webp; base64, ${mask}`;
+                    img.src = mask;
                     img.classList.add("mask");
                     maskWrapper.append(img);
                     return maskWrapper;
@@ -629,10 +629,11 @@ class ShowDetections extends HTMLElement {
         labelsWrapper.style.pointerEvents = "auto";
         wrapper.append(images, labelsWrapper);
 
-        this.update = (new_reference, new_masks) => {
-            // todo: retire old object url
-            reference.src = URL.createObjectURL(new_reference);
-            new_masks.forEach((m, i) => masks[i].querySelector(".mask").src = `data: image / webp; base64, ${m}`);
+        this.update = ({ reference: new_reference, masks: new_masks, boxes: new_boxes, scores }) => {
+            this.scores = scores;
+            reference.src = new_reference;
+            new_masks?.forEach((m, i) => masks[i].querySelector(".mask").src = m);
+            new_boxes?.forEach(([x1, y1, x2, y2], i) => boxes[i].style = `position: absolute; top: ${y1 / height * 100}%; left: ${x1 / width * 100}%; width: ${(x2 - x1) / width * 100}%; height: ${(y2 - y1) / height * 100}%; border: 1px solid red;`);
         };
 
         labels.map((tag, i) => {
