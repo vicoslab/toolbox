@@ -618,7 +618,12 @@ class ShowDetections extends HTMLElement {
             });
             reference.addEventListener("load", _ => {
                 const { naturalWidth: width, naturalHeight: height } = reference;
-                this.boxes.forEach(([x1, y1, x2, y2], i) => boxes[i].style = `position: absolute; top: ${y1 / height * 100}%; left: ${x1 / width * 100}%; width: ${(x2 - x1) / width * 100}%; height: ${(y2 - y1) / height * 100}%; border: 1px solid red;`);
+                this.boxes.forEach(([x1, y1, x2, y2], i) => {
+                    const pos = `position: absolute; top: ${y1 / height * 100}%; left: ${x1 / width * 100}%; width: ${(x2 - x1) / width * 100}%; height: ${(y2 - y1) / height * 100}%;`;
+                    boxes[i].style = pos + ` border: 1px solid red;`;
+                    // if boxes are available, use them for mask placement
+                    if (masks) masks[i].style = `--mask-color: hsl(${colors[i]} 100% 50%); ` + pos;
+                });
             });
             images.append(...boxes);
         }
@@ -633,7 +638,12 @@ class ShowDetections extends HTMLElement {
             this.scores = scores;
             reference.src = new_reference;
             new_masks?.forEach((m, i) => masks[i].querySelector(".mask").src = m);
-            new_boxes?.forEach(([x1, y1, x2, y2], i) => boxes[i].style = `position: absolute; top: ${y1 / height * 100}%; left: ${x1 / width * 100}%; width: ${(x2 - x1) / width * 100}%; height: ${(y2 - y1) / height * 100}%; border: 1px solid red;`);
+            new_boxes?.forEach(([x1, y1, x2, y2], i) => {
+                const { naturalWidth: width, naturalHeight: height } = reference;
+                const pos = `position: absolute; top: ${y1 / height * 100}%; left: ${x1 / width * 100}%; width: ${(x2 - x1) / width * 100}%; height: ${(y2 - y1) / height * 100}%;`;
+                boxes[i].style = pos + ` border: 1px solid red;`;
+                if (masks) masks[i].style = `--mask-color: hsl(${colors[i]} 100% 50%); ` + pos;
+            });
         };
 
         labels.map((tag, i) => {
