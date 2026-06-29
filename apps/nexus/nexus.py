@@ -219,9 +219,10 @@ def model_infer(model):
     if model not in model_manifest:
         return f"Model '{model}' does not exist", 404
 
+    data = request.json if request.is_json else request.form.to_dict()
     params = propagate()
     params["model"] = model
-    params["pid"] = create_inference_worker(model, request.form.items())
+    params["pid"] = create_inference_worker(model, data.items())
 
     if params.get("tour") == TourStep.MONITORING.value:
         params["tour"] = TourStep.INFERENCE.value
@@ -232,7 +233,8 @@ def model_train(model):
     if model not in model_manifest:
         return f"Model '{model}' does not exist", 404
 
-    flags = build_model_options(model_manifest[model]["options"], request.form.items())
+    data = request.json if request.is_json else request.form.to_dict()
+    flags = build_model_options(model_manifest[model]["options"], data.items())
     pid = start_task(
         ["uv", "run", "train.py"] + flags,
         MODEL_DIR / model,
@@ -268,10 +270,7 @@ def active_models():
 
 @app.route("/dataset", methods=["POST"])
 def dataset():
-    if request.is_json:
-        data = request.json
-    else:
-        data = request.form.to_dict()
+    data = request.json if request.is_json else request.form.to_dict()
 
     if type(data) == dict:
         if "task" in data:
@@ -314,11 +313,7 @@ def dataset():
 @app.route("/export", methods=["GET", "POST"])
 def export():
     if request.method == "POST":
-        if request.is_json:
-            data = request.json
-        else:
-            data = request.form.to_dict()
-        
+        data = request.json if request.is_json else request.form.to_dict()
         env = {}
 
         if (task := data.get("task")) or (task := dataset_tasks.get(request.args.get("model"))):
