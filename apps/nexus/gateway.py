@@ -65,7 +65,7 @@ def infer(model):
 
     # forward requests to actual backend
     if request.method == "POST":        
-        data = request.form.to_dict()
+        data = request.json if request.is_json else request.form.to_dict()
         files = [
             (field_name, (file.filename, file.stream, file.content_type))
             for field_name in request.files
@@ -75,7 +75,7 @@ def infer(model):
         port = workers[model]
         response = requests.post(f"http://localhost:{port}/infer", data=data, files=files)
 
-        return (response.text, response.status_code, {'Content-Type': response.headers.get('Content-Type', 'text/plain')})
+        return (response.content, response.status_code, {'Content-Type': response.headers.get('Content-Type', 'text/plain')})
 
     return f"""
         <!DOCTYPE html>
