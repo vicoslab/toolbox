@@ -246,7 +246,7 @@ class BBoxInput extends HTMLElement {
             }
             .box {
                 position: absolute;
-                border: 1px solid orange;
+                border: 2px dashed orange;
                 boxSizing: border-box;
             }
         `;
@@ -610,23 +610,27 @@ class ShowDetections extends HTMLElement {
                     return tag;
                 });
             }
-            boxes = this.boxes.map((_, i) => {
+            boxes = this.boxes.map(([x, y, w, h], i) => {
                 const el = document.createElement("div");
                 el.className = "box";
                 el.classList.toggle("hidden", !!this.scores && this.scores[i] < this.defaultThreshold);
+                const pos = `position: absolute; top: ${y * 100}%; left: ${x * 100}%; width: ${w * 100}%; height: ${h * 100}%;`;
+                el.style = pos + ` border: 1px solid red;`;
+                // if masks are used, use boxes for their placement
+                if (masks) masks[i].style = `--mask-color: hsl(${colors[i]} 100% 50%); ` + pos;
                 return el;
-            });
-            reference.addEventListener("load", _ => {
-                const { naturalWidth: width, naturalHeight: height } = reference;
-                this.boxes.forEach(([x1, y1, x2, y2], i) => {
-                    const pos = `position: absolute; top: ${y1 / height * 100}%; left: ${x1 / width * 100}%; width: ${(x2 - x1) / width * 100}%; height: ${(y2 - y1) / height * 100}%;`;
-                    boxes[i].style = pos + ` border: 1px solid red;`;
-                    // if boxes are available, use them for mask placement
-                    if (masks) masks[i].style = `--mask-color: hsl(${colors[i]} 100% 50%); ` + pos;
-                });
             });
             images.append(...boxes);
         }
+
+        if (this.exemplars) {
+            images.append(...this.exemplars.map(([x, y, w, h]) => {
+                const el = document.createElement("div");
+                el.style = `position: absolute; top: ${y * 100}%; left: ${x * 100}%; width: ${w * 100}%; height: ${h * 100}%; border: 2px dashed orange`;
+                return el;
+            }));
+        }
+
 
         const labelsWrapper = document.createElement("div");
         labelsWrapper.classList.add("labels");
@@ -638,9 +642,8 @@ class ShowDetections extends HTMLElement {
             this.scores = scores;
             reference.src = new_reference;
             new_masks?.forEach((m, i) => masks[i].querySelector(".mask").src = m);
-            new_boxes?.forEach(([x1, y1, x2, y2], i) => {
-                const { naturalWidth: width, naturalHeight: height } = reference;
-                const pos = `position: absolute; top: ${y1 / height * 100}%; left: ${x1 / width * 100}%; width: ${(x2 - x1) / width * 100}%; height: ${(y2 - y1) / height * 100}%;`;
+            new_boxes?.forEach(([x, y, w, h], i) => {
+                const pos = `position: absolute; top: ${y * 100}%; left: ${x * 100}%; width: ${w * 100}%; height: ${h * 100}%;`;
                 boxes[i].style = pos + ` border: 1px solid red;`;
                 if (masks) masks[i].style = `--mask-color: hsl(${colors[i]} 100% 50%); ` + pos;
             });
