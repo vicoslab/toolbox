@@ -473,7 +473,7 @@ class ShowDetections extends HTMLElement {
 
         this._key = `toolbox-ui-${this.group}`;
         if (!localStorage.getItem(this._key)) {
-            localStorage.setItem(this._key, JSON.stringify({ hideBoxes: false, hideMasks: false, threshold: this.defaultThreshold }));
+            localStorage.setItem(this._key, JSON.stringify({ hideBoxes: false, hideMasks: false, hideExemplars: false, threshold: this.defaultThreshold }));
         }
 
         const shadow = this.attachShadow({ mode: "open" });
@@ -505,14 +505,20 @@ class ShowDetections extends HTMLElement {
             const toggleBoxes = document.createElement("input");
             toggleBoxes.type = "checkbox";
             toggleBoxes.id = "toggle-boxes";
-
             const labelBoxes = document.createElement("label");
             labelBoxes.textContent = "Hide boxes";
             labelBoxes.htmlFor = "toggle-boxes";
 
+            const toggleExemplars = document.createElement("input");
+            toggleExemplars.type = "checkbox";
+            toggleExemplars.id = "toggle-exemplars";
+            const labelExemplars = document.createElement("label");
+            labelExemplars.textContent = "Hide exemplars";
+            labelExemplars.htmlFor = "toggle-exemplars";
+
             const toggleWrapper = document.createElement("div");
             toggleWrapper.style = "display: flex; justify-content: center; gap: 0.5rem; margin-bottom: 0.5rem;";
-            toggleWrapper.append(toggleMasks, labelMasks, toggleBoxes, labelBoxes);
+            toggleWrapper.append(toggleMasks, labelMasks, toggleBoxes, labelBoxes, toggleExemplars, labelExemplars);
 
             const slider = document.createElement("input");
             slider.name = "threshold";
@@ -527,13 +533,14 @@ class ShowDetections extends HTMLElement {
             sliderLabel.htmlFor = "threshold";
             sliderLabel.textContent = `Threshold: ${slider.value}`;
 
-            const handler = () => dialog.dispatchEvent(new CustomEvent("settingsUpdate", { detail: { hideBoxes: toggleBoxes.checked, hideMasks: toggleMasks.checked, threshold: slider.value } }));
+            const handler = () => dialog.dispatchEvent(new CustomEvent("settingsUpdate", { detail: { hideBoxes: toggleBoxes.checked, hideMasks: toggleMasks.checked, hideExemplars: toggleExemplars.checked, threshold: slider.value } }));
             slider.addEventListener("input", () => {
                 sliderLabel.textContent = `Threshold: ${slider.value}`;
                 handler();
             });
             toggleBoxes.addEventListener("change", handler);
             toggleMasks.addEventListener("change", handler);
+            toggleExemplars.addEventListener("change", handler);
 
             button.addEventListener("click", () => {
                 const saved = JSON.parse(localStorage.getItem(this._key));
@@ -555,7 +562,7 @@ class ShowDetections extends HTMLElement {
             submit.innerText = "Ok";
             submit.addEventListener("click", e => {
                 e.preventDefault();
-                const newval = { hideBoxes: toggleBoxes.checked, hideMasks: toggleMasks.checked, threshold: slider.value };
+                const newval = { hideBoxes: toggleBoxes.checked, hideMasks: toggleMasks.checked, hideExemplars: toggleExemplars.checked, threshold: slider.value };
                 localStorage.setItem(this._key, JSON.stringify(newval));
                 dialog.dispatchEvent(new CustomEvent("settingsUpdate", { detail: newval }));
                 dialog.close();
@@ -626,6 +633,7 @@ class ShowDetections extends HTMLElement {
         if (this.exemplars) {
             images.append(...this.exemplars.map(([x, y, w, h]) => {
                 const el = document.createElement("div");
+                el.className = "exemplar";
                 el.style = `position: absolute; top: ${y * 100}%; left: ${x * 100}%; width: ${w * 100}%; height: ${h * 100}%; border: 2px dashed orange`;
                 return el;
             }));
@@ -656,9 +664,10 @@ class ShowDetections extends HTMLElement {
             });
         });
         if (showSettings) {
-            settingsDialog.addEventListener("settingsUpdate", ({ detail: { hideBoxes, hideMasks, threshold } }) => {
+            settingsDialog.addEventListener("settingsUpdate", ({ detail: { hideBoxes, hideMasks, hideExemplars, threshold } }) => {
                 images.classList.toggle("hideMasks", hideMasks);
                 images.classList.toggle("hideBoxes", hideBoxes);
+                images.classList.toggle("hideExemplars", hideExemplars);
                 this.scores?.forEach((s, i) => {
                     const hidden = s < threshold;
                     labels[i].style = hidden ? "display: none;" : tagStyle(i);
@@ -711,7 +720,7 @@ class ShowDetections extends HTMLElement {
                 gap: 1px;
             }
 
-            .hideMasks .maskWrapper, .hideBoxes .box {
+            .hideMasks .maskWrapper, .hideBoxes .box, .hideExemplars .exemplar {
                 opacity: 0;
             }
             .maskWrapper {
