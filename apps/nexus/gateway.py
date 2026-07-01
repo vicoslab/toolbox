@@ -83,7 +83,10 @@ def infer(model):
             <body>
                 <form action="">
                     {forms[model]}
-                    <div class="toolbar"></div>
+                    <div class="toolbar">
+                        <div class="toolbar-left"></div>
+                        <div class="toolbar-right"></div>
+                    </div>
                 </form>
             </body>
             <script src="/static/opencv.js"></script>

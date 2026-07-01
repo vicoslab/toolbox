@@ -19,6 +19,31 @@ async function makeRequest(form, action, dispatch = true) {
     }
 }
 
+class SoftReset extends HTMLElement {
+    static formAssociated = true;
+
+    constructor() {
+        super();
+        this.internals_ = this.attachInternals();
+    }
+
+    connectedCallback() {
+        const form = this.internals_.form || (() => { throw new Error("Soft reset must be part of a form") })();
+        const back = document.createElement("button");
+        back.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" fill="none" stroke-width="2px" stroke="currentColor"><path d="M 19 12 H 5 L 10 7 L 5 12 L 10 17"/></svg>`;
+        back.style.display = "none";
+        back.addEventListener("click", e => {
+            e.preventDefault();
+            form.dispatchEvent(new Event("softreset"));
+            back.style.display = "none";
+            inferenceResults.replaceChildren();
+        });
+        form.addEventListener("infer", () => back.style.display = "");
+        form.addEventListener("reset", () => back.style.display = "none");
+        document.querySelector(".toolbar-left").append(back);
+    }
+}
+
 class ImageInput extends HTMLElement {
     static formAssociated = true;
 
@@ -58,13 +83,9 @@ class ImageInput extends HTMLElement {
             e.preventDefault();
             this.internals_.form.reset();
             image.src = "";
-            input.style.display = "";
-            label.style.display = "";
-            wrapper.style.display = "none";
-            close.style.display = "none";
             inferenceResults.replaceChildren();
         });
-        document.querySelector(".toolbar").append(close);
+        document.querySelector(".toolbar-right").append(close);
 
         const overlay = document.createElement("div");
         overlay.classList.add("overlay");
@@ -72,7 +93,15 @@ class ImageInput extends HTMLElement {
         wrapper.append(image, overlay);
 
         const form = this.internals_.form || (() => { throw new Error("Inference input must be part of a form") })();
-        form.addEventListener("infer", () => image.src = ""); // custom event
+        form.addEventListener("infer", () => image.style.display = "none"); // custom event
+        form.addEventListener("softreset", () => image.style.display = ""); // custom event
+        form.addEventListener("reset", () => {
+            image.style.display = "";
+            input.style.display = "";
+            label.style.display = "";
+            wrapper.style.display = "none";
+            close.style.display = "none";
+        });
         const name = this.getAttribute("name") || (() => { throw new Error("Inference input must have a name") })();
         input.addEventListener("change", async (e) => {
 
@@ -162,15 +191,22 @@ class BBoxInput extends HTMLElement {
         buttons.className = "buttons";
 
         const form = this.internals_.form || (() => { throw new Error("Inference input must be part of a form") })();
-        const reset = () => {
-            this.boxes = [];
-            this.internals_.setFormValue("[]");
-            shadow.querySelectorAll(".box").forEach(x => x.remove());
+        const softreset = () => {
             area.style.display = "";
             slot.style.display = "none";
             buttons.style.display = "";
         };
-        form.addEventListener("reset", reset);
+        const clearBoxes = () => {
+            this.boxes = [];
+            this.internals_.setFormValue("[]");
+            shadow.querySelectorAll(".box").forEach(x => x.remove());
+            softreset();
+        };
+        form.addEventListener("reset", () => {
+            clearBoxes();
+            softreset();
+        });
+        form.addEventListener("softreset", softreset);
         form.addEventListener("infer", () => {
             area.style.display = "none";
             buttons.style.display = "none";
@@ -185,7 +221,7 @@ class BBoxInput extends HTMLElement {
             box.style.top = Math.min(y, this.startY) + "px";
         }
         const handleStart = ({ clientX, clientY }) => {
-            if (!multiple) reset();
+            if (!multiple) clearBoxes();
             box = document.createElement("div");
             box.classList.add("box");
             area.append(box);
@@ -250,10 +286,11 @@ class BBoxInput extends HTMLElement {
                 boxSizing: border-box;
             }
         `;
+
         const clear = document.createElement("input");
         clear.type = "button";
         clear.value = "Clear";
-        clear.addEventListener("click", reset);
+        clear.addEventListener("click", clearBoxes);
         buttons.append(clear);
 
         if (typeof this.onInference === "function") {
@@ -356,17 +393,10 @@ class VideoInput extends HTMLElement {
         `;
         close.addEventListener("click", e => {
             e.preventDefault();
-            video.pause();
-            video.src = "";
-            video.style.display = "none";
-            console.log("closed");
             this.internals_.form.reset();
-            inputOptions.style.display = "";
-            slot.style.display = "none";
-            close.style.display = "none";
             inferenceResults.replaceChildren();
         });
-        document.querySelector(".toolbar").append(close);
+        document.querySelector(".toolbar-right").append(close);
 
         // this should attempt to request and display images as fast as possible, without making excessive requests or lagging behind
         this.play = async (handler) => {
@@ -413,6 +443,20 @@ class VideoInput extends HTMLElement {
                 video.style.display = "";
             }
         });
+
+        form.addEventListener("softreset", () => {
+            video.pause();
+            video.style.display = "";
+        });
+        form.addEventListener("reset", () => {
+            video.pause();
+            video.style.display = "none";
+            video.src = "";
+            inputOptions.style.display = "";
+            slot.style.display = "none";
+            close.style.display = "none";
+        });
+        form.addEventListener("infer", () => video.style.display = "none");
 
         cameraOption.addEventListener("click", async () => {
             console.log("click");
@@ -580,7 +624,7 @@ class ShowDetections extends HTMLElement {
             settingsWrapper.append(toggleWrapper, sliderLabel, slider, button_wrapper);
             dialog.append(settingsWrapper);
 
-            document.querySelector(".toolbar").append(button, dialog);
+            document.querySelector(".toolbar-right").append(button, dialog);
         }
 
         let labels, masks, boxes;
@@ -977,7 +1021,7 @@ class ShowActivation extends HTMLElement {
 
             wrapper.append(low_label, low, high_label, high, modes_wrapper, button_wrapper);
             dialog.append(wrapper);
-            document.querySelector(".toolbar").append(button, dialog);
+            document.querySelector(".toolbar-right").append(button, dialog);
         }
 
         this.canvas = document.createElement("canvas");
@@ -995,6 +1039,7 @@ class ShowActivation extends HTMLElement {
     }
 }
 
+customElements.define("soft-reset", SoftReset);
 customElements.define("infer-image", ImageInput);
 customElements.define("infer-bbox", BBoxInput);
 customElements.define("infer-video", VideoInput);
@@ -1006,17 +1051,25 @@ window.addEventListener("load", () => {
     style.innerText = `
         .toolbar {
             position: absolute;
-            top: 0.5rem;
-            right: 0.5rem;
+            inset: 0.5rem;
+            bottom: auto;
             display: flex;
-            gap: 0.5rem;
-            flex-direction: row-reverse;
+            justify-content: space-between;
 
-            > button, > input {
-                width: 2.5rem;
-                height: 2.5rem;
-                padding: 0.25rem;
-                pointer-events: auto;
+            .toolbar-left, .toolbar-right {
+                display: flex;
+                gap: 0.5rem;
+
+                > button, > input {
+                    width: 2.5rem;
+                    height: 2.5rem;
+                    padding: 0.25rem;
+                    pointer-events: auto;
+                }
+            }
+
+            .toolbar-right {
+                flex-direction: row-reverse;
             }
         }
     `;
