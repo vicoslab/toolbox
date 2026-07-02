@@ -328,16 +328,24 @@ class VideoInput extends HTMLElement {
         close.id = "close";
         close.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 50 50" stroke-linecap="round" fill="none" stroke-width="4px" stroke="currentColor"><path d="M 15 35 L 35 15 M 15 15 L 35 35"/></svg>`;
 
+        const record = document.createElement("button");
+        record.style.display = "none";
+        record.innerText = "🔴";
+
         const fileOption = document.createElement("div");
         fileOption.className = "fileOption";
         fileOption.append(label, input);
 
         const cameraOption = document.createElement("div");
         cameraOption.className = "cameraOption";
-        cameraOption.innerText = "Use camera";
+        cameraOption.innerText = "Camera capture";
+
+        const displayOption = document.createElement("div");
+        displayOption.className = "displayOption";
+        displayOption.innerText = "Display capture";
 
         const inputOptions = document.createElement("div");
-        inputOptions.append(fileOption, cameraOption);
+        inputOptions.append(fileOption, cameraOption, displayOption);
         inputOptions.className = "inputOptions";
 
         const video = document.createElement("video");
@@ -369,7 +377,7 @@ class VideoInput extends HTMLElement {
                     opacity: 0;
                 }
             }
-            .fileOption, .cameraOption {
+            .fileOption, .cameraOption, .displayOption {
                 border: 1px solid black;
                 width: 15rem;
                 padding: 1rem;
@@ -394,32 +402,71 @@ class VideoInput extends HTMLElement {
         close.addEventListener("click", e => {
             e.preventDefault();
             this.internals_.form.reset();
+            record.style.display = "none";
             inferenceResults.replaceChildren();
         });
-        document.querySelector(".toolbar-right").append(close);
+        let recorder = null;
+        let lock = null;
+        record.addEventListener("click", e => {
+            e.preventDefault();
+            if (recorder === null) {
+                if (video.srcObject instanceof MediaStream) {
+                    recorder = new MediaRecorder(video.srcObject, { mimeType: 'video/webm' });
+                    const chunks = [];
+                    recorder.ondataavailable = e => {
+                        if (e.data.size) chunks.push(e.data);
+                    };
+                    recorder.start();
+                    lock = setInterval(() => {
+                        record.style.filter = record.style.filter ? "" : "grayscale(1)";
+                    }, 500);
+                    recorder.onstop = () => {
+                        clearInterval(lock);
+                        video.srcObject = null;
+                        const blob = new Blob(chunks, { type: 'video/webm' });
+                        video.src = URL.createObjectURL(blob);
+                        video.controls = true;
+                        record.style.display = "none";
+                        const data = new FormData();
+                        data.set(name, blob);
+                        this.internals_.setFormValue(data);
+                    };
+                }
+            } else {
+                recorder.stop();
+            }
+        });
+        document.querySelector(".toolbar-right").append(close, record);
 
         // this should attempt to request and display images as fast as possible, without making excessive requests or lagging behind
         this.play = async (handler) => {
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            let start = video.currentTime;
-            await video.play();
-            video.style.display = "none";
-            let dispatch = true;
-            while (!(video.ended || video.paused)) {
-                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                await new Promise(resolve => {
-                    canvas.toBlob(blob => {
-                        const data = new FormData();
-                        data.append(name, blob);
-                        this.internals_.setFormValue(data);
-                        resolve();
-                    }, 'image/webp');
-                });
-                await makeRequest(form, handler, dispatch = dispatch);
-                dispatch = false;
-            }
-            return { start, end: video.currentTime, src: video.src };
+            const old = new FormData(form).get(name);
+            return (async () => {
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                let start = video.currentTime;
+                await video.play();
+                video.style.display = "none";
+                let dispatch = true;
+                while (!(video.ended || video.paused)) {
+                    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                    await new Promise(resolve => {
+                        canvas.toBlob(blob => {
+                            const data = new FormData();
+                            data.set(name, blob);
+                            this.internals_.setFormValue(data);
+                            resolve();
+                        }, 'image/webp');
+                    });
+                    await makeRequest(form, handler, dispatch = dispatch);
+                    dispatch = false;
+                }
+                // if video is a stream and we were stopped due to pausing, continue the stream
+                if (video.srcObject instanceof MediaStream) {
+                    video.play();
+                }
+                return { start, end: video.currentTime, src: video.src };
+            })().finally(() => this.internals_.setFormValue(old));
         };
 
         shadow.append(inputOptions, wrapper, style);
@@ -430,7 +477,7 @@ class VideoInput extends HTMLElement {
                 return;
             }
             video.src = URL.createObjectURL(file);
-
+            video.controls = true;
             slot.style.display = "";
             close.style.display = "";
             if (typeof this.onInference === "function") {
@@ -438,7 +485,7 @@ class VideoInput extends HTMLElement {
             } else {
                 inputOptions.style.display = "none";
                 const data = new FormData();
-                data.append(name, file);
+                data.set(name, file);
                 this.internals_.setFormValue(data);
                 video.style.display = "";
             }
@@ -459,17 +506,36 @@ class VideoInput extends HTMLElement {
         form.addEventListener("infer", () => video.style.display = "none");
 
         cameraOption.addEventListener("click", async () => {
-            console.log("click");
-            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true }).catch(() => {
+                alert("Could not obtain camera device");
+                return Promise.reject("Could not obtain camera device");
+            });
             slot.style.display = "";
             close.style.display = "";
+            record.style.display = "";
             inputOptions.style.display = "none";
             video.srcObject = stream;
+            video.play();
+            video.controls = false;
+            video.style.display = "";
+        });
+
+        displayOption.addEventListener("click", async () => {
+            const stream = await navigator.mediaDevices.getDisplayMedia();
+            slot.style.display = "";
+            close.style.display = "";
+            record.style.display = "";
+            inputOptions.style.display = "none";
+            video.srcObject = stream;
+            video.play();
+            video.controls = false;
+            video.style.display = "";
         });
 
         const setTimestamp = () => {
+            const old = new FormData(form);
             const data = new FormData();
-            for (const file of input.files) {
+            for (const file of old.getAll(name)) {
                 data.append(name, file, file.name);
             }
             data.set(`${name}-timestamp`, video.currentTime);
