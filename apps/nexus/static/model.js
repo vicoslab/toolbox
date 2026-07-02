@@ -319,7 +319,7 @@ class VideoInput extends HTMLElement {
         const name = this.getAttribute("name") || (() => { throw new Error("Inference input must have a name") })();
 
         const label = document.createElement("span");
-        label.innerText = this.getAttribute("placeholder") || "Drag images here or click to open file selection menu";
+        label.innerHTML = this.getAttribute("placeholder") || `Drag images here <div style="text-size: small">- or -</div>Open file selection menu`;
 
         const input = document.createElement("input");
         input.setAttribute("type", "file");
@@ -338,11 +338,11 @@ class VideoInput extends HTMLElement {
 
         const cameraOption = document.createElement("div");
         cameraOption.className = "cameraOption";
-        cameraOption.innerText = "Camera capture";
+        cameraOption.innerHTML = `<svg viewBox="0 0 24 24" height=2.5rem  fill="none" stroke="currentColor" style="display: block; margin: auto;"><path d="M 2 18 V 6 H 16 V 18 Z M 18 11 L 22 7 V 17 L 18 13"></path></svg>Camera capture`;
 
         const displayOption = document.createElement("div");
         displayOption.className = "displayOption";
-        displayOption.innerText = "Display capture";
+        displayOption.innerHTML = `<svg viewBox="0 0 24 24" height=2.5rem fill="none" stroke="currentColor" style="display: block; margin: auto;"><path d="M 2 3 L 22 3 L 22 17 L 2 17 Z M 14 19 L 16 21 L 8 21 L 10 19"></path></svg>Display capture`;
 
         const inputOptions = document.createElement("div");
         inputOptions.append(fileOption, cameraOption, displayOption);
@@ -383,9 +383,12 @@ class VideoInput extends HTMLElement {
                 padding: 1rem;
                 box-sizing: border-box;
                 height: 100%;
+                cursor: pointer;
+                text-align: center;
             }
             .inputOptions {
                 display: flex;
+                flex-wrap: wrap;
                 justify-content: center;
                 align-items: center;
                 gap: 1rem;
