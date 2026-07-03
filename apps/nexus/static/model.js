@@ -72,6 +72,8 @@ class ImageInput extends HTMLElement {
         wrapper.style.position = "relative";
         wrapper.style.display = "none";
         wrapper.style.pointerEvents = "none";
+        wrapper.style.width = "fit-content";
+        wrapper.style.margin = "auto";
 
         const image = document.createElement("img");
         const slot = document.createElement("slot");
@@ -361,6 +363,8 @@ class VideoInput extends HTMLElement {
 
         const wrapper = document.createElement("div");
         wrapper.style.position = "relative";
+        wrapper.style.width = "fit-content";
+        wrapper.style.margin = "auto";
         wrapper.append(canvas, video, slot);
 
         const style = document.createElement("style");
