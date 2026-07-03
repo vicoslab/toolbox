@@ -485,6 +485,7 @@ class VideoInput extends HTMLElement {
                 return;
             }
             video.src = URL.createObjectURL(file);
+            video.srcObject = null;
             video.controls = true;
             slot.style.display = "";
             close.style.display = "";
@@ -513,11 +514,7 @@ class VideoInput extends HTMLElement {
         });
         form.addEventListener("infer", () => video.style.display = "none");
 
-        cameraOption.addEventListener("click", async () => {
-            const stream = await navigator.mediaDevices.getUserMedia({ video: true }).catch(() => {
-                alert("Could not obtain camera device");
-                return Promise.reject("Could not obtain camera device");
-            });
+        const activateStream = stream => {
             slot.style.display = "";
             close.style.display = "";
             record.style.display = "";
@@ -526,19 +523,13 @@ class VideoInput extends HTMLElement {
             video.play();
             video.controls = false;
             video.style.display = "";
-        });
-
-        displayOption.addEventListener("click", async () => {
-            const stream = await navigator.mediaDevices.getDisplayMedia();
-            slot.style.display = "";
-            close.style.display = "";
-            record.style.display = "";
-            inputOptions.style.display = "none";
-            video.srcObject = stream;
-            video.play();
-            video.controls = false;
-            video.style.display = "";
-        });
+            form.dispatchEvent(new Event("input")); // make sure things can listen to form for events
+        };
+        cameraOption.addEventListener("click", () => navigator.mediaDevices.getUserMedia({ video: true }).catch(() => {
+            alert("Could not obtain camera device");
+            return Promise.reject("Could not obtain camera device");
+        }).then(activateStream));
+        displayOption.addEventListener("click", () => navigator.mediaDevices.getDisplayMedia().then(activateStream));
 
         const setTimestamp = () => {
             const old = new FormData(form);
