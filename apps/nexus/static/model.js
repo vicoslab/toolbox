@@ -379,6 +379,7 @@ class VideoInput extends HTMLElement {
                     position: absolute;
                     inset: 0;
                     opacity: 0;
+                    cursor: pointer;
                 }
             }
             .fileOption, .cameraOption, .displayOption {
@@ -1128,6 +1129,7 @@ window.addEventListener("load", () => {
             bottom: auto;
             display: flex;
             justify-content: space-between;
+            pointer-events: none;
 
             .toolbar-left, .toolbar-right {
                 display: flex;
