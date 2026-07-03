@@ -1,5 +1,5 @@
 all:
-	git ls-files | tar Tzc - | docker build -t toolbox -
+	git archive --format tar HEAD | docker build -t toolbox -
 
 %:
-	git ls-files | tar Tzc - | docker build -t toolbox --build-arg MODELS=$@ -
+	git archive --format tar HEAD | docker build -t toolbox --build-arg MODELS=$@ -
