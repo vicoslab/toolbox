@@ -2,30 +2,75 @@ from flask import Flask, render_template, request, redirect, url_for, abort
 import json
 import os
 from pathlib import Path
+import subprocess
 from subprocess import Popen, PIPE, STDOUT
 import re
 from enum import Enum
 from datetime import datetime
+from urllib.parse import urlparse
 
 import mlflow
 mlflow.set_tracking_uri("http://localhost:8081")
 ARTIFACTS = os.getenv("MLFLOW_ARTIFACTS_DESTINATION")
-CACHE = Path(os.getenv("TOOLBOX_CACHE"))
-MODEL_DIR = Path(os.getenv("MODEL_DIR"))
+CACHE = Path(os.environ["TOOLBOX_CACHE"])
+DATA = Path(os.environ["TOOLBOX_DATA"])
+
+DATA.mkdir(exist_ok=True)
+models_file = DATA / "models.json"
+
+def save_models(config):
+    with models_file.open("w") as f:
+        json.dump(config, f)
+try:
+    models_config = json.loads(models_file.read_text())
+    if type(models_config) != dict:
+        print("Invalid models.json, overwriting")
+        raise ValueError("models.json not an object")
+except:
+    models_config = { "added": [], "sources": [] }
+    save_models(models_config)
+
 model_manifest = {}
-for p in sorted(MODEL_DIR.iterdir()):
-    manifest = p / "model.json"
-    model = {}
-    if manifest.exists():
-        manifest = json.loads(manifest.read_text())
-        model["options"] = manifest["properties"]
-        model["title"] = manifest["title"]
-        model["description"] = manifest["description"]
-        with open(p / "ui.html") as f:
-            model["form"] = f.read()
-    
-    if model != {}:
-        model_manifest[p.name] = model
+def refresh_manifest():
+    model_manifest.clear()
+    sources = {}
+    did_change = False
+    for src in models_config["sources"]:
+        repo = CACHE / ".models" / src["owner"] / src["group"]
+        if not repo.exists():
+            subprocess.run(["git", "clone", "--filter=blob:none", "--no-checkout", src["url"], str(repo)])
+            subprocess.run(["git", "sparse-checkout", "init", "--cone"], cwd=repo)
+
+        for name in src["models"]:
+            model_path = repo / name
+            if not model_path.exists():
+                subprocess.run(["git", "sparse-checkout", "add", name], cwd=repo)
+                subprocess.run(["git", "checkout"], cwd=repo)
+
+            if name not in models_config["added"] and (CACHE / name).exists():
+                models_config["added"].append(name)
+                did_change = True
+
+            manifest = model_path / "model.json"
+            model = {}
+
+            if manifest.exists():
+                manifest = json.loads(manifest.read_text())
+                model["options"] = manifest["properties"]
+                model["title"] = manifest["title"]
+                model["description"] = manifest["description"]
+                model["dir"] = model_path
+                with open(model_path / "ui.html") as f:
+                    model["form"] = f.read()
+
+            if model != {}:
+                model_manifest[name] = model
+            else:
+                src["models"].remove(name)
+                did_change = True
+    if did_change:
+        save_models(models_config)
+refresh_manifest()
 
 tasks = {}
 
@@ -86,7 +131,7 @@ def create_inference_worker(model, options):
 
     pid = start_task(
         ["uv", "run", "gunicorn", "--bind", f":{port}", "infer:app", "--"] + flags,
-        MODEL_DIR / model,
+        model_manifest[model]["dir"],
         f"Inference service worker for: `{model}`",
         { "VIRTUAL_ENV": CACHE / model / ".venv" }
     )
@@ -187,10 +232,46 @@ if not app.debug:
 
 @app.route("/models")
 def models():
-    return render_template("models.html", models=model_manifest, params=propagate())
+    groups = {}
+    # if len(models_config["added"]):
+    #     groups[("Installed models", None)] = [], { m: model_manifest[m] for m in models_config["added"] }
+    for group in models_config["sources"]:
+        installed = []
+        available = {}
+        for m in group["models"]:
+            if False: #m in models_config["added"]:
+                installed.append(m)
+            else:
+                available[m] = model_manifest[m]
+        groups[(group["group"], group["owner"])] = installed, available
+    return render_template("models.html", groups=groups, params=propagate())
+
+@app.route("/models/add", methods=["POST"])
+def models_add():
+    data = request.json
+    error = { "error": "Malformed sources definition" }, 400
+
+    if type(data) != list:
+        return error
+
+    for defs in data:
+        models, owner, group, url = map(defs.get, ["models", "owner", "group", "url"])
+        result = urlparse(url)
+        if not (len(defs) == 4 and type(owner) == str and type(group) == str and type(models) == list and all(map(lambda x: type(x) == str, models)) and all([result.scheme, result.netloc])):
+            return error
+
+    for defs in data:
+        if defs not in models_config["sources"]:
+            models_config["sources"].append(defs)
+
+    refresh_manifest()
+    save_models(models_config)
+    return {}, 200
 
 @app.route("/models/<model>", methods=["GET", "POST"])
 def model(model):
+    if model not in model_manifest:
+        return redirect(url_for("models", **propagate()))
     runs = mlflow.search_runs(experiment_names=[model_manifest[model]["title"]], max_results=100, output_format="list")
     completions = {}
     if len(runs) > 0 and ARTIFACTS:
@@ -210,7 +291,7 @@ def model(model):
         **model_manifest[model],
         completions=completions,
         installed=(CACHE / model).exists(),
-        train=(MODEL_DIR / model / "train.py").exists(),
+        train=(model_manifest[model]["dir"] / "train.py").exists(),
         params={ **propagate(), "model": model }
     )
 
@@ -237,7 +318,7 @@ def model_train(model):
     flags = build_model_options(model_manifest[model]["options"], data.items())
     pid = start_task(
         ["uv", "run", "train.py"] + flags,
-        MODEL_DIR / model,
+        model_manifest[mode]["dir"],
         f"Model training: `{model}`",
         { "VIRTUAL_ENV": CACHE / model / ".venv" }
     )
@@ -255,13 +336,17 @@ def model_install(model):
     if model not in model_manifest:
         return f"Model '{model}' does not exist", 404
 
+    model_dir = model_manifest[model]["dir"]
     if (CACHE / model).exists():
         print(f"Skipping installation request for `{model}`")
-        return render_template("model.html", **model_manifest[model], installed=(CACHE / model).exists(), train=(MODEL_DIR / model / "train.py").exists(), params=params)
+        return render_template("model.html", **model_manifest[model], installed=(CACHE / model).exists(), train=(model_dir / "train.py").exists(), params=params)
+
+    models_config["added"].append(model)
+    save_models(models_config)
 
     params = propagate()
     params["model"] = model
-    params["pid"] = start_task(["bash", "-c", f"./setup.sh && echo \"Finished installing '{model}'\""], MODEL_DIR / model, f"Installing model: `{model}`")
+    params["pid"] = start_task(["bash", "-c", f"./setup.sh && echo \"Finished installing '{model}'\""], model_dir, f"Installing model: `{model}`")
     return redirect(url_for("logs", **params))
 
 @app.route("/active", methods=["GET"])

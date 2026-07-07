@@ -174,37 +174,6 @@ button, input[type="submit"], .button {
     font-family: sans-serif;
 }
 
-.model-list {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-    align-content: start;
-
-    .model {
-        display: block;
-        text-decoration: none;
-        height: 128px;
-        width: 512px;
-        background-color: var(--bg-primary);
-        font-size: 0.75rem;
-        padding: 1rem;
-        border: 1px solid var(--border);
-        box-shadow: rgba(0, 0, 0, 0.05) 0px 2px 3px -1px, rgba(0, 0, 0, 0.02) 0px 1px 0px 0px;
-        &:hover {
-            background-color: var(--bg-accent-hover);
-        }
-        &:active {
-            background-color: var(--bg-accent-active);
-        }
-        h3 {
-            color: rgb(17, 23, 28);
-        }
-        p {
-            color: rgb(95, 114, 129);
-        }
-    }
-}
-
 fieldset {
     display: grid;
     margin: 0;

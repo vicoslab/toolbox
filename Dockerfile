@@ -115,10 +115,6 @@ COPY ${src}/nexus.py ${src}/gateway.py ${src}/uv.lock ${src}/pyproject.toml .
 RUN --mount=type=cache,target=/root/.cache/uv uv sync
 RUN --mount=type=cache,target=/root/.cache/uv uv pip install gunicorn
 
-## Models
-ARG MODELS=models
-ADD ${MODELS} /opt/models
-
 ## Cache dirs
 ENV TOOLBOX_CACHE=/cache \
     UV_CACHE_DIR=/cache/.uv \

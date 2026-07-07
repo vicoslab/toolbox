@@ -4,7 +4,7 @@ from pathlib import Path
 import os
 import json
 
-forms = { p.parent.name: p.read_text() for p in Path(os.environ["MODEL_DIR"]).glob("*/ui.html") }
+forms = { p.parent.name: p.read_text() for p in (Path(os.environ["TOOLBOX_CACHE"]) / ".models").glob("**/ui.html") }
 workers = {}
 
 app = Flask(__name__)

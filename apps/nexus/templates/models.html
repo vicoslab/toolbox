@@ -4,14 +4,155 @@
 
 {% block content %}
 <div class="model-list wrapper">
-    {% for id, info in models.items() %}
-    {% if params.tour|default(-1) == tour_enum.MODEL_SELECTION.value %} {% set _=params.update({"tour": params.tour +
-    1}) %}{% endif %}
-    {% set _ = params.update({ "model": id }) %}
+    {% for (group, owner), (installed, models) in groups.items() %}
+    <h2 class="model-group">{{ group }}{% if owner %}<span> by </span>{{ owner }}{% endif %}</h2>
+    {% if installed | length > 0 %}
+    <span class="group-installed">Models already installed ({{ installed | length }}): {{ installed | join(", ")
+        }}</span>
+    {% endif %}
+    {% for name, info in models.items() %}
+    {% set _ = params.update({ "model": name }) %}
+    {% if params.tour|default(-1) == tour_enum.MODEL_SELECTION.value %}{% set _=params.update({"tour": params.tour + 1})
+    %}{% else %}{% set _=params.update({"tour": None}) %}{% endif %}
     <a href="{{ url_for('model', **params) }}" class="model">
         <h3>{{ info.title }}</h3>
         <p>{{ info.description }}</p>
     </a>
     {% endfor %}
+    {% endfor %}
+    <h2 class="add-group">
+        <label for="add-model" class="prompt-add">Add model source from clipboard</label>
+        <button id="add-model">
+            <svg xmlns="http://www.w3.org/2000/svg" class="icon" viewBox="0 0 24 24" stroke-linecap="round"
+                stroke-linejoin="round" fill="none" stroke-width="2px" stroke="currentColor">
+                <path d="M 12 5 V 19 M 5 12 H 19" />
+            </svg>
+        </button>
+    </h2>
+    <dialog id="add-dialog">
+        <span class="prompt-review">The following models will be added:</span>
+        <div class="preview"></div>
+        <button commandfor="add-dialog" command="close" class="cancel">Cancel</button>
+        <input class="submit" type="submit" value="Add">
+    </dialog>
 </div>
+<script>
+    const add = document.getElementById("add-model");
+    const dialog = document.getElementById("add-dialog");
+    const preview = dialog.querySelector(".preview");
+    const submit = dialog.querySelector(".submit");
+    let sources;
+    add.addEventListener("click", async (e) => {
+        try {
+            // eyJodHRwczovL2dpdGh1Yi5jb20vdmljb3NsYWIvdG9vbGJveC1tb2RlbHMiOnsib3duZXIiOiJ2aWNvc2xhYiIsIm1vZGVscyI6WyJnZWNvMiIsImRhbTRzYW0iLCJzdXBlci1zaW1wbGUtbmV0Il0sImdyb3VwIjoidG9vbGJveC1tb2RlbHMifX0=
+            const text = await navigator.clipboard.readText();
+            sources = JSON.parse(atob(text));
+            await dialog.showModal();
+            preview.replaceChildren(...sources.map(({ owner, group, models, url }) => {
+                const h = document.createElement("h3");
+                h.innerText = `${owner}/${group}`;
+                const list = document.createElement("ul");
+                list.append(...models.map(m => {
+                    const li = document.createElement("li");
+                    li.innerText = m;
+                    return li;
+                }));
+                const wrap = document.createElement("div");
+                wrap.append(h, list);
+                return wrap;
+            }));
+            add.classList.add("review");
+        } catch (e) {
+            console.log("Add-model:", e);
+        }
+    });
+    submit.addEventListener("click", async (e) => {
+        if (sources !== null) {
+            await fetch("/models/add", { method: "post", body: JSON.stringify(sources), headers: { "Content-Type": "application/json" } });
+        }
+        location.reload();
+    });
+</script>
+<style>
+    .model-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        align-content: start;
+    }
+
+    .model-group {
+        flex-basis: 100%;
+
+        span {
+            font-size: small;
+            color: rgb(95, 114, 129);
+            padding: 0 0.5rem;
+            font-weight: 500;
+        }
+    }
+
+    .group-installed {
+        flex-basis: 100%;
+        margin-top: -1.5rem;
+        color: rgb(95, 114, 129);
+        font-size: small;
+    }
+
+    .model {
+        display: block;
+        text-decoration: none;
+        height: 128px;
+        width: 512px;
+        background-color: var(--bg-primary);
+        font-size: 0.75rem;
+        padding: 1rem;
+        border: 1px solid var(--border);
+        box-shadow: rgba(0, 0, 0, 0.05) 0px 2px 3px -1px, rgba(0, 0, 0, 0.02) 0px 1px 0px 0px;
+
+        &:hover {
+            background-color: var(--bg-accent-hover);
+        }
+
+        &:active {
+            background-color: var(--bg-accent-active);
+        }
+
+        h3 {
+            color: rgb(17, 23, 28);
+        }
+
+        p {
+            color: rgb(95, 114, 129);
+        }
+    }
+
+    .add-group {
+        display: flex;
+        font-size: 1.25rem;
+        align-items: center;
+        flex-basis: 100%;
+
+        label {
+            padding: 0.25rem 0.5rem;
+            cursor: pointer;
+        }
+
+        .icon {
+            background-color: var(--bg-accent-hover);
+            width: 1.5rem;
+            height: 1.5rem;
+            border-radius: 50%;
+            cursor: pointer;
+
+            &:hover {
+                background-color: var(--bg-accent-active);
+            }
+        }
+
+        button {
+            display: contents;
+        }
+    }
+</style>
 {% endblock %}
