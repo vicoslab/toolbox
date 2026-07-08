@@ -4,12 +4,13 @@ from pathlib import Path
 import os
 import json
 
-forms = { p.parent.name: p.read_text() for p in (Path(os.environ["TOOLBOX_CACHE"]) / ".models").glob("**/ui.html") }
+forms = {}
 workers = {}
 
 app = Flask(__name__)
 
 def refresh_workers():
+    forms.update({ p.parent.name: p.read_text() for p in (Path(os.environ["TOOLBOX_CACHE"]) / ".models").glob("**/ui.html") })
     response = requests.get("http://localhost:8079/active")
     if response.status_code == 200:
         workers.update({ v: k for k, v in response.json().items()})
