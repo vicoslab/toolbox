@@ -151,9 +151,11 @@ def propagate():
         pass
     return r
 
+brand_name_long = os.getenv("TOOLBOX_BRAND_NAME_LONG", "ViCoS Toolbox")
+brand_name_short = os.getenv("TOOLBOX_BRAND_NAME_SHORT", "ViCoS")
 @app.context_processor
 def inject_stage_and_region():
-    return dict(tour_steps=TOUR_STEPS, tour_enum=TourStep)
+    return dict(tour_steps=TOUR_STEPS, tour_enum=TourStep, brand_name_long=brand_name_long, brand_name_short=brand_name_short)
 
 @app.route("/")
 def index():

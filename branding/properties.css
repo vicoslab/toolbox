@@ -1,0 +1,16 @@
+:root, html > body {
+    --brand-primary: oklch(87.375% 0.08128 226.731);
+    --brand-secondary: oklch(70.82% 0.14065 253.359);
+    --bg-primary: white; /*#950606*/
+    --fg-accent-default: #3781c1; 
+    --fg-accent-hover: #2a73d3;
+    --fg-accent-active: #1aa8db;
+    --bg-accent-default: transparent;
+    --bg-accent-hover: #e4f1fa;
+    --bg-accent-active: #cadef4;
+
+    --font-heading: monospace;
+    --font-body: monospace;
+
+    --border: black;
+}

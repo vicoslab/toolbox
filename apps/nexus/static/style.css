@@ -10,7 +10,11 @@ html, body {
 html {
     overflow: hidden;
 }
+h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-heading);
+}
 body {
+    font-family: var(--font-body);
     display: grid;
     grid-template-rows: 3rem 1fr;
     margin: 0;
@@ -35,7 +39,6 @@ nav {
     display: flex;
     gap: 0.5rem;
     align-items: center;
-    font-family: sans-serif;
     padding: 0.5rem;
     > h2 {
         padding-right: 0.5rem;
@@ -98,6 +101,10 @@ button, input[type="submit"], .button {
     &:active {
         background-color: var(--bg-accent-active);
     }
+}
+
+.toolbox-logo {
+    display: none;
 }
 
 .settings {
@@ -171,7 +178,6 @@ button, input[type="submit"], .button {
     width: 100%;
     height: 100%;
     overflow: auto;
-    font-family: sans-serif;
 }
 
 fieldset {

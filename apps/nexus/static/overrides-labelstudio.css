@@ -19,6 +19,13 @@
     --accent_color-raw: 193 55 55;
 }
 
+h1, h2, h3, h4, h5, h6, .font-medium {
+    font-family: var(--font-heading);
+}
+body {
+    font-family: var(--font-body) !important;
+}
+
 @font-face {
     font-family: Figtree;
     src: url("/app/label-studio/static/fonts/Figtree-Regular.ttf") format("truetype");

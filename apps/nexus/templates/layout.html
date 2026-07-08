@@ -2,7 +2,7 @@
 <html>
 
 <head>
-    <title>{% block title %}{% endblock %} - ViCoS</title>
+    <title>{% block title %}{% endblock %} - {{ brand_name_short }}</title>
     <meta name="referrer" content="no-referrer" />
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
@@ -11,6 +11,7 @@
 
 
     <nav>
+        <span class="toolbox-logo"></span>
         {% if "tour" in params %}
         {% set newparams = params.copy() %}
         {% set _ = newparams.pop("tour") %}
@@ -39,8 +40,8 @@
             </dialog>
         </ul>
         {% else %}
-        <a href="/" {% if request.endpoint=='index' %}aria-current="page" {% endif %} style="font-weight: 600;">
-            ViCoS Toolbox
+        <a href="/" {% if request.endpoint=='index' %}aria-current="page" {% endif %} style="font-weight: 600;">{{
+            brand_name_long }}
         </a>
         <a href="/label" {% if request.endpoint=='label' %}aria-current="page" {% endif %}>Labeling</a>
         <a href="/dashboard" {% if request.endpoint=='dashboard' %}aria-current="page" {% endif %}>Experiments</a>
