@@ -173,9 +173,9 @@ def label():
 
 @app.route("/dashboard")
 def dashboard():
-    page = ""
+    page = "/#/experiments"
     if ex := request.args.get("experiment"):
-        page += f"/#/experiments/{int(ex)}"
+        page = f"/{int(ex)}"
         if run := request.args.get("run"):
             page += f"/runs/{run}"
     return render_template("mlflow.html", page=page, params=propagate())
