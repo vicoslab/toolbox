@@ -270,6 +270,16 @@ def models_add():
     save_models(models_config)
     return {}, 200
 
+dataset_dir = Path(os.environ["LOCAL_FILES_DOCUMENT_ROOT"])
+@app.route('/datasets', defaults={'path': ''})
+@app.route("/datasets/<path:path>", methods=["GET"])
+def datasets(path):
+    new = dataset_dir / path
+    if new.is_relative_to(dataset_dir) and new.exists():
+        return [str(x.name) for x in new.iterdir() if x.is_dir()]
+    
+    return { "error": "Invalid path" }, 400
+
 @app.route("/models/<model>", methods=["GET", "POST"])
 def model(model):
     if model not in model_manifest:

@@ -13,7 +13,7 @@
     {% for name, info in models.items() %}
     {% set _ = params.update({ "model": name }) %}
     {% if params.tour|default(-1) == tour_enum.MODEL_SELECTION.value %}{% set _=params.update({"tour": params.tour + 1})
-    %}{% else %}{% set _=params.update({"tour": None}) %}{% endif %}
+    %}{% endif %}
     <a href="{{ url_for('model', **params) }}" class="model">
         <h3>{{ info.title }}</h3>
         <p>{{ info.description }}</p>
