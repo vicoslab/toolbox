@@ -177,7 +177,7 @@ def label():
 def dashboard():
     page = "/#/experiments"
     if ex := request.args.get("experiment"):
-        page = f"/{int(ex)}"
+        page += f"/{int(ex)}"
         if run := request.args.get("run"):
             page += f"/runs/{run}"
     return render_template("mlflow.html", page=page, params=propagate())
@@ -330,7 +330,7 @@ def model_train(model):
     flags = build_model_options(model_manifest[model]["options"], data.items())
     pid = start_task(
         ["uv", "run", "train.py"] + flags,
-        model_manifest[mode]["dir"],
+        model_manifest[model]["dir"],
         f"Model training: `{model}`",
         { "VIRTUAL_ENV": CACHE / model / ".venv" }
     )
