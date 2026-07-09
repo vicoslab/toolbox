@@ -112,6 +112,7 @@ class ImageInput extends HTMLElement {
                 data.append(name, file, file.name);
             }
             this.internals_.setFormValue(data);
+            close.style.display = "";
 
             if (typeof this.onInference === "function") {
                 if (input.files.length <= 0) {
@@ -125,7 +126,6 @@ class ImageInput extends HTMLElement {
                 const file = input.files.item(0);
                 image.src = URL.createObjectURL(file);
                 wrapper.style.display = "";
-                close.style.display = "";
                 input.style.display = "none";
                 label.style.display = "none";
             }

@@ -370,22 +370,21 @@ def dataset():
     data = request.json if request.is_json else request.form.to_dict()
 
     if type(data) == dict:
+        env = {}
+
         if "task" in data:
-            task = data["task"]
+            env["TASK"] = data["task"]
         elif (model := request.args.get("model")) in dataset_tasks:
-            task = dataset_tasks[model]
+            env["TASK"] = dataset_tasks[model]
         else:
             return "Request body must contain key 'task' or known model must be provided in query parameter 'model'.", 400
-        if not (dataset := data.get("dataset")):
-            return "Request body must contain key 'dataset' containing path to dataset.", 400
-        env = {
-            "TASK": task,
-            "DATASET": dataset,
-        }
+
+        if dataset := data.get("dataset"):
+            env["DATASET"] = dataset
         if title := data.get("title"):
             env["PROJECT_TITLE"] = title
     else:
-        return "Request body must be an object with keys 'task' and 'dataset'. Can optionally include 'title'.", 400
+        return "Request body must be an object with keys 'task'. Can optionally include 'title' and 'dataset'.", 400
 
     task = tasks[start_task(["uv", "run", "create.py"], "../ls-utils", f"Project creation", extra_env=env, blocking=True)]
     id = None

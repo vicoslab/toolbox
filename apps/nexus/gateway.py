@@ -42,6 +42,7 @@ def get_region_label(region):
                 return r["value"][k][0]
     return None
 
+DOMAIN = os.environ["DOMAIN"]
 # proxy prediction requests for label-studio-ml-backend (only interactive at the moment)
 @app.route("/predict", methods=["POST"])
 def predict():
@@ -50,7 +51,12 @@ def predict():
 
     if (context := request.json["params"]["context"]) and (region := context.get("region")):
         if (model := get_region_label(region)) and (port := workers.get(model.lower())):
-            response = requests.post(f"http://localhost:{port}/predict", json=request.json)
+            data = request.json
+            for task in data["tasks"]:
+                for k, v in task["data"].items():
+                    if v.startswith("/app/label-studio/data/upload/"):
+                        task["data"][k] = f"https://{DOMAIN}{v}"
+            response = requests.post(f"http://localhost:{port}/predict", json=data)
             return (response.text, response.status_code, {'Content-Type': response.headers.get('Content-Type', 'text/plain')})
 
     abort(404)

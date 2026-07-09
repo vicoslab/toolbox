@@ -1,22 +1,13 @@
 import os
 from label_studio_sdk import LabelStudio
-from label_studio_sdk.converter import brush
-import time
 from pathlib import Path
-from datetime import datetime
-import json
 import io
 import re
-import numpy as np
-from PIL import Image
-
-from threading import Thread
-from http.server import BaseHTTPRequestHandler, HTTPServer
 
 DATASET_DIR = Path(os.environ['LOCAL_FILES_DOCUMENT_ROOT'])
 API_KEY = os.environ['LABEL_STUDIO_USER_TOKEN']
 TASK = os.environ['TASK']
-DATASET = os.environ['DATASET']
+DATASET = os.getenv('DATASET')
 PROJECT_TITLE = os.getenv('PROJECT_TITLE')
 
 ls = LabelStudio(base_url='http://localhost:8080', api_key=API_KEY)
@@ -26,15 +17,17 @@ project = ls.projects.create(label_config=config, **{ 'title': PROJECT_TITLE } i
 
 print(project.id)
 
-# api doesn't support recursive scan yet for some reason
-import_storage = ls.import_storage.local.create(
-    project=project.id,
-    title=f'{PROJECT_TITLE} dataset' if PROJECT_TITLE else DATASET,
-    path=str(DATASET_DIR / DATASET),
-    # recursive_scan=True,
-    use_blob_urls=True,
-    regex_filter="[^.]*.(jpe?g|png)"
-)
-# TODO: test this once recursive_scan is available, and make api enddpoint set this process to nonblocking
-ls.import_storage.local.sync(import_storage.id)
+if DATASET:
+    # api doesn't support recursive scan yet for some reason
+    import_storage = ls.import_storage.local.create(
+        project=project.id,
+        title=f'{PROJECT_TITLE} dataset' if PROJECT_TITLE else DATASET,
+        path=str(DATASET_DIR / DATASET),
+        # recursive_scan=True,
+        use_blob_urls=True,
+        regex_filter="[^.]*.(jpe?g|png)"
+    )
+    # TODO: test this once recursive_scan is available, and make api enddpoint set this process to nonblocking
+    ls.import_storage.local.sync(import_storage.id)
+
 ls.ml.create(title="Inference worker", project=project.id, url="http://localhost:9090")

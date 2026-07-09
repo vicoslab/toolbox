@@ -7,6 +7,7 @@ from datetime import datetime
 import json
 import io
 import re
+import shutil
 import numpy as np
 from PIL import Image
 
@@ -46,29 +47,52 @@ with io.BytesIO() as b:
         b.write(chunk)
     j = json.loads(b.getvalue())
 
+valid = True
 # Check if dataset is well formed for image export
-p = re.compile(r'^https://.*/data/local-files/\?d=(.+)$')
-def get_dataset(x):
-    m = p.match(x['image'])
-    if m:
-        m = m.groups()[0].split('/', maxsplit=1)
-    return { **x, 'image': m }
+p_dataset = re.compile(r'^https://.*/data/local-files/\?d=(.+)$')
+p_upload = re.compile(r'^/app/label-studio/data/upload/(\d+)/(.+)$')
 
-resolved = list(map(get_dataset, j))
-if resolved[0]['image'] is None or any(map(lambda x: x is None or x['image'][0] != resolved[0]['image'][0], resolved)):
-    with open(DATASET_DIR / f'export-{date}.json') as f:
+dataset = None
+resolved = []
+for task in j:
+    if m := p_dataset.match(task['image']):
+        root, relpath = m.groups()[0].split('/', maxsplit=1)
+        if dataset is None:
+            dataset = root
+        elif dataset != root:
+            valid = False
+        resolved.append({ **task, 'image': ('dataset', relpath) })
+    elif m := p_upload.match(task['image']):
+        id, filename = m.groups()
+        if id != PROJECT_ID:
+            valid = False
+        resolved.append({ **task, 'image': ('upload', filename) })
+    else:
+        valid = False
+
+if not valid:
+    print('Warning: only saving json because image dataset in export failed validation.')
+    with open(DATASET_DIR / f'export-{date}.json', 'w') as f:
         json.dump(j, f)
-    print('Warning: only saving json because image dataset in export is not well formed (all files need to belong to a single subdirectory of a dataset in local storage).')
     exit(1)
 j = resolved
 
 data = []
-EXPORT_DIR = DATASET_DIR / os.getenv('EXPORT_DIR', f"{resolved[0]['image'][0]}/.export-{date}")
+UPLOAD_DIR = Path(os.environ['LABEL_STUDIO_BASE_DATA_DIR']) / 'media' / 'upload' / PROJECT_ID
+EXPORT_DIR = DATASET_DIR / os.getenv('EXPORT_DIR', f'{dataset or f"ls-project-{PROJECT_ID}"}/.export-{date}')
 EXPORT_DIR.mkdir(parents=True, exist_ok=True)
+EXPORT_UPLOADS = EXPORT_DIR.parent / f".export-uploads-{PROJECT_ID}"
 
 for task in j:
-    _, relpath = task['image']
-    item = { 'image_path': '../' + relpath }
+    source, relpath = task['image']
+    if source == 'dataset':
+        item = { 'image_path': '../' + relpath }
+    elif source == 'upload':
+        EXPORT_UPLOADS.mkdir(parents=True, exist_ok=True)
+        shutil.copy(UPLOAD_DIR / relpath, EXPORT_UPLOADS / relpath)
+        item = { 'image_path': f'../.export-uploads-{PROJECT_ID}/' + relpath }
+    else:
+        raise ValueError("Invalid source for task image")
     
     labels = None
     mask = None
