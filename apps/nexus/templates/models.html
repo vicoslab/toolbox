@@ -4,15 +4,22 @@
 
 {% block content %}
 <div class="model-list wrapper">
-    {% for (group, owner), (installed, models) in groups.items() %}
+    {% for (group, owner), (rev, installed, models) in groups.items() %}
     <h2 class="model-group">
         {{ group }}{% if owner %}<span> by </span>{{ owner }}{% endif %}
         <div class="manage-group">
+            <span>version: {{ rev }}</span>
             <button onclick="remove(`{{ owner }}`, `{{ group }}`)">
                 <svg xmlns="http://www.w3.org/2000/svg" class="icon" viewBox="0 0 24 24" stroke-linecap="round"
                     stroke-linejoin="round" fill="none" stroke-width="1px" stroke="currentColor">
                     <path
                         d="M 6 7 L 6 20 H 18 L 18 7 M 4 7 H 20 M 9 7 A 1 1 0 0 1 15 7 M 9 10 V 17 M 15 10 V 17 M 12 10 V 17" />
+                </svg>
+            </button>
+            <button onclick="update(`{{ owner }}`, `{{ group }}`)">
+                <svg xmlns="http://www.w3.org/2000/svg" class="icon" viewBox="0 0 24 24" stroke-linecap="round"
+                    stroke-linejoin="round" fill="none" stroke-width="1px" stroke="currentColor">
+                    <path d="M 6 12 A 1.5 1.5 90 0 0 18 12 C 18 6 10.5 4.5 7.5 9 M 7.5 6 V 9 H 10.5" />
                 </svg>
             </button>
         </div>
@@ -95,6 +102,28 @@
         };
         dialog.showModal();
     }
+    function update(owner, group) {
+        const version = document.createElement("input");
+        version.type = "text";
+        version.placeholder = "latest";
+        version.style.flexGrow = 1;
+        const label = document.createElement("label");
+        label.style.display = "flex";
+        label.style.gap = "0.5rem";
+        label.innerText = "Git revision:";
+        label.append(version);
+        const summary = document.createElement("summary");
+        summary.innerText = "Version override";
+        const details = document.createElement("details");
+        details.style.marginTop = "0.5rem";
+        details.append(summary, label)
+        content.replaceChildren(`Update models in group '${group}' by '${owner}'?`, details);
+        dialog.done = async () => {
+            await fetch("/models/update", { method: "post", body: JSON.stringify({ owner, group, ...version.value !== "" && { rev: version.value } }), headers: { "Content-Type": "application/json" } });
+            location.reload();
+        };
+        dialog.showModal();
+    }
 </script>
 <style>
     .model-list {
@@ -136,6 +165,12 @@
             &:hover {
                 background-color: unset;
             }
+        }
+    }
+
+    #confirmation {
+        .content {
+            margin-bottom: 1rem;
         }
     }
 

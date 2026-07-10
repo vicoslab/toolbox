@@ -39,14 +39,15 @@ def refresh_manifest():
     for src in models_config["sources"]:
         repo = CACHE / ".models" / src["owner"] / src["group"]
         if not repo.exists():
-            subprocess.run(["git", "clone", "--filter=blob:none", "--no-checkout", src["url"], str(repo)])
-            subprocess.run(["git", "sparse-checkout", "init", "--cone"], cwd=repo)
+            subprocess.run(["git", "clone", "--filter=blob:none", "--no-checkout", src["url"], str(repo)], check=True)
+            subprocess.run(["git", "sparse-checkout", "init", "--cone"], cwd=repo, check=True)
+            src["rev"] = subprocess.run(["git", "rev-parse", "HEAD"], cwd=repo, capture_output=True, text=True, check=True).stdout.strip()
 
         for name in src["models"]:
             model_path = repo / name
             if not model_path.exists():
-                subprocess.run(["git", "sparse-checkout", "add", name], cwd=repo)
-                subprocess.run(["git", "checkout"], cwd=repo)
+                subprocess.run(["git", "sparse-checkout", "add", name], cwd=repo, check=True)
+                subprocess.run(["git", "checkout"], cwd=repo, check=True)
 
             if name not in models_config["added"] and (CACHE / name).exists():
                 models_config["added"].append(name)
@@ -246,8 +247,39 @@ def models():
                 installed.append(m)
             else:
                 available[m] = model_manifest[m]
-        groups[(group["group"], group["owner"])] = installed, available
+        if rev := group.get("rev"): # make sure we can manage models even if rev is borked
+            rev = rev[:7]
+        groups[(group["group"], group["owner"])] = rev, installed, available
     return render_template("models.html", groups=groups, params=propagate())
+
+@app.route("/models/update", methods=["POST"])
+def models_update():
+    data = request.json
+    if not (owner := data.get("owner")):
+        return { "error": "Missing owner field" }, 400
+    if not (group := data.get("group")):
+        return { "error": "Missing group field" }, 400
+
+    src = None
+    for s in models_config["sources"]:
+        if s["owner"] == owner and s["group"] == group:
+            src = s
+            break
+
+    groupdir = CACHE / ".models" / owner / group
+    if not groupdir.exists() or not src:
+        return { "error": "Invalid group" }, 400
+    
+    subprocess.run(["git", "fetch"], cwd=groupdir, check=True)
+    subprocess.run(["git", "checkout", data.get("rev", "origin/HEAD")], cwd=groupdir, check=True)
+    new = subprocess.run(["git", "rev-parse", "HEAD"], cwd=groupdir, capture_output=True, text=True, check=True).stdout.strip()
+
+    if new != src["rev"]:
+        src["rev"] = new
+        refresh_manifest()
+        save_models(models_config)
+
+    return { "rev": new }, 200
 
 @app.route("/models/remove", methods=["POST"])
 def models_remove():
