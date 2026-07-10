@@ -4,15 +4,6 @@
 
 {% block content %}
 <div class="model-overview wrapper">
-    {% if not installed %}
-    <div class="model-installation">
-        <form method="post">
-            Model {{ title }} is not installed yet. Click <input type="submit" name="install"
-                formaction="{{ url_for('model_install', **params) }}" value="Here"> to begin installation.
-            Model installation may take a while.
-        </form>
-    </div>
-    {% else %}
     <div class="model-options">
         {% if params.tour == tour_enum.DATASET.value and "manifest" in options %}
         <div class="tour-dataset">
@@ -156,7 +147,6 @@
             </fieldset>
         </form>
     </div>
-    {% endif %}
 </div>
 
 <script src="/static/opencv.js"></script>

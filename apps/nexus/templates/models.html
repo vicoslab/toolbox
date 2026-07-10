@@ -24,18 +24,35 @@
             </button>
         </div>
     </h2>
-    {% if installed | length > 0 %}
-    <span class="group-installed">Models already installed ({{ installed | length }}): {{ installed | join(", ")
-        }}</span>
-    {% endif %}
     {% for name, info in models.items() %}
     {% set _ = params.update({ "model": name }) %}
     {% if params.tour|default(-1) == tour_enum.MODEL_SELECTION.value %}{% set _=params.update({"tour": params.tour + 1})
     %}{% endif %}
-    <a href="{{ url_for('model', **params) }}" class="model">
+    {% if name in installed %}
+    <a href="{{ url_for('model', **params) }}" class="model installed">
         <h3>{{ info.title }}</h3>
         <p>{{ info.description }}</p>
+        <button onclick="delete_(`{{ name }}`); return false;">
+            <svg xmlns="http://www.w3.org/2000/svg" class="icon" viewBox="0 0 24 24" stroke-linecap="round"
+                stroke-linejoin="round" fill="none" stroke-width="1px" stroke="currentColor">
+                <path
+                    d="M 6 7 L 6 20 H 18 L 18 7 M 4 7 H 20 M 9 7 A 1 1 0 0 1 15 7 M 9 10 V 17 M 15 10 V 17 M 12 10 V 17" />
+            </svg>
+        </button>
     </a>
+    {% else %}
+    <a class="model" title="You must install the model to make it available for use."
+        onclick="install(`{{ name }}`); return false;">
+        <h3>{{ info.title }}</h3>
+        <p>{{ info.description }}</p>
+        <button onclick="install(`{{ name }}`); return false;">
+            <svg xmlns="http://www.w3.org/2000/svg" class="icon" viewBox="0 0 24 24" stroke-linecap="round"
+                stroke-linejoin="round" fill="none" stroke-width="1px" stroke="currentColor">
+                <path d="M 12 4 V 17 L 8 13 M 12 17 L 16 13 M 18 20 H 6" />
+            </svg>
+        </button>
+    </a>
+    {% endif %}
     {% endfor %}
     {% endfor %}
     <h2 class="add-group">
@@ -124,6 +141,26 @@
         };
         dialog.showModal();
     }
+    function delete_(name) {
+        content.replaceChildren(`Delete installed files for model '${name}'?`);
+        dialog.done = async () => {
+            await fetch(`/model/${name}/uninstall`, { method: "post" });
+            location.reload();
+        };
+        dialog.showModal();
+    }
+    function install(name) {
+        const form = document.createElement("form");
+        form.action = "{{ url_for('model_install', **params) }}";
+        form.method = "POST";
+        const i = document.createElement("i");
+        i.innerText = name;
+        content.replaceChildren(form, "Install model ", i, " ?");
+        dialog.done = async () => {
+            form.submit();
+        };
+        dialog.showModal();
+    }
 </script>
 <style>
     .model-list {
@@ -131,6 +168,11 @@
         flex-wrap: wrap;
         gap: 0.5rem;
         align-content: start;
+    }
+
+    .icon {
+        width: 1.5rem;
+        height: 1.5rem;
     }
 
     .model-group {
@@ -143,11 +185,6 @@
             font-size: small;
             color: rgb(95, 114, 129);
             font-weight: 500;
-        }
-
-        .icon {
-            width: 1.5rem;
-            height: 1.5rem;
         }
 
         &:hover>.manage-group {
@@ -187,18 +224,22 @@
         text-decoration: none;
         height: 128px;
         width: 512px;
-        background-color: var(--bg-primary);
+        background-color: var(--bg-muted);
         font-size: 0.75rem;
         padding: 1rem;
         border: 1px solid var(--border);
         box-shadow: rgba(0, 0, 0, 0.05) 0px 2px 3px -1px, rgba(0, 0, 0, 0.02) 0px 1px 0px 0px;
 
-        &:hover {
-            background-color: var(--bg-accent-hover);
-        }
+        &.installed {
+            background-color: var(--bg-primary);
 
-        &:active {
-            background-color: var(--bg-accent-active);
+            &:hover {
+                background-color: var(--bg-accent-hover);
+            }
+
+            &:active {
+                background-color: var(--bg-accent-active);
+            }
         }
 
         h3 {
@@ -207,6 +248,19 @@
 
         p {
             color: rgb(95, 114, 129);
+        }
+
+        button {
+            position: absolute;
+            bottom: 0.5rem;
+            right: 0.5rem;
+            padding: 0;
+            border: 0;
+            cursor: pointer;
+
+            &:hover {
+                background-color: unset;
+            }
         }
     }
 
@@ -223,8 +277,6 @@
 
         .icon {
             background-color: var(--bg-accent-hover);
-            width: 1.5rem;
-            height: 1.5rem;
             border-radius: 50%;
             cursor: pointer;
 

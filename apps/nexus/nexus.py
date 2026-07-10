@@ -237,20 +237,18 @@ if not app.debug:
 @app.route("/models")
 def models():
     groups = {}
-    # if len(models_config["added"]):
-    #     groups[("Installed models", None)] = [], { m: model_manifest[m] for m in models_config["added"] }
+    installed = []
     for group in models_config["sources"]:
         installed = []
         available = {}
         for m in group["models"]:
-            if False: #m in models_config["added"]:
+            if (CACHE / m).exists():
                 installed.append(m)
-            else:
-                available[m] = model_manifest[m]
+            available[m] = model_manifest[m]
         if rev := group.get("rev"): # make sure we can manage models even if rev is borked
             rev = rev[:7]
         groups[(group["group"], group["owner"])] = rev, installed, available
-    return render_template("models.html", groups=groups, params=propagate())
+    return render_template("models.html", groups=groups, installed=installed, params=propagate())
 
 @app.route("/models/update", methods=["POST"])
 def models_update():
@@ -335,7 +333,7 @@ def datasets(path):
 
 @app.route("/models/<model>", methods=["GET", "POST"])
 def model(model):
-    if model not in model_manifest:
+    if model not in model_manifest or not (CACHE / model).exists():
         return redirect(url_for("models", **propagate()))
     runs = mlflow.search_runs(experiment_names=[model_manifest[model]["title"]], max_results=100, output_format="list")
     completions = {}
@@ -401,18 +399,30 @@ def model_install(model):
     if model not in model_manifest:
         return f"Model '{model}' does not exist", 404
 
+    params = propagate()
     model_dir = model_manifest[model]["dir"]
     if (CACHE / model).exists():
-        print(f"Skipping installation request for `{model}`")
-        return render_template("model.html", **model_manifest[model], installed=(CACHE / model).exists(), train=(model_dir / "train.py").exists(), params=params)
+        params["model"] = model
+        return redirect(url_for("model", **params))
 
     models_config["added"].append(model)
     save_models(models_config)
 
-    params = propagate()
     params["model"] = model
     params["pid"] = start_task(["bash", "-c", f"./setup.sh && echo \"Finished installing '{model}'\""], model_dir, f"Installing model: `{model}`")
     return redirect(url_for("logs", **params))
+
+@app.route("/model/<model>/uninstall", methods=["POST"])
+def model_uninstall(model):
+    if model not in model_manifest:
+        return { "error": f"Model '{model}' does not exist" }, 404
+
+    install_dir = CACHE / model
+    if not install_dir.exists():
+        return { "error": f"Model '{model}' is not installed" }, 400
+
+    shutil.rmtree(install_dir)
+    return {}, 200
 
 @app.route("/active", methods=["GET"])
 def active_models():
