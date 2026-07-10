@@ -5,7 +5,18 @@
 {% block content %}
 <div class="model-list wrapper">
     {% for (group, owner), (installed, models) in groups.items() %}
-    <h2 class="model-group">{{ group }}{% if owner %}<span> by </span>{{ owner }}{% endif %}</h2>
+    <h2 class="model-group">
+        {{ group }}{% if owner %}<span> by </span>{{ owner }}{% endif %}
+        <div class="manage-group">
+            <button onclick="remove(`{{ owner }}`, `{{ group }}`)">
+                <svg xmlns="http://www.w3.org/2000/svg" class="icon" viewBox="0 0 24 24" stroke-linecap="round"
+                    stroke-linejoin="round" fill="none" stroke-width="1px" stroke="currentColor">
+                    <path
+                        d="M 6 7 L 6 20 H 18 L 18 7 M 4 7 H 20 M 9 7 A 1 1 0 0 1 15 7 M 9 10 V 17 M 15 10 V 17 M 12 10 V 17" />
+                </svg>
+            </button>
+        </div>
+    </h2>
     {% if installed | length > 0 %}
     <span class="group-installed">Models already installed ({{ installed | length }}): {{ installed | join(", ")
         }}</span>
@@ -29,26 +40,27 @@
             </svg>
         </button>
     </h2>
-    <dialog id="add-dialog">
-        <span class="prompt-review">The following models will be added:</span>
-        <div class="preview"></div>
-        <button commandfor="add-dialog" command="close" class="cancel">Cancel</button>
-        <input class="submit" type="submit" value="Add">
+    <dialog id="confirmation">
+        <div class="content"></div>
+        <button class="cancel" value="no">Cancel</button>
+        <button class="submit" value="yes">Ok</button>
     </dialog>
 </div>
 <script>
     const add = document.getElementById("add-model");
-    const dialog = document.getElementById("add-dialog");
-    const preview = dialog.querySelector(".preview");
-    const submit = dialog.querySelector(".submit");
-    let sources;
+    const dialog = document.getElementById("confirmation");
+    const content = dialog.querySelector(".content");
+    dialog.querySelectorAll("button").forEach(x => x.addEventListener("click", () => dialog.close(x.value)));
+    dialog.addEventListener("close", () => dialog.returnValue == "yes" && dialog.done());
     add.addEventListener("click", async (e) => {
         try {
             // eyJodHRwczovL2dpdGh1Yi5jb20vdmljb3NsYWIvdG9vbGJveC1tb2RlbHMiOnsib3duZXIiOiJ2aWNvc2xhYiIsIm1vZGVscyI6WyJnZWNvMiIsImRhbTRzYW0iLCJzdXBlci1zaW1wbGUtbmV0Il0sImdyb3VwIjoidG9vbGJveC1tb2RlbHMifX0=
             const text = await navigator.clipboard.readText();
-            sources = JSON.parse(atob(text));
-            await dialog.showModal();
-            preview.replaceChildren(...sources.map(({ owner, group, models, url }) => {
+            const sources = JSON.parse(atob(text));
+            const review = document.createElement("span");
+            review.className = "prompt-review";
+            review.textContent = "The following models will be added:";
+            content.replaceChildren(review, ...sources.map(({ owner, group, models, url }) => {
                 const h = document.createElement("h3");
                 h.innerText = `${owner}/${group}`;
                 const list = document.createElement("ul");
@@ -62,16 +74,27 @@
                 return wrap;
             }));
             add.classList.add("review");
+            dialog.done = async () => {
+                if (sources !== null) {
+                    await fetch("/models/add", { method: "post", body: JSON.stringify(sources), headers: { "Content-Type": "application/json" } });
+                }
+                location.reload();
+            };
+            dialog.showModal();
         } catch (e) {
             console.log("Add-model:", e);
         }
     });
-    submit.addEventListener("click", async (e) => {
-        if (sources !== null) {
-            await fetch("/models/add", { method: "post", body: JSON.stringify(sources), headers: { "Content-Type": "application/json" } });
-        }
-        location.reload();
-    });
+    function remove(owner, group) {
+        const warn = document.createElement("blockquote");
+        warn.innerText = "Warning: this will remove local files for these models as well";
+        content.replaceChildren(`Remove models in group '${group}' by '${owner}'?`, warn);
+        dialog.done = async () => {
+            await fetch("/models/remove", { method: "post", body: JSON.stringify({ owner, group }), headers: { "Content-Type": "application/json" } });
+            location.reload();
+        };
+        dialog.showModal();
+    }
 </script>
 <style>
     .model-list {
@@ -83,12 +106,36 @@
 
     .model-group {
         flex-basis: 100%;
+        display: flex;
+        gap: 0.5rem;
+        align-items: center;
 
         span {
             font-size: small;
             color: rgb(95, 114, 129);
-            padding: 0 0.5rem;
             font-weight: 500;
+        }
+
+        .icon {
+            width: 1.5rem;
+            height: 1.5rem;
+        }
+
+        &:hover>.manage-group {
+            display: contents;
+        }
+    }
+
+    .manage-group {
+        display: none;
+
+        button {
+            padding: 0;
+            border: none;
+
+            &:hover {
+                background-color: unset;
+            }
         }
     }
 
@@ -100,6 +147,7 @@
     }
 
     .model {
+        position: relative;
         display: block;
         text-decoration: none;
         height: 128px;

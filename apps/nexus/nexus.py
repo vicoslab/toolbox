@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 import subprocess
 from subprocess import Popen, PIPE, STDOUT
+import shutil
 import re
 from enum import Enum
 from datetime import datetime
@@ -247,6 +248,26 @@ def models():
                 available[m] = model_manifest[m]
         groups[(group["group"], group["owner"])] = installed, available
     return render_template("models.html", groups=groups, params=propagate())
+
+@app.route("/models/remove", methods=["POST"])
+def models_remove():
+    data = request.json
+    if not (owner := data.get("owner")):
+        return { "error": "Missing owner field" }, 400
+    if not (group := data.get("group")):
+        return { "error": "Missing group field" }, 400
+
+    ownerdir = CACHE / ".models" / owner
+    shutil.rmtree(ownerdir / group, ignore_errors=True)
+    if len(list(ownerdir.iterdir())) == 0:
+        ownerdir.rmdir()
+
+    old = len(models_config["sources"])
+    models_config["sources"] = [x for x in models_config["sources"] if x["owner"] != owner or x["group"] != group]
+    if len(models_config["sources"]) != old:
+        refresh_manifest()
+        save_models(models_config)
+    return {}, 200
 
 @app.route("/models/add", methods=["POST"])
 def models_add():

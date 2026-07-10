@@ -190,6 +190,13 @@ fieldset {
     }
 }
 
+blockquote {
+    margin: 0.25rem 0.5rem;
+    padding: 0.25rem 0.5rem;
+    background-color: #f7dfdf;
+    border-left: 2px solid rgb(121, 121, 121);
+}
+
 .model-overview {
     .model-installation {
         margin: 0 auto;
@@ -204,13 +211,6 @@ fieldset {
         padding: 0.5rem 1rem;
         border: 1px solid var(--border);
         margin-bottom: 0.5rem;
-
-        blockquote {
-            margin: 0.25rem 0.5rem;
-            padding: 0.25rem 0.5rem;
-            background-color: #f7dfdf;
-            border-left: 2px solid rgb(121, 121, 121);
-        }
     }
 
     > .inference {
