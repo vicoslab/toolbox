@@ -3,5 +3,25 @@
 {% block title %}Labeling{% endblock %}
 
 {% block content %}
+{% if params.tour == tour_enum.LABELING.value %}
+<div class="tour-description" style="margin: 2rem;" data-tour_step="labeling">
+    <h3>Labeling</h3>
+    <p>
+        This is where you can do some labeling of your dataset if necessary, but usage will depend on your specific
+        model or problem. For example:
+    <ul>
+        <li>a model like SAM3 can generate a segmentation mask based on a provided bounding box</li>
+        <li>models may support preannotating data</li>
+        <li>some models allow you to create a new labeling project with most things preconfigured</li>
+        <li>otherwise you might need to follow upstream documentation for additional info on configuration</li>
+    </ul>
+    </p>
+    <p>
+        It uses <a href="https://github.com/HumanSignal/label-studio">Label Studio</a>, a web application for
+        labeling with support for a wide variety of tasks, while making some adjustments for a more seamless
+        experience in the toolbox.
+    </p>
+</div>
+{% endif %}
 <iframe src="/app/label-studio{{ page }}"></iframe>
 {% endblock %}

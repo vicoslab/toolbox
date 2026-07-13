@@ -4,6 +4,21 @@
 
 {% block content %}
 <div class="model-list wrapper">
+    {% if params.tour|default(-1) == tour_enum.MODEL_SELECTION.value %}
+    <div class="tour-description" data-tour_step="model_selection">
+        <h3>Tour: Models</h3>
+        <p>
+            The models tab contains a list of currently available models along with descriptions of what problems they
+            were designed to address. Depending on the model, you may select it to do things such as initiate training,
+            run inference or create a annotation project.
+        </p>
+        <p>
+            Before using models, you need to install them, which may take some time (depending on your internet
+            connection). You may add additional supported models using <i>import strings</i>, which are seemingly random
+            sequences of characters (such as <i>YWJjZGVmZw==</i>).
+        </p>
+    </div>
+    {% endif %}
     {% for (group, owner), (rev, installed, models) in groups.items() %}
     <h2 class="model-group">
         {{ group }}{% if owner %}<span> by </span>{{ owner }}{% endif %}
@@ -24,12 +39,14 @@
             </button>
         </div>
     </h2>
+    {% if params.tour|default(-1) == tour_enum.MODEL_SELECTION.value %}
+    {% set _ = params.update({"tour": tour_enum.DATASET.value }) %}
+    {% endif %}
     {% for name, info in models.items() %}
     {% set _ = params.update({ "model": name }) %}
-    {% if params.tour|default(-1) == tour_enum.MODEL_SELECTION.value %}{% set _=params.update({"tour": params.tour + 1})
-    %}{% endif %}
     {% if name in installed %}
-    <a href="{{ url_for('model', **params) }}" class="model installed">
+    <a href="{{ url_for('dataset' if params.tour|default(-1) == tour_enum.DATASET.value else 'model', **params) }}"
+        class="model installed">
         <h3>{{ info.title }}</h3>
         <p>{{ info.description }}</p>
         <button onclick="delete_(`{{ name }}`); return false;">

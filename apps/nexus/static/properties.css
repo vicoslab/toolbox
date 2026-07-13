@@ -3,6 +3,7 @@
     --brand-secondary: oklch(67.841% 0.18816 23.544);
     --bg-primary: white; /*#950606*/
     --bg-muted: rgb(235, 235, 235);
+    --bg-muted-extra: rgb(220, 220, 220);
     --fg-accent-default: #c13737; 
     --fg-accent-hover: #d32a2a;
     --fg-accent-active: #db1a1a;

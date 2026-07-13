@@ -87,13 +87,13 @@ class TourStep(Enum):
     INFERENCE = 7
 
 TOUR_STEPS = [
-    (TourStep.START.value, "Introduction", "tour"),
-    (TourStep.MODEL_SELECTION.value, "Select model", "models"),
-    (TourStep.DATASET.value, "Pick dataset", "model"),
-    (TourStep.LABELING.value, "Label images", "label"),
-    (TourStep.EXPORT.value, "Export annotations", "export"),
-    (TourStep.TRAINING.value, "Start training", "model"),
-    (TourStep.MONITORING.value, "Monitor run", "dashboard"),
+    (TourStep.START.value, "Start", "index"),
+    (TourStep.MODEL_SELECTION.value, "Models", "models"),
+    (TourStep.DATASET.value, "Dataset", "dataset"),
+    (TourStep.LABELING.value, "Labeling", "label"),
+    (TourStep.EXPORT.value, "Export", "export"),
+    (TourStep.TRAINING.value, "Training", "model"),
+    (TourStep.MONITORING.value, "Monitoring", "dashboard"),
     (TourStep.INFERENCE.value, "Inference", "model"),
 ]
 
@@ -161,11 +161,10 @@ def inject_stage_and_region():
 
 @app.route("/")
 def index():
-    return render_template("index.html", params=propagate())
-
-@app.route("/tour")
-def tour():
-    return render_template("tour.html", params=propagate())
+    params = propagate()
+    if "tour" not in params:
+        params["tour"] = TourStep.START.value
+    return render_template("index.html", params=params)
 
 @app.route("/label")
 def label():
@@ -428,46 +427,57 @@ def model_uninstall(model):
 def active_models():
     return dict([task["inference"] for task in tasks.values() if "inference" in task and task["process"] is not None])
 
-@app.route("/dataset", methods=["POST"])
+@app.route("/dataset", methods=["GET", "POST"])
 def dataset():
-    data = request.json if request.is_json else request.form.to_dict()
+    params = propagate();
+    if not (model := params.get("model")) or model not in model_manifest or not (CACHE / model).exists():
+        return redirect(url_for("models", **paramas))
 
-    if type(data) == dict:
-        env = {}
+    if request.method == "POST":
+        data = request.json if request.is_json else request.form.to_dict()
 
-        if "task" in data:
-            env["TASK"] = data["task"]
-        elif (model := request.args.get("model")) in dataset_tasks:
-            env["TASK"] = dataset_tasks[model]
+        if type(data) == dict:
+            env = {}
+
+            if "task" in data:
+                env["TASK"] = data["task"]
+            elif (model := request.args.get("model")) in dataset_tasks:
+                env["TASK"] = dataset_tasks[model]
+            else:
+                return "Request body must contain key 'task' or known model must be provided in query parameter 'model'.", 400
+
+            if dataset := data.get("dataset"):
+                env["DATASET"] = dataset
+            if title := data.get("title"):
+                env["PROJECT_TITLE"] = title
         else:
-            return "Request body must contain key 'task' or known model must be provided in query parameter 'model'.", 400
+            return "Request body must be an object with keys 'task'. Can optionally include 'title' and 'dataset'.", 400
 
-        if dataset := data.get("dataset"):
-            env["DATASET"] = dataset
-        if title := data.get("title"):
-            env["PROJECT_TITLE"] = title
+        task = tasks[start_task(["uv", "run", "create.py"], "../ls-utils", f"Project creation", extra_env=env, blocking=True)]
+        id = None
+        while line_in := task["process"].stdout.readline():
+            task["output"].append(line_in)
+            try:
+                id = int(line_in)
+                break
+            except:
+                pass
+        os.set_blocking(task["process"].stdout.fileno(), False)
+
+        if id is None:
+            return "Project could not be created", 400
+
+        params = propagate()
+        if params.get("tour") == TourStep.DATASET.value:
+            params["tour"] = TourStep.LABELING.value
+        params["project"] = id
+        return redirect(url_for("label", **params))
     else:
-        return "Request body must be an object with keys 'task'. Can optionally include 'title' and 'dataset'.", 400
-
-    task = tasks[start_task(["uv", "run", "create.py"], "../ls-utils", f"Project creation", extra_env=env, blocking=True)]
-    id = None
-    while line_in := task["process"].stdout.readline():
-        task["output"].append(line_in)
-        try:
-            id = int(line_in)
-            break
-        except:
-            pass
-    os.set_blocking(task["process"].stdout.fileno(), False)
-
-    if id is None:
-        return "Project could not be created", 400
-
-    params = propagate()
-    if params.get("tour") == TourStep.DATASET.value:
-        params["tour"] = TourStep.LABELING.value
-    params["project"] = id
-    return redirect(url_for("label", **params))
+        return render_template(
+            "dataset.html",
+            **model_manifest[model],
+            params=params
+        )
 
 @app.route("/export", methods=["GET", "POST"])
 def export():

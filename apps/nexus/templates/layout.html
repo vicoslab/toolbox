@@ -8,8 +8,6 @@
 </head>
 
 <body>
-
-
     <nav>
         <span class="toolbox-logo"></span>
         {% if "tour" in params %}
@@ -18,9 +16,13 @@
         <ul class="tour">
             {% for (id, step_name, step_endpoint) in tour_steps %}
             {% if params.tour == id %}{% set current = " current" %}{% else %}{% set current = "" %}{% endif %}
-            {% if step_endpoint == "model" and "model" not in params %}
-            <a role="listitem" class="tour-step disabled{{ current }}" href="#"
-                data-step-name="{{ step_name }}">{{step_name }}</a>
+            {% if "model" not in params and id not in [tour_enum.START.value, tour_enum.MODEL_SELECTION.value] %}
+            <a role="listitem" class="tour-step disabled{{ current }}" href="#" data-step-name="{{ step_name }}"
+                aria-disabled="true" aria-describedby="disabled-{{ id }}">
+                <div id="disabled-{{ id }}" class="disabled-message">This step is not available until a model
+                    is selected</div>
+                {{step_name }}
+            </a>
             {% else %}
             <a role="listitem" class="tour-step{{ current }}"
                 href="{{ url_for(step_endpoint, tour = id, **newparams) }}" data-step-name="{{ step_name }}">{{
@@ -57,6 +59,27 @@
     <script>
         if (!("mlflow.workflowType_v1" in localStorage)) {
             localStorage["mlflow.workflowType_v1"] = '"machine_learning"';
+        }
+        const tourHelp = document.querySelector(".tour-description");
+        if (tourHelp) {
+            const { tour_step } = tourHelp.dataset;
+            const tourClosed = JSON.parse(localStorage["toolbox.tourClosed"] || "{}");
+            if (tourClosed[tour_step]) {
+                tourHelp.remove();
+            } else {
+                const close = document.createElement("button");
+                close.className = "close";
+                close.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 50 50" stroke-linecap="round" fill="none" stroke-width="4px" stroke="currentColor"><path d="M 15 35 L 35 15 M 15 15 L 35 35"/></svg>`;
+                close.style.position = "absolute";
+                close.style.top = "0.5rem";
+                close.style.right = "0.5rem";
+                tourHelp.append(close);
+                close.addEventListener("click", () => {
+                    tourHelp.remove();
+                    tourClosed[tour_step] = true;
+                    localStorage["toolbox.tourClosed"] = JSON.stringify(tourClosed);
+                });
+            }
         }
     </script>
 </body>

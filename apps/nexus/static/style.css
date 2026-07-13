@@ -15,16 +15,17 @@ h1, h2, h3, h4, h5, h6 {
 }
 body {
     font-family: var(--font-body);
-    display: grid;
-    grid-template-rows: 3rem 1fr;
+    display: flex;
+    flex-direction: column;
     margin: 0;
     background: linear-gradient(to bottom right, var(--brand-primary), var(--brand-secondary));
     /* background-color: rgb(255, 158, 158); */
     /* background-color: rgb(232, 232, 232); */
 }
 main {
+    flex-grow: 1;
     margin: 0.5rem;
-    margin-top: 0;
+    margin-top: -1px;
     background-color: var(--bg-primary);
     border: 1px solid var(--border);
     overflow: hidden;
@@ -40,6 +41,7 @@ nav {
     gap: 0.5rem;
     align-items: center;
     padding: 0.5rem;
+    padding-bottom: 0;
     > h2 {
         padding-right: 0.5rem;
     }
@@ -53,22 +55,10 @@ nav {
         color: black;
         position: relative;
         border: 1px solid transparent;
+        border-bottom: unset;
         &:hover, &[aria-current=page] {
             border-color: var(--border);
             background-color: var(--bg-primary);
-        }
-        &[aria-current=page]::before {
-            content: "";
-            background-color: white;
-            border-left: 1px solid var(--border);
-            border-right: 1px solid var(--border);
-            display: block;
-            position: absolute;
-            box-sizing: content-box;
-            width: 100%;
-            top: calc(100% - 0.31rem);
-            height: 0.9rem;
-            left: -1px;
         }
     }
     #status {
@@ -80,9 +70,6 @@ nav {
             font-size: x-small;
             filter: drop-shadow(0 0 0.05px var(--border));
         }
-        &.idle::before { content: "🟢"; }
-        &.running::before { content: "🟡"; }
-        &.exited::before { content: "🔴"; }
     }
 }
 
@@ -117,59 +104,108 @@ button, input[type="submit"], .button {
 .tour {
     display: flex;
     align-items: center;
-    gap: 0.75rem;
+    padding-left: 0;
     list-style: none;
+    background-color: white;
+    border: 1px solid var(--border);
+    border-bottom: unset;
     .tour-step {
+        padding: 0.15rem 0.25rem 0.15rem 0;
+        font-size: 1rem;
+        flex-shrink: 0;
         position: relative;
         font-weight: 500;
-        padding: 0;
-        width: 1.25rem;
-        height: 1.25rem;
-        border-radius: 50%;
-        background-color: var(--fg-accent-active);
-        font-size: 0;
         display: flex;
         align-items: center;
-        &.current {
-            border: 2px solid var(--fg-accent-active);
-            background-color: white;
-            width: auto;
-            height: auto;
-            font-size: 1.2rem;
-            padding: 0.25rem 0.5rem;
-            border-radius: 0;
-            &::after {
-                display: none;
+        background-color: var(--bg-muted);
+        border: none;
+        &::before {
+            content: "";
+            width: 0; 
+            height: 0; 
+            border-top: 0.75rem solid transparent;
+            border-bottom: 0.75rem solid transparent;
+            border-left: 0.75rem solid var(--bg-muted);
+            background-color: var(--bg-muted);
+            transform: scaleX(0.5);
+            transform-origin: top left;
+        }
+        &:nth-child(2n) {
+            background-color: var(--bg-muted-extra);
+            &::before {
+                background-color: var(--bg-muted-extra);
+            }
+            + .tour-step::before {
+                border-left-color: var(--bg-muted-extra);
             }
         }
-        &:hover:not(.current)::after {
-            content: attr(data-step-name);
-            position: absolute;
-            font-size: 1rem;
-            width: auto;
-            text-wrap: nowrap;
-            z-index: 1;
-            pointer-events: none;
-            transform: translateX(-50%);
-            left: 50%;
-            top: 150%;
+        &:hover {
             background-color: var(--bg-accent-hover);
-            border: 1px solid var(--fg-accent-active);
-            padding: 0.25rem 0.5rem;
+            border-radius: 0;
+            &::before {
+                background-color: var(--bg-accent-hover);
+            }
+            & + .tour-step::before {
+                border-left-color: var(--bg-accent-hover);
+            }
+        }
+        &.current {
+            &:first-of-type::before {
+                border-left-color: var(--bg-accent-active);
+            }
+            background-color: var(--bg-accent-active);
+            border-radius: 0;
+            &::before {
+                background-color: var(--bg-accent-active);
+            }
+            & + .tour-step::before {
+                border-left-color: var(--bg-accent-active);
+            }
         }
     }
-    .tour-step + .tour-step::before {
-        content: "";
-        position: absolute;
-        left: -1rem;
-        z-index: -1;
-        width: 1rem;
-        height: 0.3rem;
-        background-color: var(--fg-accent-active);
+    a.tour-step:first-of-type::before {
+        border-left-color: var(--bg-accent-hover);
     }
-    .current ~ .tour-step {
-        background-color: transparent;
-        border: 3px solid var(--fg-accent-active);
+    .disabled-message {
+        z-index: 1;
+        display: none;
+        position: absolute;
+        left: 0%;
+        top: 100%;
+        width: max-content;
+        background-color: var(--bg-accent-hover);
+        border: 1px solid var(--border);
+        padding: 0.25rem 0.5rem;
+    }
+    .disabled:hover {
+        .disabled-message {
+            display: block;
+        }
+    }
+}
+
+
+.tour-description {
+    position: relative;
+    background-color: #ffefef;
+    padding: 0.5rem 1rem;
+    border: 1px solid var(--border);
+    margin-bottom: 0.5rem;
+
+    .close {
+        position: absolute;
+        top: 0.5rem;
+        right: 0.5rem;
+        padding: 0;
+        border: 0;
+        cursor: pointer;
+        svg {
+            width: 1.5rem;
+            height: 1.5rem;
+        }
+        &:hover {
+            background-color: unset;
+        }
     }
 }
 
@@ -206,12 +242,6 @@ blockquote {
         margin: 0 10% 2rem 10%;
     }
 
-    .tour-dataset {
-        background-color: #ffefef;
-        padding: 0.5rem 1rem;
-        border: 1px solid var(--border);
-        margin-bottom: 0.5rem;
-    }
 
     > .inference {
         > #results {

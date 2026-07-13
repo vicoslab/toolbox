@@ -3,5 +3,18 @@
 {% block title %}Experiments{% endblock %}
 
 {% block content %}
+{% if params.tour == tour_enum.MONITORING.value %}
+<div class="tour-description" style="margin: 2rem;" data-tour_step="monitoring">
+    <h3>Experiments</h3>
+    <p>
+        Experiments is where your training runs will appear, and it gives you an overview of relevant training
+        metrics, and outputs of the training process such as evaluation visualisations, raw scores or model weights.
+    </p>
+    <p>
+        It uses <a href="https://github.com/mlflow/mlflow">MLflow</a>, an open-source library (and server-side
+        application), with some adjustments to the latter for a more seamless experience in the toolbox.
+    </p>
+</div>
+{% endif %}
 <iframe src="/app/mlflow{{ page }}"></iframe>
 {% endblock %}

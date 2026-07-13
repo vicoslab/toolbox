@@ -4,6 +4,14 @@
 
 {% block content %}
 <div class="status wrapper">
+    <div class="tour-description">
+        <h3>Status</h3>
+        <p>
+            The status page shows the description of the current (or last) running task, along with it's log. The log
+            may contain useful information if for example the wrong values were passed to the arguments, but for more
+            involved errors you should contact relevant personel for assistance.
+        </p>
+    </div>
     <h1>Tasks</h1>
     <h2>Active</h2>
     {% for pid, task in tasks.items() %}

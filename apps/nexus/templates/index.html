@@ -12,48 +12,9 @@
             developed by our researchers, to openly available models and tools, which aid in the development and
             adaptation of our models to new problems.
         </p>
-        <p>
-            Tools are designed for use individually, or as part of a guided process starting at annotation, which you
-            can initiate with <a class="button" style="padding: 0.25rem 0.5rem;" href="/tour">Start a tour</a>.
-            In the following sections, each toolset will be briefly described.
-        </p>
-        <h3>Models</h3>
-        <p>
-            The models tab contains a list of currently available models along with descriptions of what problems they
-            were designed to address. Depending on the model, you may select it to do things such as initiate training,
-            run inference or start a tour.
-        </p>
-        <h3>Experiments</h3>
-        <p>
-            Experiments is where your training runs will appear, and it gives you an overview of relevant training
-            metrics, and outputs of the training process such as evaluation visualisations, raw scores or model weights.
-        </p>
-        <p>
-            It uses <a href="https://github.com/mlflow/mlflow">MLflow</a>, an open-source library (and server-side
-            application), with some adjustments to the latter for a more seamless experience in the toolbox.
-        </p>
-        <h3>Labeling</h3>
-        <p>
-            This is where you can do some labeling of your dataset if necessary, but usage will depend on your specific
-            model or problem. For example:
-        <ul>
-            <li>a model like SAM3 can generate a segmentation mask based on a provided bounding box</li>
-            <li>models may support preannotating data</li>
-            <li>some models allow you to create a new labeling project with most things preconfigured</li>
-            <li>otherwise you might need to follow upstream documentation for additional info on configuration</li>
-        </ul>
-        </p>
-        <p>
-            It uses <a href="https://github.com/HumanSignal/label-studio">Label Studio</a>, a web application for
-            labeling with support for a wide variety of tasks, while making some adjustments for a more seamless
-            experience in the toolbox.
-        </p>
-        <h3>Status</h3>
-        <p>
-            The status page shows the description of the current (or last) running task, along with it's log. The log
-            may contain useful information if for example the wrong values were passed to the arguments, but for more
-            involved errors you should contact relevant personel for assistance.
-        </p>
     </div>
 </div>
+<script>
+    localStorage["toolbox.tourClosed"] = "{}";
+</script>
 {% endblock %}

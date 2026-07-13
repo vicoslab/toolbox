@@ -1,0 +1,115 @@
+{% extends "layout.html" %}
+
+{% block title %}Dataset{% endblock %}
+
+{% block content %}
+<div class="wrapper">
+
+    <div class="tour-description" data-tour_step="dataset">
+        <h3>Tour: Dataset</h3>
+        <p>
+            To accomodate for different kinds of datasets and tasks, models are prepared to only require a single
+            file called a manifest, which should contain all necessary information to load in data for training.
+        </p>
+        {% if "manifest" in options %}
+        <p>
+            Description from '{{ title }}':
+        <blockquote>
+            {{ options["manifest"]["description"] }}
+        </blockquote>
+        </p>
+        {% endif %}
+        <div style="display: flex; justify-content: center; gap: 1rem;">
+            {% set _ = params.update({"tour": tour_enum.TRAINING.value }) %}
+            <a class="button" href="{{ url_for('model', **params)}}">I have a dataset prepared</a>
+            <button command="show-modal" commandfor="create-project">Create a new
+                labeling project</button>
+
+            <dialog id="create-project" style="max-width: 512px;">
+                <h3>Create project</h3>
+                This will create a new labeling project with provided name. Path can be empty, in which case
+                uploaded images will be used. Otherwise locate your existing dataset (for example /data/my-dataset).
+                <blockquote>
+                    <i>/data will only contain files which were made available during installation</i>
+                </blockquote>
+                <form method="post">
+                    <fieldset style="border: none;">
+                        <label for="dataset-name">Name</label>
+                        <input type="text" name="title" id="dataset-name">
+                        <label for="dataset-path">Path</label>
+                        <input type="text" name="dataset" id="dataset-path">
+                    </fieldset>
+                    <div class="file-browser"></div>
+                    <button type="button" commandfor="create-project" command="close">Cancel</button>
+                    <button type="submit">Create</button>
+                </form>
+
+            </dialog>
+        </div>
+    </div>
+</div>
+<script>
+    (async () => {
+        const dialog = document.getElementById("create-project");
+        const browser = dialog.querySelector(".file-browser");
+        const path = dialog.querySelector("#dataset-path");
+        const segs = [];
+        async function list() {
+            let dirs = await fetch(["/datasets", ...segs].join("/")).then(x => x.status === 200 ? x.json() : Promise.resolve([]));
+            if (segs.length > 0) {
+                dirs.splice(0, 0, "..");
+            }
+            browser.replaceChildren(...dirs.sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" })).map(name => {
+                const b = document.createElement("button");
+                b.innerHTML = `
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" fill="none" stroke-width="1px" stroke="currentColor"><path d="M 5 8 H 21 V 18 H 5 V 8 M 16 8 L 17 6 H 21 V 8"/></svg>
+                            <span>${name}</span>`;
+                b.addEventListener("click", e => {
+                    e.preventDefault();
+                    if (name === "..") {
+                        segs.pop();
+                    } else {
+                        segs.push(name);
+                    }
+                    path.value = "/data/" + segs.join("/");
+                    list()
+                });
+                return b;
+            }));
+            const prompt = document.createElement("span");
+            prompt.innerText = dirs.length > 0 ? "Datasets found:" : "No datasets";
+            prompt.style.flexBasis = "100%";
+            browser.prepend(prompt);
+        }
+        list()
+    })();
+</script>
+<style>
+    .file-browser {
+        padding: 0.5rem;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.25rem;
+        margin-bottom: 0.25rem;
+
+        button {
+            display: flex;
+            height: 2rem;
+            gap: 0.25rem;
+            padding: 0.1rem;
+            font-weight: 500;
+            padding-right: 0.25rem;
+            border: unset;
+            background-color: var(--bg-accent-hover);
+
+            &:hover {
+                background-color: var(--bg-accent-active);
+            }
+
+            span {
+                place-self: center;
+            }
+        }
+    }
+</style>
+{% endblock %}
