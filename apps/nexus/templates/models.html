@@ -59,10 +59,10 @@
     </a>
     {% else %}
     <a class="model" title="You must install the model to make it available for use."
-        onclick="install(`{{ name }}`); return false;">
+        onclick="install(`{{ url_for('model_install', **params) }}`, `{{ name }}`); return false;">
         <h3>{{ info.title }}</h3>
         <p>{{ info.description }}</p>
-        <button onclick="install(`{{ name }}`); return false;">
+        <button onclick="install(`{{ url_for('model_install', **params) }}`, `{{ name }}`); return false;">
             <svg xmlns="http://www.w3.org/2000/svg" class="icon" viewBox="0 0 24 24" stroke-linecap="round"
                 stroke-linejoin="round" fill="none" stroke-width="1px" stroke="currentColor">
                 <path d="M 12 4 V 17 L 8 13 M 12 17 L 16 13 M 18 20 H 6" />
@@ -166,9 +166,9 @@
         };
         dialog.showModal();
     }
-    function install(name) {
+    function install(url, name) {
         const form = document.createElement("form");
-        form.action = "{{ url_for('model_install', **params) }}";
+        form.action = url;
         form.method = "POST";
         const i = document.createElement("i");
         i.innerText = name;
