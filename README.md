@@ -1,27 +1,43 @@
 # Toolbox
-ViCoS toolbox is a collection of tools packaged as a docker image, alongside installation and inference/training scripts for models.
+ViCoS toolbox is a collection of tools packaged as a docker image, alongside the machinery to manage installation and inference/training scripts for models.
+
+## Running
+Running the image is pretty straightforward as far as docker is concerned. You can try running the toolbox with the following command, but **anything you do
+will not be saved**:
+
+`docker run --rm -it --publish 443:443 --device nvidia.com/gpu=all vicoslab/toolbox`
+
+The toolbox should then be accessible in your browser at [localhost](https://localhost).
+
+Additionally, you may also:
+- publish the public inference endpoint (container port 444 by default)
+- mount your datasets to `/data`
+- mount a cache folder to `/cache`
+- mount data which should be persisted to `/persist`
+- one thing which may be needed during training is larger shm sizes (i.e. running the toolbox with something like `--shm-size=2gb` or larger)
+
+```bash
+docker run --rm -it \
+    --publish 443:443 --publish 444:444 \
+    --device nvidia.com/gpu=all \
+    -v /path/to/datasets:/data \
+    -v ~/.cache/toolbox:/cache \
+    --mount type=volume,src=toolbox-persist,dst=/persist \
+    toolbox
+```
+
+## Deploying
+When deploying, you need to additionally consider the following env variables:
+```bash
+DOMAIN=localhost:443
+DOMAIN_PUBLIC=localhost:444
+HOST=https://localhost/app/label-studio
+PUBLIC_URL=https://localhost/app/label-studio
+LABEL_STUDIO_HOST=https://localhost/app/label-studio
+```
+If you do not intend to host a public inference endpoint, you may omit `DOMAIN_PUBLIC`, although in any case the toolbox performs absolutely 0 authentication. The `HOST`,
+`PUBLIC_URL` and `LABEL_STUDIO_HOST` from label studio do not seem to play well with ports.
 
 ## Building
 Currently, everything is part of a single image to simplify deployment (since the apps are only single-tenant, its easier to manage as a whole unit).
-
-## Running
-
-You will likely need to run some or all of the other components to test the functionality of the toolbox. You may do so individually, or use the docker:
-```bash
-# depending on how nvidia-container-toolkit is configured, you may need to use nvidia.com/gpu=all
-# usage for other devices varies
-docker run --rm -it --network host --ipc host -v /path/to/datasets:/data --env-file .env --device gpus=all toolbox
-```
-
-## Persistence
-In order to persist label-studio projects, mlflow runs, etc., a docker volume is needed: `docker volume create toolbox-persist`.
-This volume should be mounted to `/persist` when running containers, and additional environment variables must be passed to set the data dirs:
-```bash
-docker run --rm -it --network host --ipc host -v /path/to/datasets:/data --env-file .env --env-file .env.persist --device nvidia.com/gpu=all --mount type=volume,src=toolbox-persist,dst=/persist toolbox
-```
-
-## Caching
-When installing models, they place their source files, managed python versions and dependencies into `/cache`. In order to persist this state across container runs, you should also mount this directory somewhere:
-```bash
-docker run --rm -it --network host --ipc host -v /path/to/datasets:/data --env-file .env --env-file .env.persist --device nvidia.com/gpu=all -v ~/.cache/toolbox:/cache --mount type=volume,src=toolbox-persist,dst=/persist toolbox
-```
+The docker build is multistage and utilises caching where possible, so building shouldn't take too long, except the initial build, which may take up to 15 minutes.
