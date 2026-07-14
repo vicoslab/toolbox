@@ -571,7 +571,6 @@ class ShowDetections extends HTMLElement {
     }
 
     connectedCallback() {
-        console.log("connected callback");
         if (!this.reference) {
             throw new Error("Cannot create ShowDetections without reference");
         }
@@ -581,7 +580,11 @@ class ShowDetections extends HTMLElement {
         const showSettings = !!this.settings;
 
         this._key = `toolbox-ui-${this.group}`;
-        if (!localStorage.getItem(this._key)) {
+        let config = localStorage.getItem(this._key);
+        if (config) {
+            config = JSON.parse(config);
+            this.defaultThreshold = config.threshold;
+        } else {
             localStorage.setItem(this._key, JSON.stringify({ hideBoxes: false, hideMasks: false, hideExemplars: false, threshold: this.defaultThreshold }));
         }
 
