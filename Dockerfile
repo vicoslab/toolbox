@@ -1,3 +1,4 @@
+# check=skip=SecretsUsedInArgOrEnv
 FROM nvidia/cuda:13.0.3-cudnn-runtime-ubuntu24.04 AS base
 
 ## Generic builder with uv and yarn
@@ -85,6 +86,7 @@ COPY --from=build-ls /opt/apps/label-studio/web/dist web/dist
 
 ## Label Studio Model Inference
 ADD https://github.com/HumanSignal/label-studio-ml-backend.git /opt/apps/label-studio-ml-backend
+RUN echo "pip-system-certs" >> /opt/apps/label-studio-ml-backend/requirements.txt
 
 ## Toolbox helpers for Label Studio
 ARG src=apps/ls-utils
@@ -123,7 +125,40 @@ ENV TOOLBOX_CACHE=/cache \
     PATH=/opt/apps/mlflow/.venv/bin:/opt/apps/label-studio/.venv/bin:$PATH \
     TORCH_HOME=/cache/.torch
 
+## Persist dirs
+ENV LABEL_STUDIO_BASE_DATA_DIR=/persist/label-studio \
+    MLFLOW_BACKEND_STORE_URI=sqlite:////persist/mlflow/mlflow.db \
+    MLFLOW_ARTIFACTS_DESTINATION=/persist/mlflow/artifacts \
+    TOOLBOX_DATA=/persist/toolbox
+
+## label-studio
+ENV LATEST_VERSION_CHECK=0 \
+    COLLECT_ANALYTICS=false \
+    SENTRY_DSN= \
+    FRONTEND_SENTRY_DSN= \
+    SENTRY_RATE=0 \
+    fflag_feat_front_lsdv_e_297_increase_oss_to_enterprise_adoption_short=false \
+    LOCAL_FILES_DOCUMENT_ROOT=/data \
+    LOCAL_FILES_SERVING_ENABLED=true \
+    LABEL_STUDIO_PASSWORD=hackme \
+    LABEL_STUDIO_USERNAME=user@localhost \
+    LABEL_STUDIO_USER_TOKEN=hackme123 \
+    LABEL_STUDIO_API_KEY=hackme123 \
+    LABEL_STUDIO_ENABLE_LEGACY_API_TOKEN=true
+
+## mlflow
+ENV MLFLOW_DISABLE_TELEMETRY="true" \
+    DO_NOT_TRACK="true"
+
 ## Proxy/Init configuration
 COPY ./Caddyfile /opt/apps/caddy/Caddyfile
 COPY ./supervisord.conf /etc/supervisord.conf
+
+## Deployment (you should overwrite these using --env, --env-file, in your compose, or otherwise)
+ENV DOMAIN=localhost:443 \
+    DOMAIN_PUBLIC=localhost:444 \
+    HOST=https://localhost/app/label-studio \
+    PUBLIC_URL=https://localhost/app/label-studio \
+    LABEL_STUDIO_HOST=https://localhost/app/label-studio
+
 ENTRYPOINT [ "supervisord" ]
