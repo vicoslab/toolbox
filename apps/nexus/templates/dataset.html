@@ -22,6 +22,8 @@
         <div style="display: flex; justify-content: center; gap: 1rem;">
             {% set _ = params.update({"tour": tour_enum.TRAINING.value }) %}
             <a class="button" href="{{ url_for('model', **params)}}">I have a dataset prepared</a>
+            {% set _ = params.update({"tour": tour_enum.LABELING.value }) %}
+            <a class="button" href="{{ url_for('label', **params)}}">I have an existing project</a>
             <button command="show-modal" commandfor="create-project">Create a new
                 labeling project</button>
 
