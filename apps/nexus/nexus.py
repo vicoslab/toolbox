@@ -431,7 +431,7 @@ def active_models():
 def dataset():
     params = propagate();
     if not (model := params.get("model")) or model not in model_manifest or not (CACHE / model).exists():
-        return redirect(url_for("models", **paramas))
+        return redirect(url_for("models", **params))
 
     if request.method == "POST":
         data = request.json if request.is_json else request.form.to_dict()
