@@ -65,8 +65,7 @@ RUN --mount=target=/var/lib/apt/lists,type=cache,sharing=locked --mount=target=/
     apt update && \
     apt install -y git nano curl make supervisor ffmpeg libsm6 libxext6 unzip
 
-RUN curl -LsSf https://astral.sh/uv/install.sh | sh
-ENV PATH="/root/.local/bin:$PATH"
+RUN curl -LsSf https://astral.sh/uv/install.sh | UV_UNMANAGED_INSTALL=/usr/local/bin sh
 ENV UV_HTTP_TIMEOUT=90
 
 ## Caddy
@@ -77,6 +76,9 @@ RUN --mount=target=/var/lib/apt/lists,type=cache,sharing=locked --mount=target=/
     chmod o+r /usr/share/keyrings/caddy-stable-archive-keyring.gpg && \
     chmod o+r /etc/apt/sources.list.d/caddy-stable.list && \
     apt update && apt install -y caddy
+RUN XDG_DATA_HOME=/usr/local/share caddy start && caddy trust && caddy stop
+# should probably reduce the scope of this
+RUN chmod -R a=rwX /usr/local/share/caddy
 
 ## Label Studio
 WORKDIR /opt/apps/label-studio
@@ -85,7 +87,8 @@ COPY --from=build-ls /opt/apps/label-studio/label_studio label_studio
 COPY --from=build-ls /opt/apps/label-studio/web/dist web/dist
 
 ## Label Studio Model Inference
-ADD https://github.com/HumanSignal/label-studio-ml-backend.git /opt/apps/label-studio-ml-backend
+ADD --chmod=a+w https://github.com/HumanSignal/label-studio-ml-backend.git /opt/apps/label-studio-ml-backend
+# caddy will add self signed certs to the system, so adding this to inference workers makes so we don't need to disable VERIFY_SSL for them
 RUN echo "pip-system-certs" >> /opt/apps/label-studio-ml-backend/requirements.txt
 
 ## Toolbox helpers for Label Studio
@@ -97,11 +100,12 @@ RUN --mount=type=cache,target=/root/.cache/uv uv sync
 
 ## MLFlow
 WORKDIR /opt/apps/mlflow
-COPY --from=build-mlflow /opt/apps/mlflow/.venv .venv
-COPY --from=build-mlflow /root/.local/share/uv /root/.local/share/uv
+RUN XDG_DATA_HOME=/usr/local/share uv venv --python 3.10
+COPY --from=build-mlflow --exclude=bin/python* /opt/apps/mlflow/.venv .venv
 
 ## ModelArgs
 COPY apps/modelargs /opt/apps/modelargs
+RUN chmod a+w /opt/apps/modelargs
 
 ## Nexus
 ARG src=apps/nexus
@@ -114,8 +118,7 @@ RUN unzip -p opencv.zip js/bin/opencv.js > static/opencv.js && rm opencv.zip
 
 COPY ${src}/nexus.py ${src}/gateway.py ${src}/uv.lock ${src}/pyproject.toml .
 
-RUN --mount=type=cache,target=/root/.cache/uv uv sync
-RUN --mount=type=cache,target=/root/.cache/uv uv pip install gunicorn
+RUN --mount=type=cache,target=/root/.cache/uv uv sync && uv pip install gunicorn
 
 ## Cache dirs
 ENV TOOLBOX_CACHE=/cache \
@@ -161,4 +164,6 @@ ENV DOMAIN=localhost:443 \
     PUBLIC_URL=https://localhost/app/label-studio \
     LABEL_STUDIO_HOST=https://localhost/app/label-studio
 
-ENTRYPOINT [ "supervisord" ]
+WORKDIR /opt/supervisord
+RUN chmod 777 .
+ENTRYPOINT [ "supervisord", "-c", "/etc/supervisord.conf" ]

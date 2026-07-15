@@ -1,0 +1,23 @@
+diff --git a/label_studio/projects/api.py b/label_studio/projects/api.py
+index e19760829..71fc7c5b8 100644
+--- a/label_studio/projects/api.py
++++ b/label_studio/projects/api.py
+@@ -797,7 +797,17 @@ class TemplateListAPI(generics.ListAPIView):
+     templates_and_groups = read_templates_and_groups()
+ 
+     def list(self, request, *args, **kwargs):
+-        return Response(self.templates_and_groups)
++        group = os.getenv("TOOLBOX_BRAND_NAME_LONG", "ViCoS Toolbox")
++        configs = {}
++        for config_file in (pathlib.Path(os.environ["TOOLBOX_CACHE"]) / '.models').glob("**/config.yml"):
++            config = read_yaml(config_file)
++            configs[config['group']] = config # Use group as key for deduplication, afterwards
++            config['group'] = group # place everything into a single group
++        
++        return Response({
++            'templates': list(configs.values()) + self.templates_and_groups['templates'],
++            'groups': [group, *self.templates_and_groups['groups']]
++        })
+ 
+ 
+ @extend_schema(exclude=True)

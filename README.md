@@ -11,6 +11,7 @@ The toolbox should then be accessible in your browser at [localhost](https://loc
 
 Additionally, you may also:
 - publish the public inference endpoint (container port 444 by default)
+- run as your own user, to prevent permissions in your mounted folders from getting messed up
 - mount your datasets to `/data`
 - mount a cache folder to `/cache`
 - mount data which should be persisted to `/persist`
@@ -20,6 +21,7 @@ Additionally, you may also:
 docker run --rm -it \
     --publish 443:443 --publish 444:444 \
     --device nvidia.com/gpu=all \
+    --user $(id -u):$(id -g) \
     -v /path/to/datasets:/data \
     -v ~/.cache/toolbox:/cache \
     --mount type=volume,src=toolbox-persist,dst=/persist \
