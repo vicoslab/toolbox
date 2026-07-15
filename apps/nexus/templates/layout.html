@@ -35,7 +35,8 @@
             <dialog id="finish-tour">
                 <p>Finish tour?</p>
                 <button commandfor="finish-tour" command="close">No</button>
-                <form action="{{ url_for(request.endpoint, **newparams) }}">
+                <form
+                    action="{{ url_for(request.endpoint if request.endpoint in ['models', 'model', 'label', 'dashboard'] else 'models', **newparams) }}">
                     <button type="submit">Yes</button>
                 </form>
 
