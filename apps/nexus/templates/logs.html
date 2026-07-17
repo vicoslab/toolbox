@@ -25,9 +25,7 @@
         {% endif %}
     </div>
     <pre>
-        {% for line in output %}
-        {{ line }}
-        {% endfor %}
+        <div id="lines"></div>
         <div id="anchor"/>
     </pre>
     {% else %}
@@ -37,6 +35,18 @@
     {% endif %}
 </div>
 <script>
+    const lines = document.getElementById("lines");
+    let last = document.createElement("div");
+    last.className = "line";
+    const eventSource = new EventSource("/task/logs/{{ pid }}/stream");
+    eventSource.addEventListener("message", e => last.innerText = e.data);
+    eventSource.addEventListener("eof", e => document.getElementById("confirm-stop") && location.reload());
+    eventSource.addEventListener("newline", e => {
+        lines.append(last);
+        last = document.createElement("div");
+        last.className = "line";
+        last.innerText = e.data;
+    });
     document.querySelector(".logs > pre > #anchor").scrollIntoView()
 </script>
 {% endblock %}

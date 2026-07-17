@@ -1,4 +1,5 @@
-from flask import Flask, render_template, request, redirect, url_for, abort
+from flask import Flask, render_template, request, redirect, url_for, abort, Response
+import time
 import json
 import os
 from pathlib import Path
@@ -216,7 +217,6 @@ def refresh_logs(task):
 # debug mode is single-threaded, which makes it hang
 if not app.debug:
     from threading import Thread
-    import time
 
     def monitor_task():
         while True:
@@ -496,6 +496,30 @@ def status():
     timestamps = { pid: now - task.get("end_time", task["start_time"]) for pid, task in tasks.items() }
     return render_template("status.html", tasks=tasks, timestamps=timestamps, params=propagate())
 
+@app.route("/task/logs/<int:pid>/stream")
+def logs_stream(pid):
+    if not (task := tasks.get(pid)):
+        abort(404)
+    out = task["output"]
+
+    def eventStream(i):
+        old = None
+        while True:
+            if i < len(out) - 1:
+                i += 1
+                yield f"event: newline\nid: {i}\ndata: {out[i - 1]}\n\n"
+                continue
+            elif i < len(out):
+                if out[i] != old:
+                    old = out[i]
+                    yield f"data: {old}\n\n"
+                elif task["process"] is None:
+                    break
+            time.sleep(1)
+        yield f"event: eof\ndata: end of logs\n\n"
+            
+    return Response(eventStream(int(request.headers.get("Last-Event-Id", 0))), mimetype="text/event-stream")
+
 @app.route("/task/logs/<int:pid>")
 def logs(pid):
     if pid not in tasks:
@@ -514,7 +538,7 @@ def logs(pid):
     else:
         run_url = None
 
-    return render_template("logs.html", output=task["output"], description=task["description"], running=task["code"] is None, run_shortcut=run_url, params=params)
+    return render_template("logs.html", pid=pid, description=task["description"], running=task["code"] is None, run_shortcut=run_url, params=params)
 
 @app.route("/task/stop/<int:pid>", methods=["POST"])
 def kill(pid):
