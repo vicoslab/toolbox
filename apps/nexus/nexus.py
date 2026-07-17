@@ -97,11 +97,6 @@ TOUR_STEPS = [
     (TourStep.INFERENCE.value, "Inference", "model"),
 ]
 
-dataset_tasks = {
-    "super-simple-net": "anomaly-detection",
-    "cedirnet": "orientation-estimation",
-}
-
 # make sure virutal env doesn't bleed into subprocesses
 if "VIRTUAL_ENV" in os.environ:
     del os.environ["VIRTUAL_ENV"]
@@ -437,21 +432,14 @@ def dataset():
         data = request.json if request.is_json else request.form.to_dict()
 
         if type(data) == dict:
-            env = {}
-
-            if "task" in data:
-                env["TASK"] = data["task"]
-            elif (model := request.args.get("model")) in dataset_tasks:
-                env["TASK"] = dataset_tasks[model]
-            else:
-                return "Request body must contain key 'task' or known model must be provided in query parameter 'model'.", 400
+            env = { "MODEL_DIR": model_manifest[model]["dir"] }
 
             if dataset := data.get("dataset"):
                 env["DATASET"] = dataset
             if title := data.get("title"):
                 env["PROJECT_TITLE"] = title
         else:
-            return "Request body must be an object with keys 'task'. Can optionally include 'title' and 'dataset'.", 400
+            return "Request body must be an object, which can optionally include 'title' and 'dataset'.", 400
 
         task = tasks[start_task(["uv", "run", "create.py"], "../ls-utils", f"Project creation", extra_env=env, blocking=True)]
         id = None

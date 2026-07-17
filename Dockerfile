@@ -94,7 +94,6 @@ RUN echo "pip-system-certs" >> /opt/apps/label-studio-ml-backend/requirements.tx
 ## Toolbox helpers for Label Studio
 ARG src=apps/ls-utils
 WORKDIR /opt/apps/ls-utils
-COPY ${src}/templates ./templates
 COPY ${src}/export.py ${src}/create.py ${src}/uv.lock ${src}/pyproject.toml .
 RUN --mount=type=cache,target=/root/.cache/uv uv sync
 

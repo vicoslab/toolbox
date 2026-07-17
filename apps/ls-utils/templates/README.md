@@ -1,2 +1,0 @@
-## Creating new templates
-When creating templates, use Labels independently so multiple tools may share them. If for some reason you need to use combined tags (e.g. BrushLabels), be wary that model integrations aren't ready to accept those yet.
