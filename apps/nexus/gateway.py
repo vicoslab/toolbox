@@ -6,6 +6,7 @@ import json
 
 forms = {}
 workers = {}
+projects = {}
 
 app = Flask(__name__)
 
@@ -29,6 +30,12 @@ if not app.debug:
 # stub label-studio-ml-backend api endpoints
 @app.route("/setup", methods=["POST"])
 def setup():
+    data = request.json
+    if extra := data.get("extra_params"):
+        extra = json.loads(extra)
+        # note: project seems to be a float value for some reason
+        projects[data["project"]] = extra["model"]
+
     return { "model_version": "0.0.1" }
 
 @app.route("/health")
@@ -43,21 +50,27 @@ def get_region_label(region):
     return None
 
 DOMAIN = os.environ["DOMAIN"]
-# proxy prediction requests for label-studio-ml-backend (only interactive at the moment)
+def proxy_inference_request(port, data):
+    for task in data["tasks"]:
+        for k, v in task["data"].items():
+            if v.startswith("/app/label-studio/data/upload/"):
+                task["data"][k] = f"https://{DOMAIN}{v}"
+    response = requests.post(f"http://localhost:{port}/predict", json=data)
+    return (response.text, response.status_code, {'Content-Type': response.headers.get('Content-Type', 'text/plain')})
+
+# proxy prediction requests for label-studio-ml-backend
 @app.route("/predict", methods=["POST"])
 def predict():
     if app.debug:
         refresh_workers()
 
-    if (context := request.json["params"]["context"]) and (region := context.get("region")):
-        if (model := get_region_label(region)) and (port := workers.get(model.lower())):
-            data = request.json
-            for task in data["tasks"]:
-                for k, v in task["data"].items():
-                    if v.startswith("/app/label-studio/data/upload/"):
-                        task["data"][k] = f"https://{DOMAIN}{v}"
-            response = requests.post(f"http://localhost:{port}/predict", json=data)
-            return (response.text, response.status_code, {'Content-Type': response.headers.get('Content-Type', 'text/plain')})
+    data = request.json
+    # interactive requests will have a context, and should be set up such that the region contains info on which model to run
+    if (context := data["params"]["context"]) and (region := context.get("region")) and (model := get_region_label(region)) and (port := workers.get(model.lower())):
+        return proxy_inference_request(port, data)
+    # otherwise try to run the model associated with the project, if running
+    if (model := projects.get(data["project"])) and (port := workers.get(model)):
+        return proxy_inference_request(port, data)
 
     abort(404)
 
@@ -96,7 +109,7 @@ def infer(model):
                     </div>
                 </form>
             </body>
-            <script src="/static/opencv.js"></script>
+            <script src="/static/opencv.js" async></script>
             <script src="/static/model.js"></script>
             <script>window.endpoint = "{model}"</script>
             <style>

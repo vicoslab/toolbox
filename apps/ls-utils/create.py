@@ -36,4 +36,5 @@ if DATASET:
     # TODO: test this once recursive_scan is available, and make api enddpoint set this process to nonblocking
     ls.import_storage.local.sync(import_storage.id)
 
-ls.ml.create(title="Inference worker", project=project.id, url="http://localhost:9090", is_interactive=True)
+extra = dict(model=MODEL_DIR.name, project=project.id)
+ls.ml.create(title="Inference worker", project=project.id, url="http://localhost:9090", is_interactive=True, extra_params=json.dumps(extra))
