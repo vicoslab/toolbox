@@ -106,7 +106,7 @@ button, input[type="submit"], .button {
     align-items: center;
     padding-left: 0;
     list-style: none;
-    background-color: white;
+    background-color: var(--bg-primary);
     border: 1px solid var(--border);
     border-bottom: unset;
     .tour-step {
