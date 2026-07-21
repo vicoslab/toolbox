@@ -329,7 +329,20 @@ def datasets(path):
 def model(model):
     if model not in model_manifest or not (CACHE / model).exists():
         return redirect(url_for("models", **propagate()))
-    runs = mlflow.search_runs(experiment_names=[model_manifest[model]["title"]], max_results=100, output_format="list")
+
+    return render_template(
+        "model.html",
+        **model_manifest[model],
+        train=(model_manifest[model]["dir"] / "train.py").exists(),
+        params={ **propagate(), "model": model }
+    )
+
+@app.route("/model/<model>/options", methods=["GET"])
+def model_options(model):
+    if not (model_info := model_manifest.get(model)):
+        return dict(error=f"Model '{model}' does not exist"), 404
+
+    runs = mlflow.search_runs(experiment_names=[model_info["title"]], max_results=100, output_format="list")
     completions = {}
     if len(runs) > 0 and ARTIFACTS:
         for k, v in model_manifest[model]["options"].items():
@@ -343,36 +356,27 @@ def model(model):
                     if len(_completions) > 0:
                         completions[k] = _completions
 
-    return render_template(
-        "model.html",
-        **model_manifest[model],
-        completions=completions,
-        installed=(CACHE / model).exists(),
-        train=(model_manifest[model]["dir"] / "train.py").exists(),
-        params={ **propagate(), "model": model }
-    )
+    return dict(options=model_info.get("options", {}), completions=completions)
 
 @app.route("/model/<model>/infer", methods=["POST"])
 def model_infer(model):
     if model not in model_manifest:
         return f"Model '{model}' does not exist", 404
 
-    data = request.json if request.is_json else request.form.to_dict()
     params = propagate()
     params["model"] = model
-    params["pid"] = create_inference_worker(model, data.items())
+    params["pid"] = create_inference_worker(model, request.json.items())
 
     if params.get("tour") == TourStep.MONITORING.value:
         params["tour"] = TourStep.INFERENCE.value
-    return redirect(url_for("logs", **params))
+    return dict(pid=pid, logs=url_for("logs", **params))
 
 @app.route("/model/<model>/train", methods=["POST"])
 def model_train(model):
     if model not in model_manifest:
         return f"Model '{model}' does not exist", 404
 
-    data = request.json if request.is_json else request.form.to_dict()
-    flags = build_model_options(model_manifest[model]["options"], data.items())
+    flags = build_model_options(model_manifest[model]["options"], request.json.items())
     pid = start_task(
         ["uv", "run", "train.py"] + flags,
         model_manifest[model]["dir"],
@@ -386,7 +390,7 @@ def model_train(model):
     # skip labeling steps
     if params.get("tour") == TourStep.DATASET.value:
         params["tour"] = TourStep.TRAINING.value
-    return redirect(url_for("logs", **params))
+    return dict(pid=pid, logs=url_for("logs", **params))
 
 @app.route("/model/<model>/install", methods=["POST"])
 def model_install(model):

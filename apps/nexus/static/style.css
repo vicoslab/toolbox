@@ -73,7 +73,7 @@ nav {
     }
 }
 
-button, input[type="submit"], .button {
+button, input[type="submit"], input[type="button"], .button {
     padding: 0.5rem 1rem;
     display: inline-block;
     background-color: var(--bg-accent-default);
@@ -314,5 +314,26 @@ dialog {
         overflow: auto;
         background-color: rgb(50, 50, 60);
         color: rgb(232, 232, 232);
+    }
+}
+
+#toast-wrapper {
+    position: absolute;
+    right: 1rem;
+    bottom: 1rem;
+    width: 256px;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+.toast {
+    padding: 0.25rem 0.5rem;
+    border: 1px solid var(--border);
+    .toast-title {
+        margin-right: 0.5rem;
+        font-weight: 600;
+    }
+    &.error .toast-title {
+        color: oklch(57.7% 0.245 27.325); /* tw red-600 */
     }
 }

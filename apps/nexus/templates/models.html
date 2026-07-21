@@ -81,18 +81,9 @@
             </svg>
         </button>
     </h2>
-    <dialog id="confirmation">
-        <div class="content"></div>
-        <button class="cancel" value="no">Cancel</button>
-        <button class="submit" value="yes">Ok</button>
-    </dialog>
 </div>
 <script>
     const add = document.getElementById("add-model");
-    const dialog = document.getElementById("confirmation");
-    const content = dialog.querySelector(".content");
-    dialog.querySelectorAll("button").forEach(x => x.addEventListener("click", () => dialog.close(x.value)));
-    dialog.addEventListener("close", () => dialog.returnValue == "yes" && dialog.done());
     add.addEventListener("click", async (e) => {
         try {
             // eyJodHRwczovL2dpdGh1Yi5jb20vdmljb3NsYWIvdG9vbGJveC1tb2RlbHMiOnsib3duZXIiOiJ2aWNvc2xhYiIsIm1vZGVscyI6WyJnZWNvMiIsImRhbTRzYW0iLCJzdXBlci1zaW1wbGUtbmV0Il0sImdyb3VwIjoidG9vbGJveC1tb2RlbHMifX0=
@@ -101,7 +92,8 @@
             const review = document.createElement("span");
             review.className = "prompt-review";
             review.textContent = "The following models will be added:";
-            content.replaceChildren(review, ...sources.map(({ owner, group, models, url }) => {
+            add.classList.add("review");
+            showModal(review, ...sources.map(({ owner, group, models, url }) => {
                 const h = document.createElement("h3");
                 h.innerText = `${owner}/${group}`;
                 const list = document.createElement("ul");
@@ -113,15 +105,12 @@
                 const wrap = document.createElement("div");
                 wrap.append(h, list);
                 return wrap;
-            }));
-            add.classList.add("review");
-            dialog.done = async () => {
+            })).then(async () => {
                 if (sources !== null) {
                     await fetch("/models/add", { method: "post", body: JSON.stringify(sources), headers: { "Content-Type": "application/json" } });
                 }
                 location.reload();
-            };
-            dialog.showModal();
+            }).catch(() => { });
         } catch (e) {
             console.log("Add-model:", e);
         }
@@ -129,12 +118,10 @@
     function remove(owner, group) {
         const warn = document.createElement("blockquote");
         warn.innerText = "Warning: this will remove local files for these models as well";
-        content.replaceChildren(`Remove models in group '${group}' by '${owner}'?`, warn);
-        dialog.done = async () => {
+        showModal(`Remove models in group '${group}' by '${owner}'?`, warn).then(async () => {
             await fetch("/models/remove", { method: "post", body: JSON.stringify({ owner, group }), headers: { "Content-Type": "application/json" } });
             location.reload();
-        };
-        dialog.showModal();
+        }).catch(() => { });
     }
     function update(owner, group) {
         const version = document.createElement("input");
@@ -151,20 +138,18 @@
         const details = document.createElement("details");
         details.style.marginTop = "0.5rem";
         details.append(summary, label)
-        content.replaceChildren(`Update models in group '${group}' by '${owner}'?`, details);
-        dialog.done = async () => {
-            await fetch("/models/update", { method: "post", body: JSON.stringify({ owner, group, ...version.value !== "" && { rev: version.value } }), headers: { "Content-Type": "application/json" } });
+        showModal(`Update models in group '${group}' by '${owner}'?`, details).then(async () => {
+            await fetch("/models/update", {
+                method: "post", body: JSON.stringify({ owner, group, ...version.value !== "" && { rev: version.value } }), headers: { "Content-Type": "application/json" }
+            });
             location.reload();
-        };
-        dialog.showModal();
+        }).catch(() => { });
     }
     function delete_(name) {
-        content.replaceChildren(`Delete installed files for model '${name}'?`);
-        dialog.done = async () => {
+        showModal(`Delete installed files for model '${name}'?`).then(async () => {
             await fetch(`/model/${name}/uninstall`, { method: "post" });
             location.reload();
-        };
-        dialog.showModal();
+        }).catch(() => { });
     }
     function install(url, name) {
         const form = document.createElement("form");
@@ -172,11 +157,9 @@
         form.method = "POST";
         const i = document.createElement("i");
         i.innerText = name;
-        content.replaceChildren(form, "Install model ", i, " ?");
-        dialog.done = async () => {
+        showModal(form, "Install model ", i, " ?").then(() => {
             form.submit();
-        };
-        dialog.showModal();
+        }).catch(() => { });
     }
 </script>
 <style>

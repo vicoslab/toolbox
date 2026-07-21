@@ -4,58 +4,21 @@
 
 {% block content %}
 <div class="model-overview wrapper">
-    <div class="model-options">
-        <form method="post">
-            <fieldset>
-                {% for k, prop in options.items() %}
-                <label for="{{ k }}" title="{{ prop.description }}">{{ k }}</label>
-                {% if prop.enum %}
-                <div>
-                    {% for opt in prop.enum %}
-                    <input type="radio" id="{{ opt }}" name="{{ k }}" value="{{ opt }}" {% if prop.default==opt
-                        %}checked{% endif %} />
-                    <label for="{{ opt }}">{{ opt }}</label>
-                    {% endfor %}
-                </div>
-                {% elif prop.type == "string" %}
-                {% if k in completions %}
-                {# https://stackoverflow.com/questions/264640/how-can-i-create-an-editable-dropdownlist-in-html #}
-                <div class="dropdown">
-                    <input type="text" name="{{ k }}" placeholder="{{ prop.default }}">
-                    <select
-                        onchange="this.previousElementSibling.value=this.value; this.previousElementSibling.focus(); this.value = null">
-                        <option value="">-- Select weights from completed runs --</option>
-                        {% for group, vals in completions[k] %}
-                        <optgroup label="{{ group }}">
-                            {% for name, v in vals %}
-                            <option value="{{ v }}">{{ name }}</option>
-                            {% endfor %}
-                        </optgroup>
-                        {% endfor %}
-                    </select>
-                </div>
-                {% else %}
-                <input type="text" name="{{ k }}" placeholder="{{ prop.default }}">
-                {% endif %}
-                {% elif prop.type == "boolean" %}
-                <input type="checkbox" name="{{ k }}" {% if prop.default %}checked{% endif %}>
-                {% elif prop.type == "integer" %}
-                <input type="text" inputmode="numeric" pattern="\d*" name="{{ k }}" placeholder="{{ prop.default }}">
-                {% elif prop.type == "number" %}
-                <input type="text" inputmode="numeric" pattern="\d+(.\d+)?" name="{{ k }}"
-                    placeholder="{{ prop.default }}">
-                {% else %}
-                invalid type
-                {% endif %}
-                {% endfor %}
-                {% if train %}
-                <input type="submit" name="start-train" formaction="{{ url_for('model_train', **params) }}"
-                    value="Start training">
-                {% endif %}
-                <input type="submit" name="start-inference-worker" formaction="{{ url_for('model_infer', **params) }}"
-                    value="Start inference worker">
-            </fieldset>
-        </form>
+    <div class="edit-options" style="display: none;">
+        <h2 style="flex-basis: 100%;">Model options</h2>
+        <div id="set-options"></div>
+        <button title="Add option" class="add-option">
+            <svg xmlns="http://www.w3.org/2000/svg" class="icon" viewBox="0 0 24 24" stroke-linecap="round"
+                stroke-linejoin="round" fill="none" stroke-width="2px" stroke="currentColor">
+                <path d="M 12 5 V 19 M 5 12 H 19" />
+            </svg>
+            <div id="list-options" popover=""></div>
+        </button>
+    </div>
+    <div class="model-dispatch">
+        <button id="model-training" {% if not train %}style="background-color: var(--bg-muted); cursor: not-allowed;"
+            disabled{% endif %}>Training</button>
+        <button id="model-inference">Inference</button>
     </div>
     <div class="inference">
         <form id="form-inference" action="">
@@ -72,12 +35,259 @@
 
 <script src="/static/opencv.js" async></script>
 <script src="/static/model.js"></script>
-<script src="/static/autofill.js"></script>
 <script>
-    window.endpoint = "/infer/{{ params.model }}";
-    window.addEventListener("load", () => autofillSetup("{{ title }}"));
+    const model = "{{ params.model }}";
+    window.endpoint = "/infer/" + model;
+
+    (async () => {
+        const setOptions = document.getElementById("set-options");
+
+        const { options, completions } = await fetch(`/model/${model}/options`).then(r => r.json());
+        if (Object.keys(options).length > 0) {
+            document.querySelector(".edit-options").style.display = "";
+        }
+
+        const key = `toolbox-model-${model}`;
+        const values = JSON.parse(localStorage.getItem(key) || "{}");
+        const values_display = {};
+
+        document.getElementById("model-training").addEventListener("click", async () => {
+            const updated = JSON.stringify(values);
+            localStorage.setItem(key, updated);
+            let { pid, logs } = await fetch(`/model/${model}/train`, { body: updated, method: "POST", headers: { "Content-Type": "application/json" } }).then(r => r.json());
+            const show_logs = document.createElement("a");
+            show_logs.href = logs;
+            show_logs.className = "button";
+            show_logs.innerText = "Show logs";
+            showToast("info", "Training dispatched.", show_logs);
+        });
+
+        document.getElementById("model-inference").addEventListener("click", async () => {
+            let { pid, logs } = await fetch(`/model/${model}/infer`, { body: JSON.stringify(values), method: "POST", headers: { "Content-Type": "application/json" } }).then(r => r.json());
+            const show_logs = document.createElement("a");
+            show_logs.href = logs;
+            show_logs.className = "button";
+            show_logs.innerText = "Show logs";
+            showToast("info", "Inference worker started.", show_logs);
+        });
+
+        const listOptions = document.getElementById("list-options");
+        const addOption = document.querySelector(".edit-options > button");
+        addOption.addEventListener("click", () => {
+            listOptions.replaceChildren(...Object.keys(options).filter(k => !(k in values)).sort((a, b) => options[a].title.localeCompare(options[b].title, undefined, { numeric: true, sensitivity: "base" })).map(k => {
+                const prop = options[k];
+                const el = document.createElement("div");
+                el.innerText = prop.title;
+                el.addEventListener("click", e => {
+                    e.stopPropagation();
+                    listOptions.hidePopover();
+                    editOption(k, prop);
+                });
+                return el;
+            }));
+            listOptions.showPopover();
+            listOptions.style.top = addOption.offsetTop + addOption.offsetHeight + "px";
+            if (addOption.offsetLeft + listOptions.offsetWidth < addOption.offsetParent.offsetWidth) {
+                listOptions.style.left = addOption.offsetLeft + "px";
+            } else {
+                listOptions.style.left = addOption.offsetLeft + addOption.offsetWidth - listOptions.offsetWidth + "px";
+            }
+        });
+
+        for (const [k, v] of Object.entries(values)) {
+            const el = display(k, v);
+            values_display[k] = el;
+            setOptions.append(el);
+        }
+
+        function display(k, v) {
+            const prop = options[k];
+            if (prop === undefined) return;
+
+            const wrap = document.createElement("button");
+            wrap.addEventListener("click", () => editOption(k, prop));
+
+            const name = document.createElement("span");
+            name.className = "option-name";
+            name.innerText = prop.title;
+
+            const value = document.createElement("span");
+            value.className = "option-value";
+            value.innerText = v;
+
+            const remove = document.createElement("span");
+            remove.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 50 50" stroke-linecap="round" fill="none" stroke-width="4px" stroke="currentColor"><path d="M 15 35 L 35 15 M 15 15 L 35 35"/></svg>`;
+            remove.addEventListener("click", () => {
+                if (k in values) {
+                    delete values[k];
+                    delete values_display[k];
+                    wrap.remove();
+                }
+            });
+            wrap.append(name, value);
+            return wrap;
+        }
+        function setValue(k, v) {
+            values[k] = v;
+            let el = values_display[k];
+            if (el === undefined) {
+                el = display(k, v);
+                values_display[k] = el;
+                setOptions.append(el);
+            } else {
+                values_display[k].querySelector(".option-value").innerText = v;
+            }
+        }
+        function editOption(k, prop) {
+            const title = document.createElement("div");
+            title.className = "option-title";
+            title.innerText = prop.title;
+
+            const description = document.createElement("p");
+            description.className = "option-description";
+            description.innerText = prop.description;
+
+            if (prop.enum) {
+                const opts = document.createElement("div");
+                for (const opt of prop.enum) {
+                    const radio = document.createElement("input");
+                    radio.name = k;
+                    radio.type = "radio";
+                    radio.id = opt;
+                    radio.value = opt;
+                    radio.checked = (values[k] || prop.default) === opt;
+
+                    const radio_label = document.createElement("label");
+                    radio_label.htmlFor = opt;
+                    radio_label.innerText = opt;
+                    opts.append(radio, radio_label);
+                }
+                showModal(title, description, opts).then(() => setValue(k, opts.querySelector('input:checked').value)).catch(() => { });
+                return;
+            }
+            switch (prop.type) {
+                case "string": {
+                    const input = document.createElement("input");
+                    input.name = k;
+                    input.type = "text";
+                    input.placeholder = prop.default || "";
+                    input.value = values[k] || null;
+                    let component = input;
+                    if (k in completions) {
+                        // https://stackoverflow.com/questions/264640/how-can-i-create-an-editable-dropdownlist-in-html
+                        const dropdown = document.createElement("div");
+                        dropdown.className = "dropdown";
+                        component = dropdown;
+
+                        const select = document.createElement("select");
+                        select.addEventListener("change", () => {
+                            input.value = select.value;
+                            input.focus();
+                            select.value = null;
+                        });
+                        dropdown.append(input, select);
+
+                        const option_default = document.createElement("option");
+                        option_default.innerText = "-- Select from completions --";
+                        select.append(option_default);
+
+                        for (const [group, vals] of completions[k]) {
+                            const optgroup = document.createElement("optgroup");
+                            optgroup.label = group;
+
+                            for (const [name, v] of vals) {
+                                const option = document.createElement("option");
+                                option.value = v;
+                                option.innerText = name;
+                                optgroup.append(option);
+                            }
+                            select.append(optgroup);
+                        }
+                    }
+                    showModal(title, description, component).then(() => setValue(k, input.value)).catch(() => { });
+                    break;
+                }
+                case "boolean": {
+                    const input = document.createElement("input");
+                    input.name = k;
+                    input.type = "checkbox";
+                    input.checked = values[k] || ("default" in prop);
+                    showModal(title, description, input).then(() => setValue(k, input.checked)).catch(() => { });
+                    break;
+                }
+                case "number":
+                case "integer": {
+                    const input = document.createElement("input");
+                    input.name = k;
+                    input.inputMode = "numeric";
+                    input.pattern = prop.type === "integer" ? "\d*" : "\d+(.\d+)?";
+                    input.placeholder = prop.default | "";
+                    input.value = values[k] || null;
+                    showModal(title, description, input).then(() => setValue(k, input.value)).catch(() => { });
+                    break;
+                }
+                default: throw Error(`Invalid type '${prop.type}'`);
+            }
+        }
+    })();
 </script>
 <style>
+    .model-dispatch {
+        display: flex;
+        justify-content: center;
+        gap: 1rem;
+        padding: 2rem;
+    }
+
+    .edit-options {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+
+    #set-options {
+        display: contents;
+
+        button {
+            font-weight: 500;
+
+            &:hover .option-value {
+                background-color: var(--bg-accent-active);
+            }
+        }
+
+        .option-value {
+            margin-left: 0.5rem;
+            background-color: var(--bg-accent-hover);
+            opacity: 0.75;
+            padding: 0.15rem 0.3rem;
+        }
+    }
+
+    #list-options {
+        font-weight: 500;
+        border: 1px solid var(--border);
+        text-align: left;
+        padding: 0;
+        margin: 0;
+        margin-top: 0.5rem;
+        position: absolute;
+
+        >div {
+            padding: 0.25rem 0.5rem;
+
+            &:hover {
+                background-color: var(--bg-accent-hover);
+            }
+        }
+    }
+
+    .add-option {
+        padding: 0;
+        width: 2rem;
+        height: 2rem;
+    }
+
     .dropdown {
         position: relative;
     }
