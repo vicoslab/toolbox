@@ -48,7 +48,7 @@ def refresh_manifest():
         if not repo.exists():
             subprocess.run(["git", "clone", "--filter=blob:none", "--no-checkout", src["url"], str(repo)], check=True)
             subprocess.run(["git", "sparse-checkout", "init", "--cone"], cwd=repo, check=True)
-            src["rev"] = subprocess.run(["git", "rev-parse", "HEAD"], cwd=repo, capture_output=True, text=True, check=True).stdout.strip()
+        src["rev"] = subprocess.run(["git", "rev-parse", "HEAD"], cwd=repo, capture_output=True, text=True, check=True).stdout.strip()
 
         for name in src["models"]:
             model_path = repo / name
@@ -249,6 +249,7 @@ def models(request: Request):
 class ModelGroup(BaseModel):
     owner: str
     group: str
+    rev: str = "origin/HEAD"
 
 @app.post("/models/update")
 def models_update(group_info: ModelGroup):
@@ -263,7 +264,7 @@ def models_update(group_info: ModelGroup):
         return { "error": "Invalid group" }, 400
     
     subprocess.run(["git", "fetch"], cwd=groupdir, check=True)
-    subprocess.run(["git", "checkout", data.get("rev", "origin/HEAD")], cwd=groupdir, check=True)
+    subprocess.run(["git", "checkout", group_info.rev], cwd=groupdir, check=True)
     new = subprocess.run(["git", "rev-parse", "HEAD"], cwd=groupdir, capture_output=True, text=True, check=True).stdout.strip()
 
     if new != src["rev"]:
@@ -276,7 +277,7 @@ def models_update(group_info: ModelGroup):
 @app.post("/models/remove")
 def models_remove(group_info: ModelGroup):
     ownerdir = CACHE / ".models" / group_info.owner
-    shutil.rmtree(ownerdir / group, ignore_errors=True)
+    shutil.rmtree(ownerdir / group_info.group, ignore_errors=True)
     if len(list(ownerdir.iterdir())) == 0:
         ownerdir.rmdir()
 
@@ -293,6 +294,8 @@ class ModelGroupDefinition(ModelGroup):
 @app.post("/models/add")
 def models_add(data: List[ModelGroupDefinition]):
     for defs in data:
+        defs = dict(defs)
+        defs["url"] = str(defs["url"])
         if defs not in models_config["sources"]:
             models_config["sources"].append(defs)
 
@@ -382,7 +385,7 @@ async def model_train(request: Request, model: str):
     return TaskResponse(pid=pid, logs=str(url_for_query(request, "logs", **params)))
 
 @app.post("/model/{model}/install")
-def model_install(model: int):
+def model_install(request: Request, model: str):
     if model not in model_manifest:
         raise HTTPException(status_code=404, detail=f"Model '{model}' does not exist")
 
@@ -390,17 +393,17 @@ def model_install(model: int):
     model_dir = model_manifest[model]["dir"]
     if (CACHE / model).exists():
         params["model"] = model
-        return RedirectResponse(request.url_for("model"))
+        raise HTTPException(status_code=400, detail=f"Model '{model}' already exists or installation is in progress")
 
     models_config["added"].append(model)
     save_models(models_config)
 
     params["model"] = model
     params["pid"] = start_task(["bash", "-c", f"./setup.sh && echo \"Finished installing '{model}'\""], model_dir, f"Installing model: `{model}`")
-    return RedirectResponse(request.url_for("logs"))
+    return { "pid": params["pid"], "logs": url_for_query(request, "logs", **params) }
 
 @app.post("/model/{model}/uninstall")
-def model_uninstall(model: int):
+def model_uninstall(model: str):
     if model not in model_manifest:
         raise HTTPException(status_code=404, detail=f"Model '{model}' does not exist")
 
@@ -515,7 +518,7 @@ def logs(request: Request, pid: int):
     override = { **params, "tour": TourStep.MONITORING.value } if params.get("tour") == TourStep.TRAINING.value else params
     if info := task.get("run_info"):
         override["experiment"], override["run"] = info
-        run_url = request.url_for("dashboard", **override)
+        run_url = url_for_query(request, "dashboard", **override)
     else:
         run_url = None
 
@@ -529,7 +532,7 @@ def kill(request: Request, pid: int):
         task["process"].terminate()
     params = propagate(request.query_params)
     params["pid"] = pid
-    return RedirectResponse(request.url_for("logs"))
+    return RedirectResponse(url_for_query(request, "logs", **params), status_code=303) # 303 changes to GET
 
 from starlette.routing import Route
 routes = { r.name: set(r.param_convertors.keys()) for r in app.router.routes if isinstance(r, Route) }

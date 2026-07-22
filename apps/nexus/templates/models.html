@@ -153,13 +153,15 @@
         }).catch(() => { });
     }
     function install(url, name) {
-        const form = document.createElement("form");
-        form.action = url;
-        form.method = "POST";
         const i = document.createElement("i");
         i.innerText = name;
-        showModal(form, "Install model ", i, " ?").then(() => {
-            form.submit();
+        showModal("Install model ", i, " ?").then(async () => {
+            const { pid, logs } = await fetch(url, { method: "post" }).then(r => r.json());
+            const show_logs = document.createElement("a");
+            show_logs.href = logs;
+            show_logs.className = "button";
+            show_logs.innerText = "Show logs";
+            showToast("info", "Model installation started.", show_logs);
         }).catch(() => { });
     }
 </script>
