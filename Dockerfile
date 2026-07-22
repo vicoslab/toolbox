@@ -117,7 +117,7 @@ RUN unzip -p opencv.zip js/bin/opencv.js > static/opencv.js && rm opencv.zip
 
 COPY ${src}/nexus.py ${src}/gateway.py ${src}/uv.lock ${src}/pyproject.toml .
 
-RUN --mount=type=cache,target=/root/.cache/uv uv sync && uv pip install gunicorn
+RUN --mount=type=cache,target=/root/.cache/uv XDG_DATA_HOME=/usr/local/share uv sync
 
 ## Cache dirs
 ENV TOOLBOX_CACHE=/cache \

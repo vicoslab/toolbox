@@ -45,7 +45,7 @@
     {% for name, info in models.items() %}
     {% set _ = params.update({ "model": name }) %}
     {% if name in installed %}
-    <a href="{{ url_for('dataset' if params.tour|default(-1) == tour_enum.DATASET.value else 'model', **params) }}"
+    <a href="{{ url_for_query(request, 'dataset' if params.tour|default(-1) == tour_enum.DATASET.value else 'model', **params) }}"
         class="model installed">
         <h3>{{ info.title }}</h3>
         <p>{{ info.description }}</p>
@@ -59,10 +59,11 @@
     </a>
     {% else %}
     <a class="model" title="You must install the model to make it available for use."
-        onclick="install(`{{ url_for('model_install', **params) }}`, `{{ name }}`); return false;">
+        onclick="install(`{{ url_for_query(request, 'model_install', **params) }}`, `{{ name }}`); return false;">
         <h3>{{ info.title }}</h3>
         <p>{{ info.description }}</p>
-        <button onclick="install(`{{ url_for('model_install', **params) }}`, `{{ name }}`); return false;">
+        <button
+            onclick="install(`{{ url_for_query(request, 'model_install', **params) }}`, `{{ name }}`); return false;">
             <svg xmlns="http://www.w3.org/2000/svg" class="icon" viewBox="0 0 24 24" stroke-linecap="round"
                 stroke-linejoin="round" fill="none" stroke-width="1px" stroke="currentColor">
                 <path d="M 12 4 V 17 L 8 13 M 12 17 L 16 13 M 18 20 H 6" />

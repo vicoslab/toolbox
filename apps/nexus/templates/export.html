@@ -10,7 +10,7 @@
             By default, export will use current project {% if params.project %}({{ params.project }}){% endif %} and
             /path/to/dataset/.export-<i>date</i>-<i>time</i>.
         </p>
-        <form action="{{ url_for('export', **params) }}" method="post">
+        <form action="{{ url_for_query(request, 'export', **params) }}" method="post">
             <fieldset>
                 <label for="project">Project</label>
                 <input type="text" inputmode="numeric" pattern="\d*" name="project">

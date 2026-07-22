@@ -5,6 +5,7 @@ description = "Web app that organizes and presents all components of the ViCoS t
 readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
-    "flask>=3.1.3",
+    "fastapi[standard]",
     "mlflow>=3.11.1",
+    "python-multipart>=0.0.32",
 ]

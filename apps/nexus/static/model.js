@@ -108,7 +108,8 @@ class ImageInput extends HTMLElement {
         input.addEventListener("change", async (e) => {
 
             const data = new FormData();
-            for (const file of input.files) {
+            const files = [...input.files].sort((a, b) => a.name.localeCompare(b.name));
+            for (const file of files) {
                 data.append(name, file, file.name);
             }
             this.internals_.setFormValue(data);

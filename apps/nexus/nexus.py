@@ -1,4 +1,11 @@
-from flask import Flask, render_template, request, redirect, url_for, abort, Response
+from fastapi import FastAPI, Header, Request, HTTPException, Form
+from fastapi.sse import EventSourceResponse, ServerSentEvent
+from fastapi.responses import RedirectResponse, HTMLResponse
+from fastapi.templating import Jinja2Templates
+from typing import Annotated, List
+from pydantic import BaseModel, AnyHttpUrl
+import asyncio
+
 import time
 import json
 import os
@@ -9,7 +16,6 @@ import shutil
 import re
 from enum import Enum
 from datetime import datetime
-from urllib.parse import urlparse
 
 import mlflow
 mlflow.set_tracking_uri("http://localhost:8081")
@@ -136,48 +142,44 @@ def create_inference_worker(model, options):
     tasks[pid]["inference"] = (port, model)
     return pid
 
-app = Flask(__name__)
+app = FastAPI()
+templates = Jinja2Templates(directory="templates")
 
-def propagate():
+def propagate(kwargs):
     r = {}
     try:
-        r["tour"] = int(request.args["tour"])
+        r["tour"] = int(kwargs["tour"])
         for attr in ["model", "project", "experiment"]:
-            if attr in request.args:
-                r[attr] = request.args[attr]
+            if attr in kwargs:
+                r[attr] = kwargs[attr]
     except:
         pass
     return r
 
 brand_name_long = os.getenv("TOOLBOX_BRAND_NAME_LONG", "ViCoS Toolbox")
 brand_name_short = os.getenv("TOOLBOX_BRAND_NAME_SHORT", "ViCoS")
-@app.context_processor
-def inject_stage_and_region():
-    return dict(tour_steps=TOUR_STEPS, tour_enum=TourStep, brand_name_long=brand_name_long, brand_name_short=brand_name_short)
+templates.env.globals.update(dict(tour_steps=TOUR_STEPS, tour_enum=TourStep, brand_name_long=brand_name_long, brand_name_short=brand_name_short))
 
-@app.route("/")
-def index():
-    params = propagate()
+@app.get("/", response_class=HTMLResponse)
+def index(request: Request):
+    params = propagate(request.query_params)
     if "tour" not in params:
         params["tour"] = TourStep.START.value
-    return render_template("index.html", params=params)
+    return templates.TemplateResponse(request=request, name="index.html", context=dict(params=params))
 
-@app.route("/label")
-def label():
-    page = ""
-    if project := request.args.get("project"):
-        page = f"/projects/{int(project)}"
-    
-    return render_template("label-studio.html", page=page, params=propagate())
+@app.get("/label", response_class=HTMLResponse)
+def label(request: Request, project: str | None = None):
+    page = f"/projects/{int(project)}" if project else ""
+    return templates.TemplateResponse(request=request, name="label-studio.html", context=dict(page=page, params=propagate(request.query_params)))
 
-@app.route("/dashboard")
-def dashboard():
+@app.get("/dashboard", response_class=HTMLResponse)
+def dashboard(request: Request, experiment: int | None = None, run: str | None = None):
     page = "/#/experiments"
-    if ex := request.args.get("experiment"):
-        page += f"/{int(ex)}"
-        if run := request.args.get("run"):
+    if experiment:
+        page += f"/{experiment}"
+        if run:
             page += f"/runs/{run}"
-    return render_template("mlflow.html", page=page, params=propagate())
+    return templates.TemplateResponse(request=request, name="mlflow.html", context=dict(page=page, params=propagate(request.query_params)))
 
 # regex for grouping log entries
 # if line starts with eval:, visualise: or (for example) 10/300: (from something like a tqdm batch counter)
@@ -228,8 +230,8 @@ if not app.debug:
     # this is needed because task's writes will start blocking if output is not consumed
     Thread(target=monitor_task, daemon=True).start()
 
-@app.route("/models")
-def models():
+@app.get("/models", response_class=HTMLResponse)
+def models(request: Request):
     groups = {}
     installed = []
     for group in models_config["sources"]:
@@ -242,23 +244,21 @@ def models():
         if rev := group.get("rev"): # make sure we can manage models even if rev is borked
             rev = rev[:7]
         groups[(group["group"], group["owner"])] = rev, installed, available
-    return render_template("models.html", groups=groups, installed=installed, params=propagate())
+    return templates.TemplateResponse(request=request, name="models.html", context=dict(groups=groups, installed=installed, params=propagate(request.query_params)))
 
-@app.route("/models/update", methods=["POST"])
-def models_update():
-    data = request.json
-    if not (owner := data.get("owner")):
-        return { "error": "Missing owner field" }, 400
-    if not (group := data.get("group")):
-        return { "error": "Missing group field" }, 400
+class ModelGroup(BaseModel):
+    owner: str
+    group: str
 
+@app.post("/models/update")
+def models_update(group_info: ModelGroup):
     src = None
     for s in models_config["sources"]:
-        if s["owner"] == owner and s["group"] == group:
+        if s["owner"] == group_info.owner and s["group"] == group_info.group:
             src = s
             break
 
-    groupdir = CACHE / ".models" / owner / group
+    groupdir = CACHE / ".models" / group_info.owner / group_info.group
     if not groupdir.exists() or not src:
         return { "error": "Invalid group" }, 400
     
@@ -273,40 +273,25 @@ def models_update():
 
     return { "rev": new }, 200
 
-@app.route("/models/remove", methods=["POST"])
-def models_remove():
-    data = request.json
-    if not (owner := data.get("owner")):
-        return { "error": "Missing owner field" }, 400
-    if not (group := data.get("group")):
-        return { "error": "Missing group field" }, 400
-
-    ownerdir = CACHE / ".models" / owner
+@app.post("/models/remove")
+def models_remove(group_info: ModelGroup):
+    ownerdir = CACHE / ".models" / group_info.owner
     shutil.rmtree(ownerdir / group, ignore_errors=True)
     if len(list(ownerdir.iterdir())) == 0:
         ownerdir.rmdir()
 
     old = len(models_config["sources"])
-    models_config["sources"] = [x for x in models_config["sources"] if x["owner"] != owner or x["group"] != group]
+    models_config["sources"] = [x for x in models_config["sources"] if x["owner"] != group_info.owner or x["group"] != group_info.group]
     if len(models_config["sources"]) != old:
         refresh_manifest()
         save_models(models_config)
     return {}, 200
 
-@app.route("/models/add", methods=["POST"])
-def models_add():
-    data = request.json
-    error = { "error": "Malformed sources definition" }, 400
-
-    if type(data) != list:
-        return error
-
-    for defs in data:
-        models, owner, group, url = map(defs.get, ["models", "owner", "group", "url"])
-        result = urlparse(url)
-        if not (len(defs) == 4 and type(owner) == str and type(group) == str and type(models) == list and all(map(lambda x: type(x) == str, models)) and all([result.scheme, result.netloc])):
-            return error
-
+class ModelGroupDefinition(ModelGroup):
+    models: List[str]
+    url: AnyHttpUrl
+@app.post("/models/add")
+def models_add(data: List[ModelGroupDefinition]):
     for defs in data:
         if defs not in models_config["sources"]:
             models_config["sources"].append(defs)
@@ -316,31 +301,29 @@ def models_add():
     return {}, 200
 
 dataset_dir = Path(os.environ["LOCAL_FILES_DOCUMENT_ROOT"])
-@app.route('/datasets', defaults={'path': ''})
-@app.route("/datasets/<path:path>", methods=["GET"])
-def datasets(path):
+@app.get("/datasets/{path:path}")
+def datasets(path: str):
     new = dataset_dir / path
     if new.is_relative_to(dataset_dir) and new.exists():
         return [str(x.name) for x in new.iterdir() if x.is_dir()]
     
-    return { "error": "Invalid path" }, 400
+    raise HTTPException(status_code=404, detail="Invalid path")
 
-@app.route("/models/<model>", methods=["GET", "POST"])
-def model(model):
+@app.get("/models/{model}", response_class=HTMLResponse)
+def model(request: Request, model: str):
     if model not in model_manifest or not (CACHE / model).exists():
-        return redirect(url_for("models", **propagate()))
+        return RedirectResponse(request.url_for("models", **propagate(request.query_params)))
 
-    return render_template(
-        "model.html",
+    return templates.TemplateResponse(request=request, name="model.html", context=dict(
         **model_manifest[model],
         train=(model_manifest[model]["dir"] / "train.py").exists(),
-        params={ **propagate(), "model": model }
-    )
+        params={ **propagate(request.query_params), "model": model }
+    ))
 
-@app.route("/model/<model>/options", methods=["GET"])
-def model_options(model):
+@app.get("/model/{model}/options")
+def model_options(model: str):
     if not (model_info := model_manifest.get(model)):
-        return dict(error=f"Model '{model}' does not exist"), 404
+        raise HTTPException(status_code=404, detail=f"Model '{model}' does not exist")
 
     runs = mlflow.search_runs(experiment_names=[model_info["title"]], max_results=100, output_format="list")
     completions = {}
@@ -358,25 +341,31 @@ def model_options(model):
 
     return dict(options=model_info.get("options", {}), completions=completions)
 
-@app.route("/model/<model>/infer", methods=["POST"])
-def model_infer(model):
-    if model not in model_manifest:
-        return f"Model '{model}' does not exist", 404
+class TaskResponse(BaseModel):
+    pid: int
+    logs: str
 
-    params = propagate()
+@app.post("/model/{model}/infer")
+async def model_infer(request: Request, model: str):
+    if model not in model_manifest:
+        raise HTTPException(status_code=404, detail=f"Model '{model}' does not exist")
+
+    options = await request.json()
+    params = propagate(request.query_params)
     params["model"] = model
-    params["pid"] = create_inference_worker(model, request.json.items())
+    params["pid"] = create_inference_worker(model, options.items())
 
     if params.get("tour") == TourStep.MONITORING.value:
         params["tour"] = TourStep.INFERENCE.value
-    return dict(pid=pid, logs=url_for("logs", **params))
+    return TaskResponse(pid=params["pid"], logs=str(url_for_query(request, "logs", **params)))
 
-@app.route("/model/<model>/train", methods=["POST"])
-def model_train(model):
+@app.post("/model/{model}/train")
+async def model_train(request: Request, model: str):
     if model not in model_manifest:
-        return f"Model '{model}' does not exist", 404
+        raise HTTPException(status_code=404, detail=f"Model '{model}' does not exist")
 
-    flags = build_model_options(model_manifest[model]["options"], request.json.items())
+    options = await request.json()
+    flags = build_model_options(model_manifest[model]["options"], options.items())
     pid = start_task(
         ["uv", "run", "train.py"] + flags,
         model_manifest[model]["dir"],
@@ -384,172 +373,173 @@ def model_train(model):
         { "VIRTUAL_ENV": CACHE / model / ".venv" }
     )
 
-    params = propagate()
+    params = propagate(request.query_params)
     params["model"] = model
     params["pid"] = pid
     # skip labeling steps
     if params.get("tour") == TourStep.DATASET.value:
         params["tour"] = TourStep.TRAINING.value
-    return dict(pid=pid, logs=url_for("logs", **params))
+    return TaskResponse(pid=pid, logs=str(url_for_query(request, "logs", **params)))
 
-@app.route("/model/<model>/install", methods=["POST"])
-def model_install(model):
+@app.post("/model/{model}/install")
+def model_install(model: int):
     if model not in model_manifest:
-        return f"Model '{model}' does not exist", 404
+        raise HTTPException(status_code=404, detail=f"Model '{model}' does not exist")
 
-    params = propagate()
+    params = propagate(request.query_params)
     model_dir = model_manifest[model]["dir"]
     if (CACHE / model).exists():
         params["model"] = model
-        return redirect(url_for("model", **params))
+        return RedirectResponse(request.url_for("model"))
 
     models_config["added"].append(model)
     save_models(models_config)
 
     params["model"] = model
     params["pid"] = start_task(["bash", "-c", f"./setup.sh && echo \"Finished installing '{model}'\""], model_dir, f"Installing model: `{model}`")
-    return redirect(url_for("logs", **params))
+    return RedirectResponse(request.url_for("logs"))
 
-@app.route("/model/<model>/uninstall", methods=["POST"])
-def model_uninstall(model):
+@app.post("/model/{model}/uninstall")
+def model_uninstall(model: int):
     if model not in model_manifest:
-        return { "error": f"Model '{model}' does not exist" }, 404
+        raise HTTPException(status_code=404, detail=f"Model '{model}' does not exist")
 
     install_dir = CACHE / model
     if not install_dir.exists():
-        return { "error": f"Model '{model}' is not installed" }, 400
+        raise HTTPException(status_code=400, detail=f"Model '{model}' is not installed")
 
     shutil.rmtree(install_dir)
-    return {}, 200
+    return {}
 
-@app.route("/active", methods=["GET"])
+@app.get("/active")
 def active_models():
     return dict([task["inference"] for task in tasks.values() if "inference" in task and task["process"] is not None])
 
-@app.route("/dataset", methods=["GET", "POST"])
-def dataset():
-    params = propagate();
-    if not (model := params.get("model")) or model not in model_manifest or not (CACHE / model).exists():
-        return redirect(url_for("models", **params))
+@app.get("/dataset", response_class=HTMLResponse)
+def dataset_get(request: Request, model: str):
+    if model not in model_manifest or not (CACHE / model).exists():
+        return RedirectResponse(request.url_for("models"))
 
-    if request.method == "POST":
-        data = request.json if request.is_json else request.form.to_dict()
+    return templates.TemplateResponse(request=request, name="dataset.html", context=dict(**model_manifest[model], params=dict(request.query_params)))
 
-        if type(data) == dict:
-            env = { "MODEL_DIR": model_manifest[model]["dir"] }
+class DatasetCreation(BaseModel):
+    dataset: str | None
+    title: str | None
 
-            if dataset := data.get("dataset"):
-                env["DATASET"] = dataset
-            if title := data.get("title"):
-                env["PROJECT_TITLE"] = title
-        else:
-            return "Request body must be an object, which can optionally include 'title' and 'dataset'.", 400
+@app.post("/dataset", response_class=HTMLResponse)
+def dataset(request: Request, data: DatasetCreation, model: str):
+    params = propagate(request.query_params);
+    if model not in model_manifest or not (CACHE / model).exists():
+        raise HTTPException(status_code=404, detail="Model is not installed")
 
-        task = tasks[start_task(["uv", "run", "create.py"], "../ls-utils", f"Project creation", extra_env=env, blocking=True)]
-        id = None
-        while line_in := task["process"].stdout.readline():
-            task["output"].append(line_in)
-            try:
-                id = int(line_in)
-                break
-            except:
-                pass
-        os.set_blocking(task["process"].stdout.fileno(), False)
+    env = { "MODEL_DIR": model_manifest[model]["dir"] }
 
-        if id is None:
-            return "Project could not be created", 400
+    if data.dataset:
+        env["DATASET"] = data.dataset
+    if data.title:
+        env["PROJECT_TITLE"] = data.title
 
-        params = propagate()
-        if params.get("tour") == TourStep.DATASET.value:
-            params["tour"] = TourStep.LABELING.value
-        params["project"] = id
-        return redirect(url_for("label", **params))
-    else:
-        return render_template(
-            "dataset.html",
-            **model_manifest[model],
-            params=params
-        )
+    task = tasks[start_task(["uv", "run", "create.py"], "../ls-utils", f"Project creation", extra_env=env, blocking=True)]
+    id = None
+    while line_in := task["process"].stdout.readline():
+        task["output"].append(line_in)
+        try:
+            id = int(line_in)
+            break
+        except:
+            pass
+    os.set_blocking(task["process"].stdout.fileno(), False)
 
-@app.route("/export", methods=["GET", "POST"])
-def export():
-    if request.method == "POST":
-        data = request.json if request.is_json else request.form.to_dict()
-        env = {}
+    if id is None:
+        raise HTTPException(status_code=400, detail="Project could not be created")
 
-        if (task := data.get("task")) or (task := dataset_tasks.get(request.args.get("model"))):
-            env["TASK"] = task
-        else:
-            return "Request body must contain key 'task' or known model must be provided in query parameter 'model'.", 400
+    params = propagate(request.query_params)
+    if params.get("tour") == TourStep.DATASET.value:
+        params["tour"] = TourStep.LABELING.value
+    params["project"] = id
+    return RedirectResponse(request.url_for("label", model=model))
+        
 
-        if (project := data.get("project")) or (project := request.args.get("project")):
-            env["PROJECT_ID"] = project
-        else:
-            return "Project id must be passed as 'project' in body or through query params.", 400
+@app.get("/export", response_class=HTMLResponse)
+def export_get(request: Request):
+    return templates.TemplateResponse(request=request, name="export.html", context=dict(params=propagate(request.query_params)))
 
-        if export_dir := data.get("dir"):
-            env["EXPORT_DIR"] = export_dir
+@app.post("/export", response_class=HTMLResponse)
+def export(request: Request, task: Annotated[str, Form()], project: Annotated[str, Form()], dir: Annotated[str | None, Form()] = None):
+    env = dict(TASK=task, PROJECT_ID=project)
 
-        start_task(["uv", "run", "export.py"], "../ls-utils", f"Export worker for project {env['PROJECT_ID']}", extra_env=env)
+    if dir:
+        env["EXPORT_DIR"] = dir
 
-    return render_template("export.html", params=propagate())
+    start_task(["uv", "run", "export.py"], "../ls-utils", f"Export worker for project {env['PROJECT_ID']}", extra_env=env)
 
-@app.route("/task/status")
-def status():
+    return templates.TemplateResponse(request=request, name="export.html", context=dict(params=propagate(request.query_params)))
+
+@app.get("/task/status", response_class=HTMLResponse)
+def status(request: Request):
     now = datetime.now()
     timestamps = { pid: now - task.get("end_time", task["start_time"]) for pid, task in tasks.items() }
-    return render_template("status.html", tasks=tasks, timestamps=timestamps, params=propagate())
+    return templates.TemplateResponse(request=request, name="status.html", context=dict(tasks=tasks, timestamps=timestamps, params=propagate(request.query_params)))
 
-@app.route("/task/logs/<int:pid>/stream")
-def logs_stream(pid):
+@app.get("/task/logs/{pid}/stream", response_class=EventSourceResponse)
+async def logs_stream(pid: int, last_event_id: Annotated[int | None, Header()] = None):
     if not (task := tasks.get(pid)):
-        abort(404)
+        raise HTTPException(status_code=404, detail="Task does not exist")
     out = task["output"]
+    i = 0 if last_event_id is None else last_event_id + 1
+    old = None
+    while True:
+        if i < len(out) - 1:
+            i += 1
+            yield ServerSentEvent(data=out[i - 1], event="newline", id=str(i))
+            continue
+        elif i < len(out):
+            if out[i] != old:
+                old = out[i]
+                yield ServerSentEvent(data=old)
+            elif task["process"] is None:
+                break
+        await asyncio.sleep(1)
+    yield ServerSentEvent(data="end of logs", event="eof")
 
-    def eventStream(i):
-        old = None
-        while True:
-            if i < len(out) - 1:
-                i += 1
-                yield f"event: newline\nid: {i}\ndata: {out[i - 1]}\n\n"
-                continue
-            elif i < len(out):
-                if out[i] != old:
-                    old = out[i]
-                    yield f"data: {old}\n\n"
-                elif task["process"] is None:
-                    break
-            time.sleep(1)
-        yield f"event: eof\ndata: end of logs\n\n"
-            
-    return Response(eventStream(int(request.headers.get("Last-Event-Id", 0))), mimetype="text/event-stream")
-
-@app.route("/task/logs/<int:pid>")
-def logs(pid):
-    if pid not in tasks:
-        abort(404)
+@app.get("/task/logs/{pid}", response_class=HTMLResponse)
+def logs(request: Request, pid: int):
+    if not (task := tasks.get(pid)):
+        raise HTTPException(status_code=404, detail="Task does not exist")
     if app.debug: # in production mode this gets refreshed in a thread
         refresh_logs(tasks[pid])
 
-    params = propagate()
+    params = propagate(request.query_params)
     params["pid"] = pid
 
     override = { **params, "tour": TourStep.MONITORING.value } if params.get("tour") == TourStep.TRAINING.value else params
-    task = tasks[pid]
     if info := task.get("run_info"):
         override["experiment"], override["run"] = info
-        run_url = url_for("dashboard", **override)
+        run_url = request.url_for("dashboard", **override)
     else:
         run_url = None
 
-    return render_template("logs.html", pid=pid, description=task["description"], running=task["code"] is None, run_shortcut=run_url, params=params)
+    return templates.TemplateResponse(request=request, name="logs.html", context=dict(pid=pid, description=task["description"], running=task["code"] is None, run_shortcut=run_url, params=params))
 
-@app.route("/task/stop/<int:pid>", methods=["POST"])
-def kill(pid):
-    if pid not in tasks:
-        abort(404)
-    if tasks[pid]["process"] is not None:
-        tasks[pid]["process"].terminate()
-    params = propagate()
+@app.post("/task/stop/{pid}")
+def kill(request: Request, pid: int):
+    if not (task := tasks.get(pid)):
+        raise HTTPException(status_code=404, detail="Task does not exist")
+    if task["process"] is not None:
+        task["process"].terminate()
+    params = propagate(request.query_params)
     params["pid"] = pid
-    return redirect(url_for("logs", **params))
+    return RedirectResponse(request.url_for("logs"))
+
+from starlette.routing import Route
+routes = { r.name: set(r.param_convertors.keys()) for r in app.router.routes if isinstance(r, Route) }
+def url_for_query(request, route, **params):
+    path, query = {}, {}
+    path_params = routes.get(route, {})
+    for k, v in params.items():
+        if k in path_params:
+            path[k] = v
+        else:
+            query[k] = v
+    return request.url_for(route, **path).include_query_params(**query)
+templates.env.globals["url_for_query"] = url_for_query

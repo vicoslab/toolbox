@@ -4,14 +4,14 @@
 <head>
     <title>{% block title %}{% endblock %} - {{ brand_name_short }}</title>
     <meta name="referrer" content="no-referrer" />
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="/static/style.css">
 </head>
 
 <body>
     <nav>
         <span class="toolbox-logo"></span>
         {% if "tour" in params %}
-        {% set newparams = params.copy() %}
+        {% set newparams = dict(params) %}
         {% set _ = newparams.pop("tour") %}
         <ul class="tour">
             {% for (id, step_name, step_endpoint) in tour_steps %}
@@ -25,7 +25,8 @@
             </a>
             {% else %}
             <a role="listitem" class="tour-step{{ current }}"
-                href="{{ url_for(step_endpoint, tour = id, **newparams) }}" data-step-name="{{ step_name }}">{{
+                href="{{ url_for_query(request, step_endpoint, tour = id, **newparams) }}"
+                data-step-name="{{ step_name }}">{{
                 step_name }}</a>
             {% endif %}
             {% endfor %}
@@ -36,7 +37,7 @@
                 <p>Finish tour?</p>
                 <button commandfor="finish-tour" command="close">No</button>
                 <form
-                    action="{{ url_for(request.endpoint if request.endpoint in ['models', 'model', 'label', 'dashboard'] else 'models', **newparams) }}">
+                    action="{{ url_for_query(request, request.endpoint if request.endpoint in ['models', 'model', 'label', 'dashboard'] else 'models', **newparams) }}">
                     <button type="submit">Yes</button>
                 </form>
 
@@ -50,7 +51,7 @@
         <a href="/dashboard" {% if request.endpoint=='dashboard' %}aria-current="page" {% endif %}>Experiments</a>
         <a href="/models" {% if request.endpoint=='models' %}aria-current="page" {% endif %}>Models</a>
         {% endif %}
-        <a href="{{ url_for('status', **params) }}" id="status">Status</a>
+        <a href="{{ url_for('status').include_query_params(**params) }}" id="status">Status</a>
     </nav>
     <dialog id="confirmation" style="max-width: 512px;">
         <div class="content" style="margin-bottom: 1rem;"></div>
