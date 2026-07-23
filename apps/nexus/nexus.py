@@ -134,7 +134,7 @@ def create_inference_worker(model, options):
         port += 1
 
     pid = start_task(
-        ["uv", "run", "gunicorn", "--bind", f":{port}", "infer:app", "--"] + flags,
+        ["uv", "run", "gunicorn", "--bind", f":{port}", "--log-config", Path.cwd() / "worker-logging.conf", "infer:app", "--"] + flags,
         model_manifest[model]["dir"],
         f"Inference service worker for: `{model}`",
         { "VIRTUAL_ENV": CACHE / model / ".venv" }
@@ -467,16 +467,16 @@ def dataset(request: Request, data: DatasetCreation, model: str):
 def export_get(request: Request):
     return templates.TemplateResponse(request=request, name="export.html", context=dict(params=propagate(request.query_params)))
 
-@app.post("/export", response_class=HTMLResponse)
-def export(request: Request, task: Annotated[str, Form()], project: Annotated[str, Form()], dir: Annotated[str | None, Form()] = None):
-    env = dict(TASK=task, PROJECT_ID=project)
+@app.post("/export")
+def export(request: Request, project: int, task: str, dir: str | None = None):
+    env = dict(TASK=task, PROJECT_ID=str(project))
 
     if dir:
         env["EXPORT_DIR"] = dir
 
-    start_task(["uv", "run", "export.py"], "../ls-utils", f"Export worker for project {env['PROJECT_ID']}", extra_env=env)
-
-    return templates.TemplateResponse(request=request, name="export.html", context=dict(params=propagate(request.query_params)))
+    params = propagate(request.query_params)
+    params["pid"] = start_task(["uv", "run", "export.py"], "../ls-utils", f"Export worker for project {env['PROJECT_ID']}", extra_env=env)
+    return { "pid": params["pid"], "logs": str(url_for_query(request, "logs", **params)) }
 
 @app.get("/task/status", response_class=HTMLResponse)
 def status(request: Request):

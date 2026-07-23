@@ -129,15 +129,47 @@
 
             toast.append(title, ...content);
             toasts.append(toast);
+            setTimeout(() => toast.classList.add("animate"), 1);
             return new Promise((resolve) => {
-                setTimeout(() => {
-                    if (resolve(toast) !== false) {
+                setTimeout(async () => {
+                    await resolve(toast);
+                    if (toast.keepAlive !== true) {
                         toast.remove();
                     }
                 }, 5000);
             });
         }
 
+        function showToastForLogs(pid, message, url) {
+            const eventSource = new EventSource(`/task/logs/${pid}/stream`);
+            const lines = document.createElement("pre");
+            lines.style.textOverflow = "ellipsis";
+            const wrap = document.createElement("div");
+            wrap.className = "logs";
+            wrap.style.overflow = "hidden";
+            wrap.append(lines);
+            let count = 0;
+            let last = document.createElement("div");
+            last.className = "line";
+            lines.append(last);
+            eventSource.addEventListener("message", e => last.innerText = JSON.parse(e.data));
+            eventSource.addEventListener("newline", e => {
+                count += 1;
+                if (count > 5) {
+                    lines.children[0].remove();
+                }
+                last = document.createElement("div");
+                last.className = "line";
+                last.innerText = JSON.parse(e.data);
+                lines.append(last);
+            });
+
+            const show_logs = document.createElement("a");
+            show_logs.href = url;
+            show_logs.className = "button";
+            show_logs.innerText = "Show logs";
+            showToast("info", message, wrap, show_logs);
+        }
     </script>
 </body>
 

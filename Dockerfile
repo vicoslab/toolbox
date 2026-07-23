@@ -115,7 +115,7 @@ COPY ${src}/static ./static
 ADD https://github.com/opencv/opencv/releases/download/5.0.0/opencv-5.0.0-docs.zip opencv.zip
 RUN unzip -p opencv.zip js/bin/opencv.js > static/opencv.js && rm opencv.zip
 
-COPY ${src}/nexus.py ${src}/gateway.py ${src}/uv.lock ${src}/pyproject.toml .
+COPY ${src}/nexus.py ${src}/gateway.py ${src}/worker-logging.conf ${src}/uv.lock ${src}/pyproject.toml .
 
 RUN --mount=type=cache,target=/root/.cache/uv XDG_DATA_HOME=/usr/local/share uv sync
 

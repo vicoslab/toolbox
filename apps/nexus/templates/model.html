@@ -16,9 +16,11 @@
         </button>
     </div>
     <div class="model-dispatch">
-        <button id="model-training" {% if not train %}style="background-color: var(--bg-muted); cursor: not-allowed;"
-            disabled{% endif %}>Training</button>
-        <button id="model-inference">Inference</button>
+        <button id="model-training" onclick="startTraining(`{{ url_for_query(request, 'model_train', **params) }}`)" {%
+            if not train %}style="background-color: var(--bg-muted); cursor: not-allowed;" disabled{% endif
+            %}>Training</button>
+        <button id="model-inference"
+            onclick="startInference(`{{ url_for_query(request, 'model_infer', **params) }}`)">Inference</button>
     </div>
     <div class="inference">
         <form id="form-inference" action="">
@@ -39,37 +41,30 @@
     const model = "{{ params.model }}";
     window.endpoint = "/infer/" + model;
 
+    const key = `toolbox-model-${model}`;
+    const values = JSON.parse(localStorage.getItem(key) || "{}");
+    const values_display = {};
+
+    function startTraining(url) {
+        const updated = JSON.stringify(values);
+        localStorage.setItem(key, updated);
+        fetch(url, { body: updated, method: "POST", headers: { "Content-Type": "application/json" } }).then(r => r.json()).then(({ pid, logs }) => {
+            showToastForLogs(pid, "Training dispatched.", logs);
+        });
+    }
+    function startInference(url) {
+        fetch(url, { body: JSON.stringify(values), method: "POST", headers: { "Content-Type": "application/json" } }).then(r => r.json()).then(({ pid, logs }) => {
+            showToastForLogs(pid, "Inference worker started.", logs);
+        });
+    }
+
     (async () => {
         const setOptions = document.getElementById("set-options");
-
         const { options, completions } = await fetch(`/model/${model}/options`).then(r => r.json());
         if (Object.keys(options).length > 0) {
             document.querySelector(".edit-options").style.display = "";
         }
 
-        const key = `toolbox-model-${model}`;
-        const values = JSON.parse(localStorage.getItem(key) || "{}");
-        const values_display = {};
-
-        document.getElementById("model-training").addEventListener("click", async () => {
-            const updated = JSON.stringify(values);
-            localStorage.setItem(key, updated);
-            let { pid, logs } = await fetch(`/model/${model}/train`, { body: updated, method: "POST", headers: { "Content-Type": "application/json" } }).then(r => r.json());
-            const show_logs = document.createElement("a");
-            show_logs.href = logs;
-            show_logs.className = "button";
-            show_logs.innerText = "Show logs";
-            showToast("info", "Training dispatched.", show_logs);
-        });
-
-        document.getElementById("model-inference").addEventListener("click", async () => {
-            let { pid, logs } = await fetch(`/model/${model}/infer`, { body: JSON.stringify(values), method: "POST", headers: { "Content-Type": "application/json" } }).then(r => r.json());
-            const show_logs = document.createElement("a");
-            show_logs.href = logs;
-            show_logs.className = "button";
-            show_logs.innerText = "Show logs";
-            showToast("info", "Inference worker started.", show_logs);
-        });
 
         const listOptions = document.getElementById("list-options");
         const addOption = document.querySelector(".edit-options > button");

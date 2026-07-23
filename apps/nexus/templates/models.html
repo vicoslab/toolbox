@@ -157,11 +157,7 @@
         i.innerText = name;
         showModal("Install model ", i, " ?").then(async () => {
             const { pid, logs } = await fetch(url, { method: "post" }).then(r => r.json());
-            const show_logs = document.createElement("a");
-            show_logs.href = logs;
-            show_logs.className = "button";
-            show_logs.innerText = "Show logs";
-            showToast("info", "Model installation started.", show_logs);
+            showToastForLogs(pid, "Model installation started.", logs);
         }).catch(() => { });
     }
 </script>
