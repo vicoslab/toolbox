@@ -36,7 +36,9 @@
             }
         }
         reverse_proxy /infer* localhost:9090
-        reverse_proxy localhost:8079
+        reverse_proxy localhost:8079 {
+            header_up X-Forwarded-Proto https
+        }
     }
 }
 {$DOMAIN_PUBLIC} {

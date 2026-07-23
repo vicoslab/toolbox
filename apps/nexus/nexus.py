@@ -400,7 +400,7 @@ def model_install(request: Request, model: str):
 
     params["model"] = model
     params["pid"] = start_task(["bash", "-c", f"./setup.sh && echo \"Finished installing '{model}'\""], model_dir, f"Installing model: `{model}`")
-    return { "pid": params["pid"], "logs": url_for_query(request, "logs", **params) }
+    return { "pid": params["pid"], "logs": str(url_for_query(request, "logs", **params)) }
 
 @app.post("/model/{model}/uninstall")
 def model_uninstall(model: str):
@@ -518,7 +518,7 @@ def logs(request: Request, pid: int):
     override = { **params, "tour": TourStep.MONITORING.value } if params.get("tour") == TourStep.TRAINING.value else params
     if info := task.get("run_info"):
         override["experiment"], override["run"] = info
-        run_url = url_for_query(request, "dashboard", **override)
+        run_url = str(url_for_query(request, "dashboard", **override))
     else:
         run_url = None
 
