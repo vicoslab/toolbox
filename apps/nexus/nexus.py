@@ -467,15 +467,20 @@ def dataset(request: Request, data: DatasetCreation, model: str):
 def export_get(request: Request):
     return templates.TemplateResponse(request=request, name="export.html", context=dict(params=propagate(request.query_params)))
 
-@app.post("/export")
-def export(request: Request, project: int, task: str, dir: str | None = None):
-    env = dict(TASK=task, PROJECT_ID=str(project))
+class ExportRequest(BaseModel):
+    project: int
+    task: str
+    dir: str | None = None
 
-    if dir:
-        env["EXPORT_DIR"] = dir
+@app.post("/export")
+def export(request: Request, export_request: ExportRequest):
+    env = dict(TASK=export_request.task, PROJECT_ID=str(export_request.project))
+
+    if export_request.dir:
+        env["EXPORT_DIR"] = export_request.dir
 
     params = propagate(request.query_params)
-    params["pid"] = start_task(["uv", "run", "export.py"], "../ls-utils", f"Export worker for project {env['PROJECT_ID']}", extra_env=env)
+    params["pid"] = start_task(["uv", "run", "export.py"], "../ls-utils", f"Export worker for project {export_request.project}", extra_env=env)
     return { "pid": params["pid"], "logs": str(url_for_query(request, "logs", **params)) }
 
 @app.get("/task/status", response_class=HTMLResponse)

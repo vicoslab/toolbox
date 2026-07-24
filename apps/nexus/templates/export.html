@@ -12,10 +12,16 @@
         </p>
         <form>
             <fieldset>
-                <label for="project">Project</label>
-                <input type="text" inputmode="numeric" pattern="\d*" name="project">
-                <label for="dir">Dataset path</label>
-                <input type="text" name="dir">
+                <label for="field-task">Task</label>
+                <select name="task" id="field-task">
+                    <option value="anomaly-detection" selected>Anomaly detection</option>
+                    <option value="orientation-estimation">Orientation estimation</option>
+                </select>
+                <label for="field-project">Project</label>
+                <input type="text" inputmode="numeric" pattern="\d*" name="project" id="field-project"
+                    value="{{ params.project | default('') }}">
+                <label for="field-dir">Dataset path</label>
+                <input type="text" name="dir" id="field-dir">
                 <button
                     onclick="exportDataset(`{{ url_for_query(request, 'export', **params) }}`, new FormData(this.form)); return false;">
                     Start export </button>
@@ -25,7 +31,7 @@
 </div>
 <script>
     async function exportDataset(url, data) {
-        const { pid, logs } = await fetch(url, { body: JSON.stringify(data), method: "POST", headers: { "Content-Type": "application/json" } }).then(r => r.json());
+        const { pid, logs } = await fetch(url, { body: JSON.stringify(Object.fromEntries(data)), method: "POST", headers: { "Content-Type": "application/json" } }).then(r => r.json());
         showToastForLogs(pid, "Dataset export started.", logs);
     }
 </script>
