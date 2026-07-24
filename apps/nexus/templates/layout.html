@@ -79,6 +79,12 @@
     </main>
 
     <script>
+        // this is a fix for fetch refusing to work on pages reached with embedded auth urls
+        // e.g. https://abc:123@localhost , even when using a relative url in fetch
+        const url = new URL(document.URL);
+        if (url.password || url.username) {
+            window.location = location.href;
+        }
         if (!("mlflow.workflowType_v1" in localStorage)) {
             localStorage["mlflow.workflowType_v1"] = '"machine_learning"';
         }
