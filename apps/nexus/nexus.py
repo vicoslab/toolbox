@@ -185,7 +185,7 @@ def dashboard(request: Request, experiment: int | None = None, run: str | None =
 # if line starts with eval:, visualise: or (for example) 10/300: (from something like a tqdm batch counter)
 # consecutive log lines get grouped up (most recent one is shown)
 tqdm_header = re.compile(r"^(\d+)/(\d+):|^(eval):|^(visualise):")
-mlflow_info = re.compile(r"^Experiment (\d+): Run ([a-f0-9]+)$")
+quick_action = re.compile(r"^(\w+): (\S+)$")
 
 def refresh_logs(task):
     if proc := task.get("process"):
@@ -206,9 +206,10 @@ def refresh_logs(task):
                     out.append(line)
                 last = gs
             else:
-                if m := mlflow_info.match(line):
-                    task["run_info"] = m.groups()
-                out.append(line)
+                if m := quick_action.match(line):
+                    out.append(m.groups())
+                else:
+                    out.append(line)
                 last = None
 
         if (code := proc.poll()) is not None:
@@ -313,27 +314,35 @@ def datasets(path: str):
     raise HTTPException(status_code=404, detail="Invalid path")
 
 @app.get("/models/{model}", response_class=HTMLResponse)
-def model(request: Request, model: str):
+def model(request: Request, model: str, manifest: str | None = None, weights: str | None = None):
+    params = propagate(request.query_params)
     if model not in model_manifest or not (CACHE / model).exists():
-        return RedirectResponse(request.url_for("models", **propagate(request.query_params)))
+        return RedirectResponse(request.url_for("models", **params))
 
+    params["model"] = model
     return templates.TemplateResponse(request=request, name="model.html", context=dict(
         **model_manifest[model],
         train=(model_manifest[model]["dir"] / "train.py").exists(),
-        params={ **propagate(request.query_params), "model": model }
+        manifest=manifest,
+        weights=weights,
+        params=params
     ))
 
 @app.get("/model/{model}/options")
-def model_options(model: str):
+def model_options(request: Request, model: str):
     if not (model_info := model_manifest.get(model)):
         raise HTTPException(status_code=404, detail=f"Model '{model}' does not exist")
 
     runs = mlflow.search_runs(experiment_names=[model_info["title"]], max_results=100, output_format="list")
     completions = {}
-    if len(runs) > 0 and ARTIFACTS:
-        for k, v in model_manifest[model]["options"].items():
-            if format := v.get("format"):
-                if format.startswith("file:"):
+    for k, v in model_manifest[model]["options"].items():
+        if format := v.get("format"):
+            if format == "file:manifest.json" and (manifest := request.query_params.get("manifest")):
+                completions[k] = manifest
+            elif format.startswith("file:"):
+                if (weights := request.query_params.get("weights")) and weights.endswith(format[5:]):
+                    completions[k] = weights
+                elif len(runs) > 0 and ARTIFACTS:
                     _completions = []
                     for run in runs:
                         files = list(Path(ARTIFACTS).glob(f"{run.info.experiment_id}/{run.info.run_id}/artifacts/**/{format[5:]}"))
@@ -499,12 +508,16 @@ async def logs_stream(pid: int, last_event_id: Annotated[int | None, Header()] =
     while True:
         if i < len(out) - 1:
             i += 1
-            yield ServerSentEvent(data=out[i - 1], event="newline", id=str(i))
+            data = out[i - 1]
+            yield ServerSentEvent(data=data, event="newline" if type(data) == str else "quick-action", id=str(i))
             continue
         elif i < len(out):
             if out[i] != old:
                 old = out[i]
-                yield ServerSentEvent(data=old)
+                if type(old) == str:
+                    yield ServerSentEvent(data=old)
+                else:
+                    yield ServerSentEvent(data=old, event="quick-action")
             elif task["process"] is None:
                 break
         await asyncio.sleep(1)

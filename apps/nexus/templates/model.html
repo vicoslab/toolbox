@@ -60,7 +60,7 @@
 
     (async () => {
         const setOptions = document.getElementById("set-options");
-        const { options, completions } = await fetch(`/model/${model}/options`).then(r => r.json());
+        const { options, completions } = await fetch(`{{ url_for_query(request, 'model_options', manifest=manifest, weights=weights, **params) | safe }}`).then(r => r.json());
         if (Object.keys(options).length > 0) {
             document.querySelector(".edit-options").style.display = "";
         }
@@ -89,6 +89,12 @@
             }
         });
 
+        // if there is only one completion, include it by default
+        for (const [k, v] of Object.entries(completions)) {
+            if (!(v instanceof Array)) {
+                values[k] = v;
+            }
+        }
         for (const [k, v] of Object.entries(values)) {
             const el = display(k, v);
             values_display[k] = el;
@@ -168,7 +174,7 @@
                     input.placeholder = prop.default || "";
                     input.value = values[k] || null;
                     let component = input;
-                    if (k in completions) {
+                    if (completions[k] instanceof Array) {
                         // https://stackoverflow.com/questions/264640/how-can-i-create-an-editable-dropdownlist-in-html
                         const dropdown = document.createElement("div");
                         dropdown.className = "dropdown";

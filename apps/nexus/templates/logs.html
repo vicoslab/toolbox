@@ -7,10 +7,7 @@
     <h1>Task information</h1>
     {% if description %}
     <p>{{ description }}</p>
-    <div>
-        {% if run_shortcut %}
-        <a href="{{ run_shortcut }}" class="button">Open run</a>
-        {% endif %}
+    <div id="actions" style="display: flex; gap: 0.5rem;">
         {% if running %}
         <button command="show-modal" commandfor="confirm-stop">Stop task</button>
 
@@ -35,12 +32,14 @@
     {% endif %}
 </div>
 <script>
+    const actions = document.getElementById("actions");
     const lines = document.getElementById("lines");
     let last = document.createElement("div");
     last.className = "line";
     lines.append(last);
     const eventSource = new EventSource("/task/logs/{{ pid }}/stream");
     eventSource.addEventListener("message", e => last.innerText = JSON.parse(e.data));
+    eventSource.addEventListener("quick-action", e => resolveQuickAction(actions, ...JSON.parse(e.data)));
     eventSource.addEventListener("eof", e => document.getElementById("confirm-stop") && location.reload());
     eventSource.addEventListener("newline", e => {
         last = document.createElement("div");

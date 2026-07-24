@@ -158,7 +158,18 @@
             let last = document.createElement("div");
             last.className = "line";
             lines.append(last);
+
+            const show_logs = document.createElement("a");
+            show_logs.href = url;
+            show_logs.className = "button";
+            show_logs.innerText = "Show logs";
+            const actions = document.createElement("div");
+            actions.style.display = "flex";
+            actions.style.gap = "0.5rem";
+            actions.append(show_logs);
+
             eventSource.addEventListener("message", e => last.innerText = JSON.parse(e.data));
+            eventSource.addEventListener("quick-action", e => resolveQuickAction(actions, ...JSON.parse(e.data)));
             eventSource.addEventListener("newline", e => {
                 count += 1;
                 if (count > 5) {
@@ -170,11 +181,54 @@
                 lines.append(last);
             });
 
-            const show_logs = document.createElement("a");
-            show_logs.href = url;
-            show_logs.className = "button";
-            show_logs.innerText = "Show logs";
-            showToast("info", message, wrap, show_logs);
+            showToast("info", message, wrap, actions);
+        }
+
+        function copyUrlWith(url, k, v) {
+            url = new URL(url);
+            const params = new URLSearchParams(url.search);
+            params.set(k, v);
+            url.search = params.toString();
+            return url.toString();
+        }
+        function resolveQuickAction(actions, kind, value) {
+            switch (kind) {
+                case "Manifest": {
+                    const oldurl = document.querySelector(`a.tour-step[data-step-name="Training"]`).href;
+                    const link = document.createElement("a");
+                    link.href = copyUrlWith(oldurl, "manifest", value);
+                    link.className = "button";
+                    link.innerText = "Go to training";
+                    actions.append(link);
+                    break;
+                }
+                case "Experiment": {
+                    const oldurl = document.querySelector(`a.tour-step[data-step-name="Monitoring"]`).href;
+                    const link = document.createElement("a");
+                    link.id = "action-experiments";
+                    link.href = copyUrlWith(oldurl, "experiment", value);
+                    link.className = "button";
+                    link.innerText = "Go to experiments";
+                    actions.append(link);
+                    break;
+                }
+                case "Run": {
+                    const old = actions.querySelector("#action-experiments");
+                    if (old) {
+                        old.href = copyUrlWith(old.href, "run", value);
+                    }
+                    break;
+                }
+                case "Weights": {
+                    const oldurl = document.querySelector(`a.tour-step[data-step-name="Inference"]`).href;
+                    const link = document.createElement("a");
+                    link.href = copyUrlWith(oldurl, "weights", value);
+                    link.className = "button";
+                    link.innerText = "Go to inference";
+                    actions.append(link);
+                    break;
+                }
+            }
         }
     </script>
 </body>
