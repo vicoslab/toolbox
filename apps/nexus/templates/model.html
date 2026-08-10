@@ -7,7 +7,7 @@
     <div class="edit-options" style="display: none;">
         <h2 style="flex-basis: 100%;">Model options</h2>
         <div id="set-options"></div>
-        <button title="Add option" class="add-option">
+        <button title="Add option" class="add-option shadow">
             <svg xmlns="http://www.w3.org/2000/svg" class="icon" viewBox="0 0 24 24" stroke-linecap="round"
                 stroke-linejoin="round" fill="none" stroke-width="2px" stroke="currentColor">
                 <path d="M 12 5 V 19 M 5 12 H 19" />
@@ -16,10 +16,10 @@
         </button>
     </div>
     <div class="model-dispatch">
-        <button id="model-training" onclick="startTraining(`{{ url_for_query(request, 'model_train', **params) }}`)" {%
-            if not train %}style="background-color: var(--bg-muted); cursor: not-allowed;" disabled{% endif
-            %}>Training</button>
-        <button id="model-inference"
+        <button id="model-training" class="shadow"
+            onclick="startTraining(`{{ url_for_query(request, 'model_train', **params) }}`)" {% if not train
+            %}style="background-color: var(--bg-muted); cursor: not-allowed;" disabled{% endif %}>Training</button>
+        <button id="model-inference" class="shadow"
             onclick="startInference(`{{ url_for_query(request, 'model_infer', **params) }}`)">Inference</button>
     </div>
     <div class="inference">
@@ -123,6 +123,7 @@
 
             const wrap = document.createElement("button");
             wrap.addEventListener("click", () => editOption(k, prop));
+            wrap.className = "shadow";
 
             const name = document.createElement("span");
             name.className = "option-name";
@@ -267,10 +268,6 @@
 
         button {
             font-weight: 500;
-
-            &:hover .option-value {
-                background-color: var(--bg-accent-active);
-            }
         }
 
         .option-value {
@@ -278,6 +275,10 @@
             background-color: var(--bg-accent-hover);
             opacity: 0.75;
             padding: 0.15rem 0.3rem;
+
+            &:hover {
+                background-color: var(--bg-accent-active);
+            }
         }
     }
 

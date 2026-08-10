@@ -19,9 +19,6 @@
     <a href="{{ url_for_query(request, 'logs', pid=pid, **params) }}" class="task">
         {{ task.description }}
         <span class="timestamp">Started {{ timestamps[pid] }} ago</span>
-        {% if run_shortcut %}
-        <a href="{{ run_shortcut }}" class="button">Open run</a>
-        {% endif %}
     </a>
     {% endif %}
     {% endfor %}
@@ -30,12 +27,8 @@
     {% if not task.process %}
     <a href="{{ url_for_query(request, 'logs', pid=pid, **params) }}" class="task">
         {{ task.description }}
-        <span class="timestamp">{% if task.code == 0 %}Finished{% else %}Exited{% endif %} {{ timestamps[pid] }}
-            ago</span>
-
-        {% if run_shortcut %}
-        <a href="{{ run_shortcut }}" class="button">Open run</a>
-        {% endif %}
+        {% set verb = "Finished" if task.code == 0 else "Exited" %}
+        <span class="timestamp">{{ verb }} {{ timestamps[pid] }} ago</span>
     </a>
     {% endif %}
     {% endfor %}
@@ -45,9 +38,9 @@
         .task {
             display: block;
             text-decoration: none;
-            color: black;
+            color: var(--fg-primary);
             padding: 0.5rem 1rem;
-            border: 1px solid black;
+            border: 1px solid var(--border);
             margin-top: -1px;
 
             &:hover {

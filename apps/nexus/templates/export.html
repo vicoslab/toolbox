@@ -22,7 +22,7 @@
                     value="{{ params.project | default('') }}">
                 <label for="field-dir">Dataset path</label>
                 <input type="text" name="dir" id="field-dir">
-                <button
+                <button class="shadow"
                     onclick="exportDataset(`{{ url_for_query(request, 'export', **params) }}`, new FormData(this.form)); return false;">
                     Start export </button>
             </fieldset>

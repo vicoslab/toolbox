@@ -4,6 +4,8 @@
     --bg-primary: white; /*#950606*/
     --bg-muted: rgb(235, 235, 235);
     --bg-muted-extra: rgb(220, 220, 220);
+    --fg-primary: black;
+    --fg-secondary: rgb(102 102 102);
     --fg-accent-default: #c13737; 
     --fg-accent-hover: #d32a2a;
     --fg-accent-active: #db1a1a;
@@ -14,5 +16,5 @@
     --font-heading: sans-serif;
     --font-body: sans-serif;
 
-    --border: black;
+    --border: var(--fg-primary);
 }
