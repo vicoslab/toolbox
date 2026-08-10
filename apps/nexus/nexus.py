@@ -69,6 +69,7 @@ def refresh_manifest():
                 model["title"] = manifest["title"]
                 model["description"] = manifest["description"]
                 model["dir"] = model_path
+                model["train"] = (model_path / "train.py").exists()
                 with open(model_path / "ui.html") as f:
                     model["form"] = f.read()
 
@@ -94,14 +95,15 @@ class TourStep(Enum):
     INFERENCE = 7
 
 TOUR_STEPS = [
-    (TourStep.START.value, "Start", "index"),
-    (TourStep.MODEL_SELECTION.value, "Models", "models"),
-    (TourStep.DATASET.value, "Dataset", "dataset"),
-    (TourStep.LABELING.value, "Labeling", "label"),
-    (TourStep.EXPORT.value, "Export", "export"),
-    (TourStep.TRAINING.value, "Training", "model"),
-    (TourStep.MONITORING.value, "Monitoring", "dashboard"),
-    (TourStep.INFERENCE.value, "Inference", "model"),
+    # id, title, endpoint, train_only
+    (TourStep.START.value, "Start", "index", False),
+    (TourStep.MODEL_SELECTION.value, "Models", "models", False),
+    (TourStep.DATASET.value, "Dataset", "dataset", True),
+    (TourStep.LABELING.value, "Labeling", "label", True),
+    (TourStep.EXPORT.value, "Export", "export", True),
+    (TourStep.TRAINING.value, "Training", "model", True),
+    (TourStep.MONITORING.value, "Monitoring", "dashboard",  True),
+    (TourStep.INFERENCE.value, "Inference", "model", False),
 ]
 
 # make sure virutal env doesn't bleed into subprocesses
@@ -158,7 +160,7 @@ def propagate(kwargs):
 
 brand_name_long = os.getenv("TOOLBOX_BRAND_NAME_LONG", "ViCoS Toolbox")
 brand_name_short = os.getenv("TOOLBOX_BRAND_NAME_SHORT", "ViCoS")
-templates.env.globals.update(dict(tour_steps=TOUR_STEPS, tour_enum=TourStep, brand_name_long=brand_name_long, brand_name_short=brand_name_short))
+templates.env.globals.update(dict(tour_steps=TOUR_STEPS, tour_enum=TourStep, brand_name_long=brand_name_long, brand_name_short=brand_name_short, model_manifest=model_manifest, print=print))
 
 @app.get("/", response_class=HTMLResponse)
 def index(request: Request):
@@ -322,7 +324,6 @@ def model(request: Request, model: str, manifest: str | None = None, weights: st
     params["model"] = model
     return templates.TemplateResponse(request=request, name="model.html", context=dict(
         **model_manifest[model],
-        train=(model_manifest[model]["dir"] / "train.py").exists(),
         manifest=manifest,
         weights=weights,
         params=params

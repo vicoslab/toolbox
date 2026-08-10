@@ -14,7 +14,9 @@
         {% set newparams = dict(params) %}
         {% set _ = newparams.pop("tour") %}
         <ul class="tour">
-            {% for (id, step_name, step_endpoint) in tour_steps %}
+            {% set model = model|default(params.model) %}
+            {% set train = model in model_manifest and model_manifest[model]["train"] %}
+            {% for (id, step_name, step_endpoint, train_only) in tour_steps if not train_only or train %}
             {% if params.tour == id %}{% set current = " current" %}{% else %}{% set current = "" %}{% endif %}
             {% if "model" not in params and id not in [tour_enum.START.value, tour_enum.MODEL_SELECTION.value] %}
             <a role="listitem" class="tour-step disabled{{ current }}" href="#" data-step-name="{{ step_name }}"

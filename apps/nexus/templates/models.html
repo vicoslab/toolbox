@@ -19,6 +19,7 @@
         </p>
     </div>
     {% endif %}
+    {% set tour = params.tour|default(-1) %}
     {% for (group, owner), (rev, installed, models) in groups.items() %}
     <h2 class="model-group">
         {{ group }}{% if owner %}<span> by </span>{{ owner }}{% endif %}
@@ -39,10 +40,12 @@
             </button>
         </div>
     </h2>
-    {% if params.tour|default(-1) == tour_enum.MODEL_SELECTION.value %}
-    {% set _ = params.update({"tour": tour_enum.DATASET.value }) %}
-    {% endif %}
     {% for name, info in models.items() %}
+    {% if tour == tour_enum.MODEL_SELECTION.value and model_manifest[name]["train"] %}
+    {% set _ = params.update({"tour": tour_enum.DATASET.value }) %}
+    {% else %}
+    {% set _ = params.update({"tour": tour_enum.INFERENCE.value }) %}
+    {% endif %}
     {% set _ = params.update({ "model": name }) %}
     {% if name in installed %}
     <a href="{{ url_for_query(request, 'dataset' if params.tour|default(-1) == tour_enum.DATASET.value else 'model', **params) }}"
