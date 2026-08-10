@@ -1,0 +1,46 @@
+diff --git a/web/apps/labelstudio/src/pages/Home/HomePage.tsx b/web/apps/labelstudio/src/pages/Home/HomePage.tsx
+index 7ab42abc1..25f79acee 100644
+--- a/web/apps/labelstudio/src/pages/Home/HomePage.tsx
++++ b/web/apps/labelstudio/src/pages/Home/HomePage.tsx
+@@ -132,7 +132,7 @@ export const HomePage: Page = () => {
+ 
+   return (
+     <main className="p-6">
+-      <div className="grid grid-cols-[minmax(0,1fr)_450px] gap-6">
++      <div className="">
+         <section className="flex flex-col gap-6">
+           <div className="flex flex-col gap-1">
+             <Typography variant="headline" size="small">
+@@ -205,32 +205,6 @@ export const HomePage: Page = () => {
+             ) : null}
+           </SimpleCard>
+         </section>
+-        <section className="flex flex-col gap-6">
+-          <HeidiTips collection="projectSettings" />
+-          <SimpleCard title="Resources" description="Learn, explore and get help" data-testid="resources-card">
+-            <ul>
+-              {resources.map((link) => {
+-                return (
+-                  <li key={link.title}>
+-                    <a
+-                      href={link.url}
+-                      className="py-2 px-1 flex justify-between items-center text-neutral-content"
+-                      target="_blank"
+-                      rel="noreferrer"
+-                    >
+-                      {link.title}
+-                      <IconExternal className="text-primary-icon" />
+-                    </a>
+-                  </li>
+-                );
+-              })}
+-            </ul>
+-          </SimpleCard>
+-          <div className="flex gap-2 items-center">
+-            <IconHumanSignal />
+-            <span className="text-neutral-content-subtle">Label Studio Version: Community</span>
+-          </div>
+-        </section>
+       </div>
+       {modalIsOpen && <CreateProject onClose={() => setModalIsOpen(false)} />}
+       <InviteLink opened={invitationIsOpen} onClosed={() => setInvitationIsOpen(false)} />
