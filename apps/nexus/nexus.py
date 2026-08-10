@@ -357,15 +357,23 @@ def model_options(request: Request, model: str):
 class TaskResponse(BaseModel):
     pid: int
     logs: str
+    duplicate: bool=False
 
 @app.post("/model/{model}/infer")
-async def model_infer(request: Request, model: str):
+async def model_infer(request: Request, model: str, force: bool=False):
     if model not in model_manifest:
         raise HTTPException(status_code=404, detail=f"Model '{model}' does not exist")
 
-    options = await request.json()
     params = propagate(request.query_params)
     params["model"] = model
+
+    if not force:
+        for pid, task in tasks.items():
+            if task["process"] and (info := task.get("inference")) and info[1] == model:
+                params["pid"] = pid
+                return TaskResponse(pid=pid, logs=str(url_for_query(request, "logs", **params)), duplicate=True)
+
+    options = await request.json()
     params["pid"] = create_inference_worker(model, options.items())
 
     if params.get("tour") == TourStep.MONITORING.value:

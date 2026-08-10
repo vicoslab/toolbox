@@ -53,8 +53,24 @@
         });
     }
     function startInference(url) {
-        fetch(url, { body: JSON.stringify(values), method: "POST", headers: { "Content-Type": "application/json" } }).then(r => r.json()).then(({ pid, logs }) => {
-            showToastForLogs(pid, "Inference worker started.", logs);
+        fetch(url, { body: JSON.stringify(values), method: "POST", headers: { "Content-Type": "application/json" } }).then(async r => {
+            switch (r.status) {
+                case 200: {
+                    const { pid, logs, duplicate } = await r.json();
+                    if (duplicate) {
+                        const prompt = document.createElement("div");
+                        prompt.innerText = "Start anyways?";
+                        showModal(`Inference task for '${model}' is already running.`, prompt).then(() => startInference(copyUrlWith(url, "force", "true")));
+                    } else {
+                        showToastForLogs(pid, "Inference worker started.", logs);
+                    }
+                    break;
+                }
+                default:
+                    const { detail } = await r.json();
+                    showToast("error", detail);
+                    break;
+            }
         });
     }
 
