@@ -2,7 +2,7 @@ from fastapi import FastAPI, Header, Request, HTTPException, Form
 from fastapi.sse import EventSourceResponse, ServerSentEvent
 from fastapi.responses import RedirectResponse, HTMLResponse
 from fastapi.templating import Jinja2Templates
-from typing import Annotated, List
+from typing import Annotated, List, Optional
 from pydantic import BaseModel, AnyHttpUrl
 import asyncio
 
@@ -125,7 +125,7 @@ def build_model_options(options, values):
             flags.extend(["--" + k, v])
     return flags
 
-def create_inference_worker(model, options):
+def create_inference_worker(model, options, alias=None):
     flags = build_model_options(model_manifest[model]["options"], options)
 
     port = 9091
@@ -141,7 +141,7 @@ def create_inference_worker(model, options):
         f"Inference service worker for: `{model}`",
         { "VIRTUAL_ENV": CACHE / model / ".venv" }
     )
-    tasks[pid]["inference"] = (port, model)
+    tasks[pid]["inference"] = (alias or model, (port, model))
     return pid
 
 app = FastAPI()
@@ -360,7 +360,7 @@ class TaskResponse(BaseModel):
     duplicate: bool=False
 
 @app.post("/model/{model}/infer")
-async def model_infer(request: Request, model: str, force: bool=False):
+async def model_infer(request: Request, model: str, alias: Optional[str], force: bool=False):
     if model not in model_manifest:
         raise HTTPException(status_code=404, detail=f"Model '{model}' does not exist")
 
@@ -374,7 +374,7 @@ async def model_infer(request: Request, model: str, force: bool=False):
                 return TaskResponse(pid=pid, logs=str(url_for_query(request, "logs", **params)), duplicate=True)
 
     options = await request.json()
-    params["pid"] = create_inference_worker(model, options.items())
+    params["pid"] = create_inference_worker(model, options.items(), alias)
 
     if params.get("tour") == TourStep.MONITORING.value:
         params["tour"] = TourStep.INFERENCE.value
