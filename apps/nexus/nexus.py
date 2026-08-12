@@ -337,20 +337,21 @@ def model_options(request: Request, model: str):
     runs = mlflow.search_runs(experiment_names=[model_info["title"]], max_results=100, output_format="list")
     completions = {}
     for k, v in model_manifest[model]["options"].items():
-        if format := v.get("format"):
-            if format == "file:manifest.json" and (manifest := request.query_params.get("manifest")):
-                completions[k] = manifest
-            elif format.startswith("file:"):
-                if (weights := request.query_params.get("weights")) and weights.endswith(format[5:]):
-                    completions[k] = weights
-                elif len(runs) > 0 and ARTIFACTS:
-                    _completions = []
-                    for run in runs:
-                        files = list(Path(ARTIFACTS).glob(f"{run.info.experiment_id}/{run.info.run_id}/artifacts/**/{format[5:]}"))
-                        if len(files) > 0:
-                            _completions.append((f"{datetime.fromtimestamp(run.info.start_time / 1000).strftime('%Y-%m-%d %H-%M')} :: {run.info.run_name}", [(file.name, f"mlflow-artifacts:/{file.relative_to(ARTIFACTS)}") for file in files]))
-                    if len(_completions) > 0:
-                        completions[k] = _completions
+        if not (format := v.get("format")):
+            continue
+        if format == "file:manifest.json" and (manifest := request.query_params.get("manifest")):
+            completions[k] = manifest
+        elif format.startswith("file:"):
+            if (weights := request.query_params.get("weights")) and weights.endswith(format[5:]):
+                completions[k] = weights
+            elif len(runs) > 0 and ARTIFACTS:
+                _completions = []
+                for run in runs:
+                    files = list(Path(ARTIFACTS).glob(f"{run.info.experiment_id}/{run.info.run_id}/artifacts/**/{format[5:]}"))
+                    if len(files) > 0:
+                        _completions.append((f"{datetime.fromtimestamp(run.info.start_time / 1000).strftime('%Y-%m-%d %H-%M')} :: {run.info.run_name}", [(file.name, f"mlflow-artifacts:/{file.relative_to(ARTIFACTS)}") for file in files]))
+                if len(_completions) > 0:
+                    completions[k] = _completions
 
     return dict(options=model_info.get("options", {}), completions=completions)
 
@@ -360,7 +361,7 @@ class TaskResponse(BaseModel):
     duplicate: bool=False
 
 @app.post("/model/{model}/infer")
-async def model_infer(request: Request, model: str, alias: Optional[str], force: bool=False):
+async def model_infer(request: Request, model: str, alias: Optional[str]=None, force: bool=False):
     if model not in model_manifest:
         raise HTTPException(status_code=404, detail=f"Model '{model}' does not exist")
 
@@ -441,7 +442,7 @@ def dataset_get(request: Request, model: str):
     if model not in model_manifest or not (CACHE / model).exists():
         return RedirectResponse(request.url_for("models"))
 
-    return templates.TemplateResponse(request=request, name="dataset.html", context=dict(**model_manifest[model], params=dict(request.query_params)))
+    return templates.TemplateResponse(request=request, name="dataset.html", context=dict(**model_manifest[model], params=propagate(request.query_params)))
 
 class DatasetCreation(BaseModel):
     dataset: str | None
