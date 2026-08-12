@@ -449,7 +449,7 @@ class DatasetCreation(BaseModel):
     title: str | None
 
 @app.post("/dataset", response_class=HTMLResponse)
-def dataset(request: Request, data: DatasetCreation, model: str):
+def dataset(request: Request, data: Annotated[DatasetCreation, Form()], model: str):
     params = propagate(request.query_params);
     if model not in model_manifest or not (CACHE / model).exists():
         raise HTTPException(status_code=404, detail="Model is not installed")
@@ -479,7 +479,7 @@ def dataset(request: Request, data: DatasetCreation, model: str):
     if params.get("tour") == TourStep.DATASET.value:
         params["tour"] = TourStep.LABELING.value
     params["project"] = id
-    return RedirectResponse(request.url_for("label", model=model))
+    return RedirectResponse(url_for_query(request, "label", **params), status_code=303)
         
 
 @app.get("/export", response_class=HTMLResponse)
