@@ -1,0 +1,129 @@
+From 896df80e573f8b914f1a0265a6d1bae30acf937e Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Andra=C5=BE=20Andol=C5=A1ek=20Peklaj?= <andraz.ap@pm.me>
+Date: Thu, 13 Aug 2026 10:42:24 +0200
+Subject: [PATCH 3/8] Add gallery option for valueList in image component
+
+---
+ web/libs/core/src/lib/utils/schema/tags.json        |  7 +++++++
+ .../editor/src/components/ImageView/ImageView.jsx   | 13 +++++++------
+ .../src/components/ImageView/ImageView.module.scss  |  6 +++---
+ web/libs/editor/src/tags/object/Image/Image.js      |  2 ++
+ 4 files changed, 19 insertions(+), 9 deletions(-)
+
+diff --git a/web/libs/core/src/lib/utils/schema/tags.json b/web/libs/core/src/lib/utils/schema/tags.json
+index 1fec14c70..169ad5821 100644
+--- a/web/libs/core/src/lib/utils/schema/tags.json
++++ b/web/libs/core/src/lib/utils/schema/tags.json
+@@ -438,6 +438,13 @@
+         "required": false,
+         "default": false
+       },
++      "gallery": {
++        "name": "gallery",
++        "description": "Show imageList as gallery",
++        "type": ["true", "false"],
++        "required": false,
++        "default": false
++      },
+       "horizontalAlignment": {
+         "name": "horizontalAlignment",
+         "description": "Where to align image horizontally. Can be one of \"left\", \"center\", or \"right\"",
+diff --git a/web/libs/editor/src/components/ImageView/ImageView.jsx b/web/libs/editor/src/components/ImageView/ImageView.jsx
+index f08de3646..d3738557a 100644
+--- a/web/libs/editor/src/components/ImageView/ImageView.jsx
++++ b/web/libs/editor/src/components/ImageView/ImageView.jsx
+@@ -1047,9 +1047,10 @@ export default observer(
+         styles[`image_position__${item.horizontalalignment}`],
+       ];
+ 
+-      const wrapperClasses = [styles.wrapperComponent, item.images.length > 1 ? styles.withGallery : styles.wrapper];
++      const galleryItems = item.gallery ? item.parsedValueList : item.images;
++      const wrapperClasses = [styles.wrapperComponent, galleryItems.length > 1 ? styles.withGallery : styles.wrapper];
+ 
+-      if (paginationEnabled) wrapperClasses.push(styles.withPagination);
++      if (paginationEnabled && !item.gallery) wrapperClasses.push(styles.withPagination);
+ 
+       const [toolsReady, stageLoading] = [true, false];
+ 
+@@ -1058,7 +1059,7 @@ export default observer(
+ 
+       return (
+         <ObjectTag item={item} className={wrapperClasses.join(" ")}>
+-          {paginationEnabled ? (
++          {paginationEnabled && !item.gallery ? (
+             <div
+               className={styles.pagination}
+               title={isViewingAll ? "Pagination is not supported in View All Annotations" : undefined}
+@@ -1157,9 +1158,9 @@ export default observer(
+           </div>
+ 
+           {toolsReady && imageIsLoaded && this.renderTools()}
+-          {item.images.length > 1 && (
++          {galleryItems.length > 1 && (
+             <div className={styles.gallery}>
+-              {item.images.map((src, i) => (
++              {galleryItems.map((src, i) => (
+                 <img
+                   {...imgDefaultProps}
+                   alt=""
+@@ -1167,7 +1168,7 @@ export default observer(
+                   src={src}
+                   className={i === item.currentImage && styles.active}
+                   height="60"
+-                  onClick={() => item.setCurrentImage(i)}
++                  onClick={() => [...store.annotationStore.annotations, ...store.annotationStore.predictions].map(x => x?.objects[0]?.setCurrentImage(i))}
+                 />
+               ))}
+             </div>
+diff --git a/web/libs/editor/src/components/ImageView/ImageView.module.scss b/web/libs/editor/src/components/ImageView/ImageView.module.scss
+index 09cb8504b..654cba3a4 100644
+--- a/web/libs/editor/src/components/ImageView/ImageView.module.scss
++++ b/web/libs/editor/src/components/ImageView/ImageView.module.scss
+@@ -128,7 +128,7 @@
+ }
+ 
+ .withGallery {
+-  margin-bottom: 80px;
++  padding-top: 80px;
+ }
+ 
+ .withPagination {
+@@ -137,7 +137,7 @@
+ 
+ .gallery {
+   position: absolute;
+-  bottom: -80px;
++  top: 0px;
+   display: flex;
+   overflow-x: auto;
+   width: 100%;
+@@ -167,4 +167,4 @@
+   display: flex;
+   width: 100%;
+   padding-right: 40px; // for toolbar
+-}
++}
+\ No newline at end of file
+diff --git a/web/libs/editor/src/tags/object/Image/Image.js b/web/libs/editor/src/tags/object/Image/Image.js
+index 39d1c4d41..c2a291d3a 100644
+--- a/web/libs/editor/src/tags/object/Image/Image.js
++++ b/web/libs/editor/src/tags/object/Image/Image.js
+@@ -81,6 +81,7 @@ const MAX_ZOOM_CHANGE_PER_EVENT = 0.3; // Maximum zoom change per wheel event (3
+  * @param {boolean} [contrastControl=false]   - Show contrast control in toolbar
+  * @param {boolean} [rotateControl=false]     - Show rotate control in toolbar
+  * @param {boolean} [crosshair=false]         - Show crosshair cursor
++ * @param {boolean} [gallery=false]           - Show imageList as gallery
+  * @param {left|center|right} [horizontalAlignment=left]      - Where to align image horizontally. Can be one of "left", "center", or "right"
+  * @param {top|center|bottom} [verticalAlignment=top]         - Where to align image vertically. Can be one of "top", "center", or "bottom"
+  * @param {auto|original|fit} [defaultZoom=fit]               - Specify the initial zoom of the image within the viewport while preserving its ratio. Can be one of "auto", "original", or "fit"
+@@ -112,6 +113,7 @@ const TagAttrs = types.model({
+   contrastcontrol: types.optional(types.boolean, false),
+   rotatecontrol: types.optional(types.boolean, false),
+   crosshair: types.optional(types.boolean, false),
++  gallery: types.optional(types.boolean, false),
+   selectioncontrol: types.optional(types.boolean, true),
+ 
+   // this property is just to turn lazyload off to e2e tests
+-- 
+2.53.0
+
