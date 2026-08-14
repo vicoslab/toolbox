@@ -65,7 +65,7 @@
         onclick="install(`{{ url_for_query(request, 'model_install', **params) }}`, `{{ name }}`); return false;">
         <h3>{{ info.title }}</h3>
         <p>{{ info.description }}</p>
-        <button
+        <button class="transparent"
             onclick="install(`{{ url_for_query(request, 'model_install', **params) }}`, `{{ name }}`); return false;">
             <svg xmlns="http://www.w3.org/2000/svg" class="icon" viewBox="0 0 24 24" stroke-linecap="round"
                 stroke-linejoin="round" fill="none" stroke-width="1px" stroke="currentColor">
