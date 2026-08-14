@@ -133,6 +133,8 @@ ENV LABEL_STUDIO_BASE_DATA_DIR=/persist/label-studio \
     MLFLOW_ARTIFACTS_DESTINATION=/persist/mlflow/artifacts \
     TOOLBOX_DATA=/persist/toolbox
 
+ENV TOOLBOX_TEMPDIR=/tmp/toolbox
+
 ## label-studio
 ENV LATEST_VERSION_CHECK=0 \
     COLLECT_ANALYTICS=false \
