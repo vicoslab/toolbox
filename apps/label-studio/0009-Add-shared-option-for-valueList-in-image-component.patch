@@ -1,0 +1,65 @@
+From 1bcd09b840bc772ead5f1b6d0d0ac742571137f6 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Andra=C5=BE=20Andol=C5=A1ek=20Peklaj?= <andraz.ap@pm.me>
+Date: Fri, 14 Aug 2026 11:27:46 +0200
+Subject: [PATCH 9/9] Add shared option for valueList in image component
+
+---
+ web/libs/core/src/lib/utils/schema/tags.json           | 7 +++++++
+ web/libs/editor/src/components/ImageView/ImageView.jsx | 2 +-
+ web/libs/editor/src/tags/object/Image/Image.js         | 2 ++
+ 3 files changed, 10 insertions(+), 1 deletion(-)
+
+diff --git a/web/libs/core/src/lib/utils/schema/tags.json b/web/libs/core/src/lib/utils/schema/tags.json
+index 169ad5821..4dab46ee7 100644
+--- a/web/libs/core/src/lib/utils/schema/tags.json
++++ b/web/libs/core/src/lib/utils/schema/tags.json
+@@ -445,6 +445,13 @@
+         "required": false,
+         "default": false
+       },
++      "shared": {
++        "name": "shared",
++        "description": "Always show annotations for all values in the list",
++        "type": ["true", "false"],
++        "required": false,
++        "default": false
++      },
+       "horizontalAlignment": {
+         "name": "horizontalAlignment",
+         "description": "Where to align image horizontally. Can be one of \"left\", \"center\", or \"right\"",
+diff --git a/web/libs/editor/src/components/ImageView/ImageView.jsx b/web/libs/editor/src/components/ImageView/ImageView.jsx
+index d3738557a..bfec2fa68 100644
+--- a/web/libs/editor/src/components/ImageView/ImageView.jsx
++++ b/web/libs/editor/src/components/ImageView/ImageView.jsx
+@@ -1391,7 +1391,7 @@ const StageContent = observer(({ item, store, state, crosshairRef }) => {
+   if (!store.task || !item.currentSrc) return null;
+ 
+   // Keep selected or highlighted region on top
+-  const regions = [...item.regs].sort((r) => (r.highlighted || r.selected ? 1 : -1));
++  const regions = [...item.shared ? item.allRegs : item.regs].sort((r) => (r.highlighted || r.selected ? 1 : -1));
+   const paginationEnabled = !!item.isMultiItem;
+   const wrapperClasses = [styles.wrapperComponent, item.images.length > 1 ? styles.withGallery : styles.wrapper];
+   const tool = item.getToolsManager().findSelectedTool();
+diff --git a/web/libs/editor/src/tags/object/Image/Image.js b/web/libs/editor/src/tags/object/Image/Image.js
+index c2a291d3a..c541fe510 100644
+--- a/web/libs/editor/src/tags/object/Image/Image.js
++++ b/web/libs/editor/src/tags/object/Image/Image.js
+@@ -82,6 +82,7 @@ const MAX_ZOOM_CHANGE_PER_EVENT = 0.3; // Maximum zoom change per wheel event (3
+  * @param {boolean} [rotateControl=false]     - Show rotate control in toolbar
+  * @param {boolean} [crosshair=false]         - Show crosshair cursor
+  * @param {boolean} [gallery=false]           - Show imageList as gallery
++ * @param {boolean} [shared=false]            - Show all annotations for the imageList
+  * @param {left|center|right} [horizontalAlignment=left]      - Where to align image horizontally. Can be one of "left", "center", or "right"
+  * @param {top|center|bottom} [verticalAlignment=top]         - Where to align image vertically. Can be one of "top", "center", or "bottom"
+  * @param {auto|original|fit} [defaultZoom=fit]               - Specify the initial zoom of the image within the viewport while preserving its ratio. Can be one of "auto", "original", or "fit"
+@@ -114,6 +115,7 @@ const TagAttrs = types.model({
+   rotatecontrol: types.optional(types.boolean, false),
+   crosshair: types.optional(types.boolean, false),
+   gallery: types.optional(types.boolean, false),
++  shared: types.optional(types.boolean, false),
+   selectioncontrol: types.optional(types.boolean, true),
+ 
+   // this property is just to turn lazyload off to e2e tests
+-- 
+2.53.0
+
