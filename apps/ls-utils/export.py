@@ -54,21 +54,32 @@ p_upload = re.compile(r'^/app/label-studio/data/upload/(\d+)/(.+)$')
 
 dataset = None
 resolved = []
-for task in j:
-    if m := p_dataset.match(task['image']):
+
+def detect_storage(image):
+    global dataset
+    global valid
+    if m := p_dataset.match(image):
         root, relpath = m.groups()[0].split('/', maxsplit=1)
         if dataset is None:
             dataset = root
         elif dataset != root:
             valid = False
-        resolved.append({ **task, 'image': ('dataset', relpath) })
-    elif m := p_upload.match(task['image']):
+        return ('dataset', relpath)
+    elif m := p_upload.match(image):
         id, filename = m.groups()
         if id != PROJECT_ID:
             valid = False
-        resolved.append({ **task, 'image': ('upload', filename) })
+        return ('upload', filename)
     else:
         valid = False
+
+for task in j:
+    if image := task.get('image'):
+        resolved.append({ **task, 'image': detect_storage(image) })
+    elif images := task.get('images'):
+        resolved.append({ **task, 'images': [detect_storage(im) for im in images]})
+    else:
+        resolved.append({ **task })
 
 if not valid:
     print('Warning: only saving json because image dataset in export failed validation.')
@@ -83,17 +94,24 @@ EXPORT_DIR = DATASET_DIR / os.getenv('EXPORT_DIR', f'{dataset or f"ls-project-{P
 EXPORT_DIR.mkdir(parents=True, exist_ok=True)
 EXPORT_UPLOADS = EXPORT_DIR.parent / f".export-uploads-{PROJECT_ID}"
 
-for task in j:
-    source, relpath = task['image']
+def get_path(source, relpath):
     if source == 'dataset':
-        item = { 'image_path': '../' + relpath }
+        return '../' + relpath
     elif source == 'upload':
         EXPORT_UPLOADS.mkdir(parents=True, exist_ok=True)
         shutil.copy(UPLOAD_DIR / relpath, EXPORT_UPLOADS / relpath)
-        item = { 'image_path': f'../.export-uploads-{PROJECT_ID}/' + relpath }
+        return f'../.export-uploads-{PROJECT_ID}/' + relpath
     else:
         raise ValueError("Invalid source for task image")
-    
+
+for task in j:
+    if image := task.get('image'):
+        item = { 'image_path': get_path(*image) }
+    elif images := task.get('images'):
+        item = { 'images': [get_path(*im) for im in images]}
+    else:
+        item = {}
+
     labels = None
     mask = None
     points = None
@@ -140,7 +158,7 @@ for task in j:
 
 manifest = str(EXPORT_DIR / 'manifest.json')
 with open(manifest, 'w') as f:
-    json.dump({ 'data': data }, f)
+    json.dump({ 'data': data, 'version': 2 }, f)
 
 print(f"Project {PROJECT_ID} successfully exported to '{EXPORT_DIR}'")
 print(f"Manifest:", manifest)
