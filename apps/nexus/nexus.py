@@ -308,10 +308,26 @@ def models_add(data: List[ModelGroupDefinition]):
 
 dataset_dir = Path(os.environ["LOCAL_FILES_DOCUMENT_ROOT"])
 @app.get("/datasets/{path:path}")
-def datasets(path: str):
+def datasets(path: str, files: Optional[bool]=False):
     new = dataset_dir / path
     if new.is_relative_to(dataset_dir) and new.exists():
-        return [str(x.name) for x in new.iterdir() if x.is_dir()]
+        if not files:
+            try:
+                # this is substantially faster and we've checked that new exists and is not malicious
+                count = int(subprocess.run(["bash", "-c", f"find {new} -type f | wc -l"], capture_output=True, text=True).stdout)
+            except:
+                count = sum((x.is_file() for x in new.glob("**/*")))
+            files = None
+        else:
+            files = sorted([x for x in new.rglob("*") if x.is_file()])
+            count = len(files)
+
+        return {
+            "root": dataset_dir,
+            "dirs": [str(x.name) for x in new.iterdir() if x.is_dir()],
+            "count": count,
+            "files": files
+        }
     
     raise HTTPException(status_code=404, detail="Invalid path")
 
@@ -447,6 +463,9 @@ def dataset_get(request: Request, model: str):
 class DatasetCreation(BaseModel):
     dataset: str | None
     title: str | None
+    group_size: int
+    group_separation: str
+    regex: str
 
 @app.post("/dataset", response_class=HTMLResponse)
 def dataset(request: Request, data: Annotated[DatasetCreation, Form()], model: str):
@@ -454,13 +473,7 @@ def dataset(request: Request, data: Annotated[DatasetCreation, Form()], model: s
     if model not in model_manifest or not (CACHE / model).exists():
         raise HTTPException(status_code=404, detail="Model is not installed")
 
-    env = { "MODEL_DIR": model_manifest[model]["dir"] }
-
-    if data.dataset:
-        env["DATASET"] = data.dataset
-    if data.title:
-        env["PROJECT_TITLE"] = data.title
-
+    env = { "MODEL_DIR": model_manifest[model]["dir"], "CREATION_REQUEST": data.model_dump_json() }
     task = tasks[start_task(["uv", "run", "create.py"], "../ls-utils", f"Project creation", extra_env=env, blocking=True)]
     id = None
     while line_in := task["process"].stdout.readline():

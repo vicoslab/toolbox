@@ -5,13 +5,13 @@ import io
 import re
 import json
 import yaml
+import re
 
 DATASET_DIR = Path(os.environ['LOCAL_FILES_DOCUMENT_ROOT'])
 API_KEY = os.environ['LABEL_STUDIO_USER_TOKEN']
 MODEL_DIR = Path(os.environ['MODEL_DIR'])
-DATASET = os.getenv('DATASET')
-PROJECT_TITLE = os.getenv('PROJECT_TITLE')
 
+request = json.loads(os.environ['CREATION_REQUEST'])
 config_file = MODEL_DIR / 'config.yml'
 if not config_file.exists():
     raise ValueError(f'Model dir "{MODEL_DIR}" does not contain LS config.')
@@ -19,22 +19,37 @@ with open(config_file) as f:
     config = yaml.safe_load(f)['config']
 
 ls = LabelStudio(base_url='http://localhost:8080', api_key=API_KEY)
-project = ls.projects.create(label_config=config, **{ 'title': PROJECT_TITLE } if PROJECT_TITLE else {})
+size = request['group_size']
+# todo: do any models support one/multiple images as input at the same time?
+project = ls.projects.create(label_config=config, title=request['title'])
 
 print(project.id)
 
-if DATASET:
-    # api doesn't support recursive scan yet for some reason
-    import_storage = ls.import_storage.local.create(
+p = re.compile(request['regex'])
+if (dataset := request['dataset']) and (dataset := Path(dataset)).exists():
+    # need to create import storage regardless otherwise some permissions check fails and you get 404s
+    ls.import_storage.local.create(
         project=project.id,
-        title=f'{PROJECT_TITLE} dataset' if PROJECT_TITLE else DATASET,
-        path=str(DATASET_DIR / DATASET),
+        title=f'{request["title"]} dataset' if request['title'] else str(dataset),
+        path=str(dataset),
         # recursive_scan=True,
         use_blob_urls=True,
-        regex_filter="[^.]*.(jpe?g|png)"
+        regex_filter=request['regex']
     )
-    # TODO: test this once recursive_scan is available, and make api enddpoint set this process to nonblocking
-    ls.import_storage.local.sync(import_storage.id)
+
+    LABEL_STUDIO_HOST = os.environ['LABEL_STUDIO_HOST']
+    files = sorted([f'{LABEL_STUDIO_HOST}/data/local-files/?d={x.relative_to(DATASET_DIR)}' for x in dataset.rglob("*") if x.is_file() and p.match(str(x))])
+    if size == 1:
+        tasks = [ { 'image': file } for file in files]
+    elif request['group_separation'] == 'interlace':
+        tasks = [ { 'images': files[i:i+size] } for i in range(0, len(files), size)]
+    elif request['group_separation'] == 'divide':
+        block_size = len(tasks) / size
+        tasks = list(map(lambda x: { 'images': list(x) }, zip(*[files[i:i+block_size] for i in range(0, len(files), block_size)])))
+    else:
+        raise ValueError('Group separation has invalid value')
+    ls.projects.import_tasks(id=project.id, request=[{"data": task} for task in tasks])
+    (dataset / 'groups.json').write_text(json.dumps({ 'group_size': size, 'group_separation': request['group_separation'] }))
 
 extra = dict(model=MODEL_DIR.name, project=project.id)
 ls.ml.create(title="Inference worker", project=project.id, url="http://localhost:9090", is_interactive=True, extra_params=json.dumps(extra))

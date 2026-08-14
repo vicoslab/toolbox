@@ -29,7 +29,7 @@
             <button class="shadow" command="show-modal" commandfor="create-project">Create a new
                 labeling project</button>
 
-            <dialog id="create-project" style="max-width: 512px;">
+            <dialog id="create-project" style="max-width: min(55rem, calc(100vw - 10rem));">
                 <h3>Create project</h3>
                 This will create a new labeling project with provided name. Path can be empty, in which case
                 uploaded images will be used. Otherwise locate your existing dataset (for example /data/my-dataset).
@@ -43,9 +43,46 @@
                         <label for="dataset-path">Path</label>
                         <input type="text" name="dataset" id="dataset-path">
                     </fieldset>
-                    <div class="file-browser"></div>
-                    <button type="button" commandfor="create-project" command="close">Cancel</button>
-                    <button type="submit">Create</button>
+                    <div class="stage-panels">
+                        <div class="file-browser"></div>
+                        <div class="groups">
+                            <div>
+                                <h4 style="margin: 0;">Grouping</h4>
+                                <p>
+                                    If your dataset groups multiple images per sample, configure the grouping here.
+                                    Otherwise review the file list and correct pattern if necessary.
+                                </p>
+                                <fieldset style="border: none;">
+                                    <label for="group-size">Group size</label>
+                                    <input type="number" name="group_size" value="1" id="group-size" min="1"
+                                        pattern="\d*" onchange="updatePreview(this.form)">
+                                    <label for="regex">Pattern</label>
+                                    <input type="text" name="regex" value=".*" id="regex"
+                                        oninput="updatePreview(this.form)">
+                                    <div style="grid-column: 1/-1;">
+                                        <input type="radio" name="group_separation" value="interlace"
+                                            id="group-separation-interlace" checked onchange="updatePreview(this.form)">
+                                        <label for="group-separation-interlace">Interlace</label>
+                                        <input type="radio" name="group_separation" value="divide"
+                                            id="group-separation-divide" onchange="updatePreview(this.form)">
+                                        <label for="group-separation-divide">Divide</label>
+                                    </div>
+                                </fieldset>
+                                <div class="error"></div>
+                            </div>
+                            <style></style>
+                            <div id="preview"></div>
+                        </div>
+                    </div>
+                    <div class="stage1">
+                        <button class="shadow" type="button" commandfor="create-project" command="close">Cancel</button>
+                        <button class="shadow" onclick="this.form.classList.add('s2');" type="button"
+                            id="button-stage2">Next</button>
+                    </div>
+                    <div class="stage2">
+                        <button class="shadow" type="button" onclick="this.form.classList.remove('s2')">Back</button>
+                        <button class="shadow" type="submit">Create</button>
+                    </div>
                 </form>
 
             </dialog>
@@ -53,18 +90,61 @@
     </div>
 </div>
 <script>
+    function updatePreview(form) {
+        const data = new FormData(form);
+        if (!preview.files) return;
+        const regex = new RegExp(data.get("regex"));
+        const files = preview.files.filter(x => x.match(regex));
+        const getColor = (i) => `hsl(${(25 * i) % 360} 100% 50% / 0.2)`;
+        const length = files.length;
+        const groupSize = Number.parseInt(data.get("group_size"));
+        const style = document.querySelector("#create-project style");
+        const error = form.querySelector(".error");
+        if (length % groupSize != 0) {
+            style.innerText = "";
+            preview.replaceChildren(...files.map((x, i) => {
+                const f = document.createElement("div");
+                f.innerText = x;
+                return f;
+            }));
+            error.innerText = "File count is not divisible by group size.";
+            return;
+        }
+        error.innerText = "";
+        preview.replaceChildren(...Array(length).keys().map(i => {
+            const sampleIdx = Math.floor(i / groupSize);
+            const groupIdx = i % groupSize;
+            const f = document.createElement("div");
+            switch (data.get("group_separation")) {
+                case "interlace": f.innerText = files[i]; break;
+                case "divide": f.innerText = files[length / groupSize * groupIdx + sampleIdx]; break;
+            }
+            if (groupSize != 1) {
+                f.style.backgroundColor = getColor(sampleIdx);
+            }
+            return f;
+        }));
+    }
     (async () => {
         const dialog = document.getElementById("create-project");
         const browser = dialog.querySelector(".file-browser");
         const path = dialog.querySelector("#dataset-path");
+        const preview = dialog.querySelector("#preview");
         const segs = [];
-        async function list() {
-            let dirs = await fetch(["/datasets", ...segs].join("/")).then(x => x.status === 200 ? x.json() : Promise.resolve([]));
+        async function showGroups() {
+            const { files } = await fetch(["/datasets", ...segs].join("/") + "?files=true").then(x => x.status === 200 ? x.json() : Promise.reject("Dataset listing not successful"));
+            preview.files = files;
+            updatePreview(dialog.querySelector("form"));
+        }
+        dialog.querySelector("#button-stage2").addEventListener("click", showGroups);
+        (async function list() {
+            const { root, dirs, count } = await fetch(["/datasets", ...segs].join("/")).then(x => x.status === 200 ? x.json() : Promise.reject("Dataset listing not successful"));
             if (segs.length > 0) {
                 dirs.splice(0, 0, "..");
             }
             browser.replaceChildren(...dirs.sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" })).map(name => {
                 const b = document.createElement("button");
+                b.className = "shadow";
                 b.innerHTML = `
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" fill="none" stroke-width="1px" stroke="currentColor"><path d="M 5 8 H 21 V 18 H 5 V 8 M 16 8 L 17 6 H 21 V 8"/></svg>
                             <span>${name}</span>`;
@@ -75,17 +155,23 @@
                     } else {
                         segs.push(name);
                     }
-                    path.value = "/data/" + segs.join("/");
+                    path.value = root + "/" + segs.join("/");
                     list()
                 });
                 return b;
             }));
-            const prompt = document.createElement("span");
-            prompt.innerText = dirs.length > 0 ? "Datasets found:" : "No datasets";
+            const prompt = document.createElement("h4");
+            prompt.innerText = dirs.length > 0 ? "Subdirectories:" : "No datasets";
             prompt.style.flexBasis = "100%";
-            browser.prepend(prompt);
-        }
-        list()
+            prompt.style.margin = 0;
+            const file_count = document.createElement("span");
+            file_count.innerText = `Total files: ${count}`;
+            file_count.style.color = "var(--fg-secondary)";
+            file_count.style.fontSize = "small";
+            file_count.style.flexBasis = "100%";
+            browser.prepend(prompt, file_count);
+        })()
+
     })();
 </script>
 <style>
@@ -103,16 +189,75 @@
             padding: 0.1rem;
             font-weight: 500;
             padding-right: 0.25rem;
-            border: unset;
-            background-color: var(--bg-accent-hover);
-
-            &:hover {
-                background-color: var(--bg-accent-active);
-            }
 
             span {
                 place-self: center;
             }
+        }
+    }
+
+    .groups {
+        position: relative;
+        width: 100%;
+        padding: 0.5rem;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+        max-height: 0;
+        transition: max-height 0.5s;
+
+        .error {
+            color: rgb(250, 67, 67);
+        }
+
+        #preview {
+            overflow: hidden auto;
+            text-overflow: ellipsis;
+            max-height: 30rem;
+
+            div {
+                font-size: small;
+                text-wrap: nowrap;
+                padding: 0 0.25rem;
+            }
+        }
+    }
+
+    .s2>.stage-panels>:first-child {
+        margin-left: -100%;
+    }
+
+    .stage-panels {
+        display: flex;
+        overflow: hidden;
+
+        >:first-child {
+            transition: margin-left;
+            transition-duration: 0.25s;
+            margin-left: 0;
+        }
+
+        >div {
+            flex-basis: 100%;
+            flex-shrink: 0;
+        }
+    }
+
+    .stage2 {
+        display: none;
+    }
+
+    .s2 {
+        .stage1 {
+            display: none;
+        }
+
+        .stage2 {
+            display: block;
+        }
+
+        .groups {
+            max-height: calc(100vh - 25rem);
         }
     }
 </style>
