@@ -338,15 +338,17 @@ def model(request: Request, model: str, manifest: str | None = None, weights: st
         return RedirectResponse(request.url_for("models", **params))
 
     params["model"] = model
+    if manifest:
+        params["manifest"] = manifest
+    if weights:
+        params["weights"] = weights
     return templates.TemplateResponse(request=request, name="model.html", context=dict(
         **model_manifest[model],
-        manifest=manifest,
-        weights=weights,
         params=params
     ))
 
 @app.get("/model/{model}/options")
-def model_options(request: Request, model: str):
+def model_options(request: Request, model: str, manifest: Optional[str] = None, weights: Optional[str] = None):
     if not (model_info := model_manifest.get(model)):
         raise HTTPException(status_code=404, detail=f"Model '{model}' does not exist")
 
@@ -355,10 +357,10 @@ def model_options(request: Request, model: str):
     for k, v in model_manifest[model]["options"].items():
         if not (format := v.get("format")):
             continue
-        if format == "file:manifest.json" and (manifest := request.query_params.get("manifest")):
+        if format == "file:manifest.json" and manifest:
             completions[k] = manifest
         elif format.startswith("file:"):
-            if (weights := request.query_params.get("weights")) and weights.endswith(format[5:]):
+            if weights and weights.endswith(format[5:]):
                 completions[k] = weights
             elif len(runs) > 0 and ARTIFACTS:
                 _completions = []

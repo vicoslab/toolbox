@@ -77,7 +77,7 @@
 
     (async () => {
         const setOptions = document.getElementById("set-options");
-        const { options, completions } = await fetch(`{{ url_for_query(request, 'model_options', manifest=manifest, weights=weights, **params) | safe }}`).then(r => r.json());
+        const { options, completions } = await fetch(`{{ url_for_query(request, 'model_options', **params) | safe }}`).then(r => r.json());
         if (Object.keys(options).length > 0) {
             document.querySelector(".edit-options").style.display = "";
         }
