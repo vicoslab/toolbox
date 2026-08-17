@@ -8,3 +8,6 @@ wheels/
 
 # Virtual environments
 .venv
+
+opencv.js
+UTIF.js

@@ -18,5 +18,3 @@ wheels/
 .installed.cfg
 *.egg
 MANIFEST
-
-opencv.js

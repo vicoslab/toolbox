@@ -202,6 +202,7 @@ def infer(alias):
                 </form>
             </body>
             <script src="/static/opencv.js" async></script>
+            <script src="/static/UTIF.js" async></script>
             <script src="/static/model.js"></script>
             <script>window.endpoint = "{alias}"</script>
             <style>
