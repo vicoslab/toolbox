@@ -129,7 +129,7 @@ def create_inference_worker(model, options, alias=None):
     flags = build_model_options(model_manifest[model]["options"], options)
 
     port = 9091
-    used = [task["inference"][0] for task in tasks.values() if task["process"] and "inference" in task]
+    used = [task["inference"][1][0] for task in tasks.values() if task["process"] and "inference" in task]
     while True:
         if port not in used:
             break
@@ -386,7 +386,7 @@ async def model_infer(request: Request, model: str, alias: Optional[str]=None, f
 
     if not force:
         for pid, task in tasks.items():
-            if task["process"] and (info := task.get("inference")) and info[1] == model:
+            if task["process"] and (info := task.get("inference")) and info[1][1] == model:
                 params["pid"] = pid
                 return TaskResponse(pid=pid, logs=str(url_for_query(request, "logs", **params)), duplicate=True)
 
