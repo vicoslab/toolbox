@@ -1,10 +1,12 @@
 from flask import Flask, render_template, abort, request
+from flask_limiter import Limiter
 import requests
 from pathlib import Path
 import os
 import json
 import time
 import logging
+from datetime import datetime
 
 forms = {}
 workers = {}
@@ -13,8 +15,21 @@ autostart = json.loads(os.environ.get("TOOLBOX_AUTOSTART", "{}"))
 keepalive = {}
 lifetime = 60 * 15 # 15min
 
+domain = os.getenv("TOOLBOX_DOMAIN")
+access_log = (access_log_path := os.getenv("TOOLBOX_ACCESS_LOG")) and open(access_log_path, 'w+')
+client_timeout = os.getenv("TOOLBOX_RATELIMIT_INTERVAL")
+clients = {}
+
 app = Flask(__name__)
 app.logger.setLevel(logging.INFO)
+
+limiter = Limiter(
+    lambda: request.remote_addr,
+    app=app,
+    default_limits=[],
+    storage_uri="memory://",
+    strategy="moving-window",
+)
 
 def refresh_workers():
     forms.update({ p.parent.name: p.read_text() for p in (Path(os.environ["TOOLBOX_CACHE"]) / ".models").glob("**/ui.html") })
@@ -125,8 +140,17 @@ def predict():
 
     abort(404)
 
+private_host, private_port = [*DOMAIN.split(":"), "443"][:2]
+if not private_host:
+    private_host = "localhost"
+def is_private_endpoint():
+    req_host, req_port = [*request.host.split(":"), "443"][:2]
+    return private_host == req_host and private_port == req_port
+
 # PUBLIC :: ui endpoint and proxy for individual models
 @app.route("/infer/<alias>", methods=["GET", "POST"])
+@limiter.limit("1 per 5 seconds", methods=["POST"], exempt_when=is_private_endpoint)
+@limiter.limit("100 per day", methods=["POST"], exempt_when=is_private_endpoint)
 def infer(alias):
     if app.debug:
         refresh_workers()
@@ -138,13 +162,23 @@ def infer(alias):
 
     port, model = worker
     # forward requests to actual backend
-    if request.method == "POST":        
+    if request.method == "POST":
         data = request.json if request.is_json else request.form.to_dict()
         files = [
             (field_name, (file.filename, file.stream, file.content_type))
             for field_name in request.files
             for file in request.files.getlist(field_name)
         ]
+
+        if access_log and not is_private_endpoint():
+            entry = json.dumps(dict(
+                files=[filename for (_, (filename, _, _)) in files],
+                ip=request.remote_addr,
+                timestamp=str(datetime.now()),
+                endpoint=alias,
+            ))
+            access_log.write(entry + "\n")
+            access_log.flush()
 
         try:
             response = requests.post(f"http://localhost:{port}/infer", data=data, files=files)
