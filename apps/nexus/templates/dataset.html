@@ -11,6 +11,8 @@
             To accomodate for different kinds of datasets and tasks, models are prepared to only require a single
             file called a manifest, which should contain all necessary information to load in data for training.
         </p>
+    </div>
+    <div style="max-width: 70rem; margin:auto">
         {% if "manifest" in options %}
         <p>
             Description from '{{ title }}':
@@ -26,25 +28,31 @@
             {% set _ = params.update({"tour": tour_enum.LABELING.value }) %}
             <a class="button shadow" href="{{ url_for_query(request, 'label', **params) }}">I have an existing
                 project</a>
-            <button class="shadow" command="show-modal" commandfor="create-project">Create a new
+            {% if "project" in params %}
+            <button class="shadow" onclick="showAddDialog(this.form)">Add data to
+                active project</button>
+            {% else %}
+            <button class="shadow" onclick="showAddDialog(this.form)" disabled title="No project selected">Add data to
+                active project</button>
+            {% endif %}
+            <button class="shadow" onclick="showCreateDialog(this.form)">Create a new
                 labeling project</button>
 
-            <dialog id="create-project" style="max-width: min(55rem, calc(100vw - 10rem));">
-                <h3>Create project</h3>
-                This will create a new labeling project with provided name. Path can be empty, in which case
-                uploaded images will be used. Otherwise locate your existing dataset (for example /data/my-dataset).
-                <blockquote>
-                    <i>/data will only contain files which were made available during installation</i>
-                </blockquote>
-                <form method="post">
-                    <fieldset style="border: none;">
+            <dialog id="manage-project" style="max-width: min(55rem, calc(100vw - 10rem));">
+                <div id="header"></div>
+                <form method="post" enctype="multipart/form-data" onsubmit="doSubmit(this);">
+                    <fieldset style="border: none;" class="create">
                         <label for="dataset-name">Name</label>
                         <input type="text" name="title" id="dataset-name">
                         <label for="dataset-path">Path</label>
                         <input type="text" name="dataset" id="dataset-path">
                     </fieldset>
                     <div class="stage-panels">
-                        <div class="file-browser"></div>
+                        <div class="file-management">
+                            <div class="file-browser create"></div>
+                            <div class="file-upload"><input type="file" name="files" id="dataset-upload" multiple>Drag
+                                images here or click to open file selection menu</div>
+                        </div>
                         <div class="groups">
                             <div>
                                 <h4 style="margin: 0;">Grouping</h4>
@@ -75,13 +83,15 @@
                         </div>
                     </div>
                     <div class="stage1">
-                        <button class="shadow" type="button" commandfor="create-project" command="close">Cancel</button>
-                        <button class="shadow" onclick="this.form.classList.add('s2');" type="button"
-                            id="button-stage2">Next</button>
+                        <button class="shadow" onclick="this.form.reset();" type="button" commandfor="manage-project"
+                            command="close">Cancel</button>
+                        <button class="shadow" type="button" id="button-stage2">Next</button>
                     </div>
                     <div class="stage2">
                         <button class="shadow" type="button" onclick="this.form.classList.remove('s2')">Back</button>
-                        <button class="shadow" type="submit">Create</button>
+                        <button class="shadow create" type="submit">Create</button>
+                        <button class="shadow add" type="submit"
+                            formaction="{{ url_for_query(request, 'dataset_upload', **params)}}">Upload</button>
                     </div>
                 </form>
 
@@ -90,6 +100,38 @@
     </div>
 </div>
 <script>
+    function doSubmit(form) {
+        const regex = new RegExp(form.regex.value);
+        const dataTransfer = new DataTransfer();
+        for (const file of form.files.files) {
+            if (file.name.match(regex)) {
+                dataTransfer.items.add(file);
+            }
+        }
+        form.files.files = dataTransfer.files;
+        return true;
+    }
+    const manageProject = document.getElementById("manage-project");
+    function showAddDialog(form, project) {
+        manageProject.querySelector("#header").innerHTML = `
+            <h3>Add data to project</h3>
+            This will add uploaded files to the dataset associated with the project. Group size cannot be changed.`;
+        manageProject.classList.add("add");
+        manageProject.querySelector("#group-size").disabled = true;
+        manageProject.showModal();
+    }
+    function showCreateDialog(form) {
+        manageProject.classList.remove("add");
+        manageProject.querySelector("#header").innerHTML = `
+            <h3>Create project</h3>
+            This will create a new labeling project with provided name. Path can be empty, in which case
+            uploaded images will be used. Otherwise locate your existing dataset (for example /data/my-dataset).
+            <blockquote>
+                <i>/data will only contain files which were made available during installation</i>
+            </blockquote>`;
+        manageProject.querySelector("#group-size").disabled = false;
+        manageProject.showModal();
+    }
     function updatePreview(form) {
         const data = new FormData(form);
         if (!preview.files) return;
@@ -97,8 +139,8 @@
         const files = preview.files.filter(x => x.match(regex));
         const getColor = (i) => `hsl(${(25 * i) % 360} 100% 50% / 0.2)`;
         const length = files.length;
-        const groupSize = Number.parseInt(data.get("group_size"));
-        const style = document.querySelector("#create-project style");
+        const groupSize = Number.parseInt(form.group_size.value);
+        const style = manageProject.querySelector("style");
         const error = form.querySelector(".error");
         if (length % groupSize != 0) {
             style.innerText = "";
@@ -126,17 +168,39 @@
         }));
     }
     (async () => {
-        const dialog = document.getElementById("create-project");
-        const browser = dialog.querySelector(".file-browser");
-        const path = dialog.querySelector("#dataset-path");
-        const preview = dialog.querySelector("#preview");
+        const browser = manageProject.querySelector(".file-browser");
+        const form = manageProject.querySelector("form");
+        const preview = manageProject.querySelector("#preview");
         const segs = [];
         async function showGroups() {
-            const { files } = await fetch(["/datasets", ...segs].join("/") + "?files=true").then(x => x.status === 200 ? x.json() : Promise.reject("Dataset listing not successful"));
-            preview.files = files;
-            updatePreview(dialog.querySelector("form"));
+            const form = manageProject.querySelector("form");
+            if (manageProject.classList.contains("add")) {
+                const [storages, { root }] = await Promise.all([fetch("/app/label-studio/api/storages/localfiles?project={{ params.project|default('') }}"), fetch("/datasets")].map(r => r.then(x => x.json())));
+                if (storages.length > 0) {
+                    form.dataset.value = storages[0].path;
+                    const { groups } = await fetch("/datasets" + storages[0].path.replace(root, "")).then(x => x.json());
+                    form.group_size.value = groups?.group_size || 1;
+                    form.regex.value = groups?.regex || ".*";
+                    preview.files = [...form.files.files].map(x => x.name);
+                    updatePreview(form);
+                } else {
+                    throw Error("Invalid project");
+                }
+            } else if (form.files.files.length > 0) {
+                preview.files = [...form.files.files].map(x => x.name);
+                updatePreview(form);
+            } else {
+                const { files } = await fetch(["/datasets", ...segs].join("/") + "?files=true").then(x => x.status === 200 ? x.json() : Promise.reject("Dataset listing not successful"));
+                preview.files = files;
+            }
+            updatePreview(form);
         }
-        dialog.querySelector("#button-stage2").addEventListener("click", showGroups);
+        function nextStage() {
+            showGroups();
+            form.classList.add("s2");
+        }
+        form.files.addEventListener("change", nextStage);
+        manageProject.querySelector("#button-stage2").addEventListener("click", nextStage);
         (async function list() {
             const { root, dirs, count } = await fetch(["/datasets", ...segs].join("/")).then(x => x.status === 200 ? x.json() : Promise.reject("Dataset listing not successful"));
             if (segs.length > 0) {
@@ -155,7 +219,7 @@
                     } else {
                         segs.push(name);
                     }
-                    path.value = root + "/" + segs.join("/");
+                    form.dataset.value = root + "/" + segs.join("/");
                     list()
                 });
                 return b;
@@ -175,6 +239,29 @@
     })();
 </script>
 <style>
+    button.add {
+        display: none;
+    }
+
+    dialog.add {
+        .create {
+            display: none
+        }
+
+        button.add {
+            display: inline-block;
+        }
+
+        .file-management {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    .file-management {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+    }
+
     .file-browser {
         padding: 0.5rem;
         display: flex;
@@ -193,6 +280,22 @@
             span {
                 place-self: center;
             }
+        }
+    }
+
+    .file-upload {
+        position: relative;
+        margin: 0.5rem;
+        padding: 1rem;
+        display: grid;
+        place-items: center;
+        text-align: center;
+        border: 1px solid var(--border);
+
+        >input {
+            position: absolute;
+            inset: 0;
+            opacity: 0;
         }
     }
 

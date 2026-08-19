@@ -1,8 +1,6 @@
 import os
 from label_studio_sdk import LabelStudio
 from pathlib import Path
-import io
-import re
 import json
 import yaml
 import re
@@ -49,7 +47,7 @@ if (dataset := request['dataset']) and (dataset := Path(dataset)).exists():
     else:
         raise ValueError('Group separation has invalid value')
     ls.projects.import_tasks(id=project.id, request=[{"data": task} for task in tasks])
-    (dataset / 'groups.json').write_text(json.dumps({ 'group_size': size, 'group_separation': request['group_separation'] }))
+    (dataset / 'groups.json').write_text(json.dumps({ 'group_size': size, 'regex': request['regex'] }))
 
 extra = dict(model=MODEL_DIR.name, project=project.id)
 ls.ml.create(title="Inference worker", project=project.id, url="http://localhost:9090", is_interactive=True, extra_params=json.dumps(extra))

@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Header, Request, HTTPException, Form
+from fastapi import FastAPI, Header, Request, HTTPException, Form, UploadFile
 from fastapi.sse import EventSourceResponse, ServerSentEvent
 from fastapi.responses import RedirectResponse, HTMLResponse
 from fastapi.templating import Jinja2Templates
@@ -322,9 +322,15 @@ def datasets(path: str, files: Optional[bool]=False):
             files = sorted([x for x in new.rglob("*") if x.is_file()])
             count = len(files)
 
+        if (new / "groups.json").exists():
+            groups = json.loads((new / "groups.json").read_text())
+        else:
+            groups = None
+
         return {
             "root": dataset_dir,
             "dirs": [str(x.name) for x in new.iterdir() if x.is_dir()],
+            "groups": groups,
             "count": count,
             "files": files
         }
@@ -462,20 +468,40 @@ def dataset_get(request: Request, model: str):
 
     return templates.TemplateResponse(request=request, name="dataset.html", context=dict(**model_manifest[model], params=propagate(request.query_params)))
 
+async def receive_files(base_dir: Path, files: list[UploadFile]):
+    base_dir.mkdir()
+    for file in files:
+        try:
+            contents = await file.read()
+            with (base_dir / file.filename).open("wb") as f:
+                f.write(contents)
+        except Exception:
+            shutil.rmtree(base_dir)
+            raise HTTPException(status_code=500, detail='Something went wrong')
+        finally:
+            await file.close()
+
 class DatasetCreation(BaseModel):
-    dataset: str | None
+    dataset: str
     title: str | None
     group_size: int
     group_separation: str
     regex: str
+    files: list[UploadFile] | None = None
 
 @app.post("/dataset", response_class=HTMLResponse)
-def dataset(request: Request, data: Annotated[DatasetCreation, Form()], model: str):
+async def dataset(request: Request, data: Annotated[DatasetCreation, Form()], model: str):
     params = propagate(request.query_params);
     if model not in model_manifest or not (CACHE / model).exists():
         raise HTTPException(status_code=404, detail="Model is not installed")
 
-    env = { "MODEL_DIR": model_manifest[model]["dir"], "CREATION_REQUEST": data.model_dump_json() }
+    dataset = Path(data.dataset)
+    if data.files is not None:
+        if dataset.exists():
+            raise HTTPException(status_code=400, detail="Cannot create dataset from upload if directory already exists")
+        await receive_files(dataset, data.files)
+
+    env = { "MODEL_DIR": model_manifest[model]["dir"], "CREATION_REQUEST": json.dumps(dict(dataset=data.dataset, title=data.title, group_size=data.group_size, group_separation=data.group_separation, regex=data.regex)) }
     task = tasks[start_task(["uv", "run", "create.py"], "../ls-utils", f"Project creation", extra_env=env, blocking=True)]
     id = None
     while line_in := task["process"].stdout.readline():
@@ -495,7 +521,25 @@ def dataset(request: Request, data: Annotated[DatasetCreation, Form()], model: s
         params["tour"] = TourStep.LABELING.value
     params["project"] = id
     return RedirectResponse(url_for_query(request, "label", **params), status_code=303)
-        
+
+class DatasetAddition(BaseModel):
+    dataset: str
+    group_separation: str
+    files: list[UploadFile]
+
+@app.post("/dataset/upload", response_class=HTMLResponse)
+async def dataset_upload(request: Request, data: Annotated[DatasetAddition, Form()], project: int):
+    params = propagate(request.query_params);
+
+    if not (base := Path(data.dataset)).exists():
+        raise HTTPException(status_code=400, detail="Provided dataset does not exist")
+    base = base / datetime.now().strftime("upload-%Y-%m-%d-%H-%M-%S")
+
+    await receive_files(base, data.files)
+    addition = json.dumps({ "project": project, "upload_dir": str(base), "group_separation": data.group_separation })
+    task = tasks[start_task(["uv", "run", "add.py"], "../ls-utils", f"Adding tasks to project", extra_env={ "ADDITION_REQUEST": addition })]
+
+    return RedirectResponse(url_for_query(request, "label", **params), status_code=303)
 
 @app.get("/export", response_class=HTMLResponse)
 def export_get(request: Request):

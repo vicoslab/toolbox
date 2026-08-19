@@ -90,6 +90,10 @@ button, input[type="submit"], input[type="button"], .button {
     &:active {
         background-color: var(--bg-accent-active);
     }
+    &[disabled] {
+        background-color: var(--bg-muted);
+        color: var(--fg-secondary);
+    }
 }
 
 .transparent {
