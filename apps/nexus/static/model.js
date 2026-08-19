@@ -1,9 +1,7 @@
-const inferenceResults = document.getElementById("results");
-
 async function makeRequest(form, action, dispatch = true) {
     const formData = new FormData(form);
     try {
-        const response = await fetch(window.endpoint, {
+        const response = await fetch(form.action, {
             method: "POST",
             body: formData,
         });
@@ -11,7 +9,7 @@ async function makeRequest(form, action, dispatch = true) {
         await response.json().then(response => {
             const elems = action(formData, response);
             if (elems !== null) {
-                inferenceResults.replaceChildren(...[elems].flat());
+                form.querySelector("#results").replaceChildren(...[elems].flat());
             }
         });
     } catch (e) {
@@ -36,7 +34,7 @@ class SoftReset extends HTMLElement {
             e.preventDefault();
             form.dispatchEvent(new Event("softreset"));
             back.style.display = "none";
-            inferenceResults.replaceChildren();
+            form.querySelector("#results").replaceChildren();
         });
         form.addEventListener("infer", () => back.style.display = "");
         form.addEventListener("reset", () => back.style.display = "none");
@@ -85,7 +83,7 @@ class ImageInput extends HTMLElement {
             e.preventDefault();
             this.internals_.form.reset();
             image.src = "";
-            inferenceResults.replaceChildren();
+            form.querySelector("#results").replaceChildren();
         });
         document.querySelector(".toolbar-right").append(close);
 
@@ -412,7 +410,7 @@ class VideoInput extends HTMLElement {
             e.preventDefault();
             this.internals_.form.reset();
             record.style.display = "none";
-            inferenceResults.replaceChildren();
+            form.querySelector("#results").replaceChildren();
         });
         let recorder = null;
         let lock = null;

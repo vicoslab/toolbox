@@ -194,7 +194,7 @@ def infer(alias):
         <!DOCTYPE html>
         <html>
             <body>
-                <form action="">
+                <form action="{alias}">
                     {form}
                     <div class="toolbar">
                         <div class="toolbar-left"></div>
@@ -205,7 +205,6 @@ def infer(alias):
             <script src="/static/opencv.js" async></script>
             <script src="/static/UTIF.js" async></script>
             <script src="/static/model.js"></script>
-            <script>window.endpoint = "{alias}"</script>
             <style>
                 html, body {{
                     height: 100%;

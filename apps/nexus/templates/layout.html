@@ -148,7 +148,7 @@
             });
         }
 
-        function showToastForLogs(pid, message, url) {
+        function showToastForLogs(pid, message, url = undefined) {
             const eventSource = new EventSource(`/task/logs/${pid}/stream`);
             const lines = document.createElement("pre");
             lines.style.textOverflow = "ellipsis";
@@ -161,14 +161,17 @@
             last.className = "line";
             lines.append(last);
 
-            const show_logs = document.createElement("a");
-            show_logs.href = url;
-            show_logs.className = "button";
-            show_logs.innerText = "Show logs";
             const actions = document.createElement("div");
             actions.style.display = "flex";
             actions.style.gap = "0.5rem";
-            actions.append(show_logs);
+
+            if (url) {
+                const show_logs = document.createElement("a");
+                show_logs.href = url;
+                show_logs.className = "button";
+                show_logs.innerText = "Show logs";
+                actions.append(show_logs);
+            }
 
             eventSource.addEventListener("message", e => last.innerText = JSON.parse(e.data));
             eventSource.addEventListener("quick-action", e => resolveQuickAction(actions, ...JSON.parse(e.data)));

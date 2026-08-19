@@ -4,6 +4,14 @@
 
 {% block content %}
 <div class="wrapper">
+    <div class="tour-description" data-tour_step="export">
+        <h3>Tour: Export</h3>
+        <p>
+            After annotation, the data must be exported from label studio's internal representation into a form suitable
+            for training machine learning models. Select which task you are exporting for, and if the project is already
+            detected, you can start the export. You can optionally set the destination where files will be placed.
+        </p>
+    </div>
     <div class="text-layout">
         <h3>Export annotations</h3>
         <p>
@@ -20,8 +28,8 @@
                 <label for="field-project">Project</label>
                 <input type="text" inputmode="numeric" pattern="\d*" name="project" id="field-project"
                     value="{{ params.project | default('') }}">
-                <label for="field-dir">Dataset path</label>
-                <input type="text" name="dir" id="field-dir">
+                <label for="field-dir">Export path</label>
+                <input type="text" name="dir" id="field-dir" placeholder="/path/to/dataset/.export-<date>-<time>">
                 <button class="shadow"
                     onclick="exportDataset(`{{ url_for_query(request, 'export', **params) }}`, new FormData(this.form)); return false;">
                     Start export </button>

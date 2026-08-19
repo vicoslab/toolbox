@@ -348,8 +348,11 @@ def model(request: Request, model: str, manifest: str | None = None, weights: st
         params["manifest"] = manifest
     if weights:
         params["weights"] = weights
+
+    workers = { inf[0]: k for (k, task) in tasks.items() if (inf := task.get("inference")) and task["process"] is not None }
     return templates.TemplateResponse(request=request, name="model.html", context=dict(
         **model_manifest[model],
+        workers=workers,
         params=params
     ))
 
@@ -377,7 +380,15 @@ def model_options(request: Request, model: str, manifest: Optional[str] = None, 
                 if len(_completions) > 0:
                     completions[k] = _completions
 
-    return dict(options=model_info.get("options", {}), completions=completions)
+    options = {
+        **model_info.get("options", {}),
+        "alias": {
+            "title": "Alias",
+            "description": "Alias for inference worker",
+            "type": "string",
+        }
+    }
+    return dict(options=options, completions=completions)
 
 class TaskResponse(BaseModel):
     pid: int
@@ -392,13 +403,14 @@ async def model_infer(request: Request, model: str, alias: Optional[str]=None, f
     params = propagate(request.query_params)
     params["model"] = model
 
-    if not force:
-        for pid, task in tasks.items():
-            if task["process"] and (info := task.get("inference")) and info[1][1] == model:
-                params["pid"] = pid
-                return TaskResponse(pid=pid, logs=str(url_for_query(request, "logs", **params)), duplicate=True)
-
     options = await request.json()
+    if not alias:
+        alias = options.get("alias")
+
+    for pid, task in tasks.items():
+        if task["process"] and (info := task.get("inference")) and info[0] == (alias or model):
+            raise HTTPException(status_code=400, detail=f"Worker with alias '{alias or model}' already running")
+
     params["pid"] = create_inference_worker(model, options.items(), alias)
 
     if params.get("tour") == TourStep.MONITORING.value:

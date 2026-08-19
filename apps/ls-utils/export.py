@@ -106,9 +106,12 @@ def get_path(source, relpath):
 
 for task in j:
     if image := task.get('image'):
-        item = { 'image_path': get_path(*image) }
+        source, relpath = image
+        item = { 'image_path': get_path(source, relpath) }
+        relpaths = [relpath]
     elif images := task.get('images'):
         item = { 'images': [get_path(*im) for im in images]}
+        relpaths = [relpath for (_, relpath) in images]
     else:
         item = {}
 
@@ -124,7 +127,7 @@ for task in j:
                     labels = tag['labels']
                     mask = np.reshape(brush.decode_rle(rle), [height, width, 4])[:, :, 3]
                 elif labels != tag['labels']:
-                    print(f'Warning (skipping): mixing different labels in `{relpath}`')
+                    print(f'Warning (skipping): mixing different labels in `{relpaths}`')
                 else:
                     mask += np.reshape(brush.decode_rle(rle), [height, width, 4])[:, :, 3]
             elif verts := tag.get('vertices'):
@@ -143,11 +146,13 @@ for task in j:
 
     if TASK == 'anomaly-detection':
         if mask is not None:
-            filename = (EXPORT_DIR / relpath).with_suffix('.label.png')
-            filename.parent.mkdir(parents=True, exist_ok=True)
-            Image.fromarray(mask).save(filename)
-            item['label'] = 'abnormal' if mask.sum() > 0 else 'normal'
-            item['mask_path'] = str(filename.relative_to(EXPORT_DIR))
+            # todo: would there be multiple masks (what about shared)?
+            for relpath in relpaths:
+                filename = (EXPORT_DIR / relpath).with_suffix('.label.png')
+                filename.parent.mkdir(parents=True, exist_ok=True)
+                Image.fromarray(mask).save(filename)
+                item['label'] = 'abnormal' if mask.sum() > 0 else 'normal'
+                item['mask_path'] = str(filename.relative_to(EXPORT_DIR))
         elif task['annotator'] is not None:
             item['label'] = 'normal'
     elif TASK == 'orientation-estimation':

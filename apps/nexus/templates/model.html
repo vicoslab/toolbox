@@ -4,12 +4,98 @@
 
 {% block content %}
 <div class="model-overview wrapper">
+    {% if params.tour|default(-1) == tour_enum.TRAINING.value %}
+    <div class="tour-description" data-tour_step="training">
+        <h3>Tour: Training</h3>
+        <p>
+            On this page you can configure options for model training. Individual options may differ between models, so
+            you should review their descriptions by hovering over. In any case, a dataset manifest is needed to provide
+            information about training samples to the training procedure.
+
+            If you came here from the 'Export' step, the dataset manifest should be filled in for you already. Otherwise
+            you can find past exports on the <a href="{{ url_for_query(request, 'status', **params) }}">status</a> page.
+        </p>
+        <p>
+            For your own dataset, you are expected to prepare a dataset manifest yourself and manually enter the path
+            for the dataset manifest in the options. Rewiew the datasets page to check what formatting is required.
+        </p>
+    </div>
+    {% elif params.tour|default(-1) == tour_enum.INFERENCE.value %}
+    <div class="tour-description" data-tour_step="inference">
+        <h3>Tour: Inference</h3>
+        <p>
+            The inference tab is where you start inference workers based on pretrained weights or training artifacts.
+            If you came here from the training/monitoring step, the weights may be filled in already, otherwise you need
+            to add them from the options. Then you can start the inference worker.
+            The other options are the same as with training, but are not relevant unless specified otherwise.
+
+            This is the final step. Apply the trained model and review results by uploading samples into the interface.
+            Depending on the task, interaction may be required.
+        </p>
+    </div>
+    {% endif %}
+    {% if params.tour|default(tour_enum.INFERENCE.value) == tour_enum.INFERENCE.value %}
+    <div class="inference">
+        {% for (alias, pid) in workers.items() %}
+        <details name="workers" {% if first|default(true) %}open{% endif %}>
+            {% set first = false %}
+            <summary>{{ alias }}
+                <button title="Stop worker '{{ alias }}'?" class="shadow-sm transparent delete-worker"
+                    onclick="showModal(`Stop worker '{{ alias }}'?`).then(() => stopWorker(this, {{ pid }}))">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 50 50" stroke-linecap="round" fill="none"
+                        stroke-width="4px" stroke="currentColor">
+                        <path d="M 15 35 L 35 15 M 15 15 L 35 35" />
+                    </svg>
+                </button>
+            </summary>
+            <form class="inference-tab" action="/infer/{{ alias }}">
+                <fieldset>
+                    {{ form | safe }}
+                </fieldset>
+                <div class="toolbar">
+                    <div class="toolbar-left"></div>
+                    <div class="toolbar-right"></div>
+                </div>
+            </form>
+        </details>
+        {% endfor %}
+        <details name="workers" {% if first|default(true) %}open{% endif %}>
+            <summary>Start new</summary>
+
+            <div class="inference-tab">
+                <div class="edit-options" style="display: none;">
+                    <h2 style="flex-basis: 100%;">Model options</h2>
+                    <div id="set-options"></div>
+                    <button title="Add option" class="add-option shadow">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="icon" viewBox="0 0 24 24" stroke-linecap="round"
+                            stroke-linejoin="round" fill="none" stroke-width="1.25px" stroke="currentColor">
+                            <path d="M 12 5 V 19 M 5 12 H 19" />
+                        </svg>
+                        <div id="list-options" popover=""></div>
+                    </button>
+                </div>
+                <div class="model-dispatch">
+                    {% if params.tour %}
+                    <button id="model-inference" class="shadow"
+                        onclick="startInference(`{{ url_for_query(request, 'model_infer', **params) }}`)">Start
+                        new</button>
+                    {% else %}
+                    <button id="model-training" class="shadow"
+                        onclick="startTraining(`{{ url_for_query(request, 'model_train', **params) }}`)">Training</button>
+                    <button id="model-inference" class="shadow"
+                        onclick="startInference(`{{ url_for_query(request, 'model_infer', **params) }}`)">Inference</button>
+                    {% endif %}
+                </div>
+            </div>
+        </details>
+    </div>
+    {% else %}
     <div class="edit-options" style="display: none;">
         <h2 style="flex-basis: 100%;">Model options</h2>
         <div id="set-options"></div>
         <button title="Add option" class="add-option shadow">
             <svg xmlns="http://www.w3.org/2000/svg" class="icon" viewBox="0 0 24 24" stroke-linecap="round"
-                stroke-linejoin="round" fill="none" stroke-width="2px" stroke="currentColor">
+                stroke-linejoin="round" fill="none" stroke-width="1.25px" stroke="currentColor">
                 <path d="M 12 5 V 19 M 5 12 H 19" />
             </svg>
             <div id="list-options" popover=""></div>
@@ -17,22 +103,10 @@
     </div>
     <div class="model-dispatch">
         <button id="model-training" class="shadow"
-            onclick="startTraining(`{{ url_for_query(request, 'model_train', **params) }}`)" {% if not train
-            %}style="background-color: var(--bg-muted); cursor: not-allowed;" disabled{% endif %}>Training</button>
-        <button id="model-inference" class="shadow"
-            onclick="startInference(`{{ url_for_query(request, 'model_infer', **params) }}`)">Inference</button>
+            onclick="startTraining(`{{ url_for_query(request, 'model_train', **params) }}`)">Start
+            new</button>
     </div>
-    <div class="inference">
-        <form id="form-inference" action="">
-            <fieldset>
-                {{ form | safe }}
-                <div class="toolbar">
-                    <div class="toolbar-left"></div>
-                    <div class="toolbar-right"></div>
-                </div>
-            </fieldset>
-        </form>
-    </div>
+    {% endif %}
 </div>
 
 <script src="/static/opencv.js" async></script>
@@ -40,31 +114,27 @@
 <script src="/static/model.js"></script>
 <script>
     const model = "{{ params.model }}";
-    window.endpoint = "/infer/" + model;
-
     const key = `toolbox-model-${model}`;
     const values = JSON.parse(localStorage.getItem(key) || "{}");
     const values_display = {};
 
+    async function stopWorker(el, pid) {
+        el.parentElement.parentElement.style.backgroundColor = "var(--bg-muted)";
+        el.remove();
+        fetch(`/task/stop/${pid}`, { method: "POST" }).then(() => showToastForLogs(pid, "Worker is shutting down"));
+    }
     function startTraining(url) {
         const updated = JSON.stringify(values);
         localStorage.setItem(key, updated);
         fetch(url, { body: updated, method: "POST", headers: { "Content-Type": "application/json" } }).then(r => r.json()).then(({ pid, logs }) => {
-            showToastForLogs(pid, "Training dispatched.", logs);
+            window.location = logs;
         });
     }
     function startInference(url) {
         fetch(url, { body: JSON.stringify(values), method: "POST", headers: { "Content-Type": "application/json" } }).then(async r => {
             switch (r.status) {
                 case 200: {
-                    const { pid, logs, duplicate } = await r.json();
-                    if (duplicate) {
-                        const prompt = document.createElement("div");
-                        prompt.innerText = "Start anyways?";
-                        showModal(`Inference task for '${model}' is already running.`, prompt).then(() => startInference(copyUrlWith(url, "force", "true")));
-                    } else {
-                        showToastForLogs(pid, "Inference worker started.", logs);
-                    }
+                    location.reload();
                     break;
                 }
                 default:
@@ -82,7 +152,6 @@
             document.querySelector(".edit-options").style.display = "";
         }
 
-
         const listOptions = document.getElementById("list-options");
         const addOption = document.querySelector(".edit-options > button");
         addOption.addEventListener("click", () => {
@@ -90,6 +159,7 @@
                 const prop = options[k];
                 const el = document.createElement("div");
                 el.innerText = prop.title;
+                el.title = prop.description || "";
                 el.addEventListener("click", e => {
                     e.stopPropagation();
                     listOptions.hidePopover();
@@ -98,11 +168,18 @@
                 return el;
             }));
             listOptions.showPopover();
-            listOptions.style.top = addOption.offsetTop + addOption.offsetHeight + "px";
-            if (addOption.offsetLeft + listOptions.offsetWidth < addOption.offsetParent.offsetWidth) {
-                listOptions.style.left = addOption.offsetLeft + "px";
+            const { left, right, top, bottom } = addOption.getBoundingClientRect();
+            if (top + addOption.offsetHeight + listOptions.offsetHeight < addOption.offsetParent.offsetHeight) {
+                listOptions.style.top = top + addOption.offsetHeight + "px";
+                listOptions.style.marginTop = "0.5rem";
             } else {
-                listOptions.style.left = addOption.offsetLeft + addOption.offsetWidth - listOptions.offsetWidth + "px";
+                listOptions.style.top = top - listOptions.offsetHeight + "px";
+                listOptions.style.marginTop = "-0.5rem";
+            }
+            if (left + listOptions.offsetWidth < addOption.offsetParent.offsetWidth) {
+                listOptions.style.left = left + "px";
+            } else {
+                listOptions.style.left = left + addOption.offsetWidth - listOptions.offsetWidth + "px";
             }
         });
 
@@ -125,6 +202,7 @@
             const wrap = document.createElement("button");
             wrap.addEventListener("click", () => editOption(k, prop));
             wrap.className = "shadow";
+            wrap.title = prop.description || "";
 
             const name = document.createElement("span");
             name.className = "option-name";
@@ -251,6 +329,13 @@
     })();
 </script>
 <style>
+    .delete-worker {
+        padding: 0;
+        width: 1.2rem;
+        height: 1.2rem;
+        pointer-events: auto;
+    }
+
     .model-dispatch {
         display: flex;
         justify-content: center;
@@ -262,6 +347,8 @@
         display: flex;
         flex-wrap: wrap;
         gap: 0.5rem;
+        max-width: min(55rem, calc(100vw - 10rem));
+        margin: auto
     }
 
     #set-options {
@@ -289,8 +376,9 @@
         text-align: left;
         padding: 0;
         margin: 0;
-        margin-top: 0.5rem;
         position: absolute;
+        max-height: 40vh;
+        overflow: auto;
 
         >div {
             padding: 0.25rem 0.5rem;
