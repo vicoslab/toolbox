@@ -4,6 +4,7 @@ from pathlib import Path
 import json
 import yaml
 import re
+import xml.etree.ElementTree as ET
 
 DATASET_DIR = Path(os.environ['LOCAL_FILES_DOCUMENT_ROOT'])
 API_KEY = os.environ['LABEL_STUDIO_USER_TOKEN']
@@ -18,6 +19,13 @@ with open(config_file) as f:
 
 ls = LabelStudio(base_url='http://localhost:8080', api_key=API_KEY)
 size = request['group_size']
+
+view = ET.fromstring(config)
+for node in view:
+    if node.tag == 'Image':
+        if size > 1 and 'valueList' not in node.attrib:
+            raise ValueError("Cannot use group size > 1 with LabelStudio config without valueList in Image.")
+
 # todo: do any models support one/multiple images as input at the same time?
 project = ls.projects.create(label_config=config, title=request['title'])
 

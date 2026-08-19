@@ -499,7 +499,7 @@ class DatasetCreation(BaseModel):
     group_size: int
     group_separation: str
     regex: str
-    files: list[UploadFile] | None = None
+    files: Optional[list[UploadFile]] = []
 
 @app.post("/dataset", response_class=HTMLResponse)
 async def dataset(request: Request, data: Annotated[DatasetCreation, Form()], model: str):
@@ -508,13 +508,15 @@ async def dataset(request: Request, data: Annotated[DatasetCreation, Form()], mo
         raise HTTPException(status_code=404, detail="Model is not installed")
 
     dataset = Path(data.dataset)
-    if data.files is not None:
+    data.files = [f for f in data.files if f.size > 0]
+    if len(data.files) > 0:
         if dataset.exists():
             raise HTTPException(status_code=400, detail="Cannot create dataset from upload if directory already exists")
         await receive_files(dataset, data.files)
 
     env = { "MODEL_DIR": model_manifest[model]["dir"], "CREATION_REQUEST": json.dumps(dict(dataset=data.dataset, title=data.title, group_size=data.group_size, group_separation=data.group_separation, regex=data.regex)) }
-    task = tasks[start_task(["uv", "run", "create.py"], "../ls-utils", f"Project creation", extra_env=env, blocking=True)]
+    pid = start_task(["uv", "run", "create.py"], "../ls-utils", f"Project creation", extra_env=env, blocking=True)
+    task = tasks[pid]
     id = None
     while line_in := task["process"].stdout.readline():
         task["output"].append(line_in)
@@ -526,7 +528,7 @@ async def dataset(request: Request, data: Annotated[DatasetCreation, Form()], mo
     os.set_blocking(task["process"].stdout.fileno(), False)
 
     if id is None:
-        raise HTTPException(status_code=400, detail="Project could not be created")
+        return RedirectResponse(url_for_query(request, "logs", pid=pid, **params), status_code=303)
 
     params = propagate(request.query_params)
     if params.get("tour") == TourStep.DATASET.value:
