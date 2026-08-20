@@ -84,6 +84,7 @@ button, input[type="submit"], input[type="button"], .button {
     text-decoration: none;
     font-size: 0.8rem;
     font-weight: 600;
+    cursor: pointer;
     &:hover {
         background-color: var(--bg-accent-hover);
     }
@@ -99,6 +100,7 @@ button, input[type="submit"], input[type="button"], .button {
 
 .transparent, .transparent.transparent:hover {
     background-color: transparent;
+    border: 0;
 }
 
 .shadow { --shadow-size: 1px; }

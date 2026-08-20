@@ -202,6 +202,9 @@
             const wrap = document.createElement("button");
             wrap.addEventListener("click", () => editOption(k, prop));
             wrap.className = "shadow";
+            wrap.style.display = "flex";
+            wrap.style.alignItems = "center";
+            wrap.style.padding = "0.25rem 0.5rem 0.25rem 1rem"
             wrap.title = prop.description || "";
 
             const name = document.createElement("span");
@@ -212,16 +215,22 @@
             value.className = "option-value";
             value.innerText = v;
 
-            const remove = document.createElement("span");
-            remove.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 50 50" stroke-linecap="round" fill="none" stroke-width="4px" stroke="currentColor"><path d="M 15 35 L 35 15 M 15 15 L 35 35"/></svg>`;
-            remove.addEventListener("click", () => {
+            const remove = document.createElement("button");
+            remove.innerHTML = `<svg class="shadow-sm" xmlns="http://www.w3.org/2000/svg" viewBox="5 5 40 40" stroke-linecap="round" fill="none" stroke-width="4px" stroke="currentColor"><path d="M 15 35 L 35 15 M 15 15 L 35 35"/></svg>`;
+            remove.className = "transparent";
+            remove.style.width = "1rem";
+            remove.style.height = "1rem";
+            remove.style.marginLeft = "0.5rem";
+            remove.style.padding = 0;
+            remove.addEventListener("click", e => {
                 if (k in values) {
                     delete values[k];
                     delete values_display[k];
                     wrap.remove();
                 }
+                e.stopPropagation();
             });
-            wrap.append(name, value);
+            wrap.append(name, value, remove);
             return wrap;
         }
         function setValue(k, v) {
