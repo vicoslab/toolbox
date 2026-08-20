@@ -22,6 +22,7 @@ mlflow.set_tracking_uri("http://localhost:8081")
 ARTIFACTS = os.getenv("MLFLOW_ARTIFACTS_DESTINATION")
 CACHE = Path(os.environ["TOOLBOX_CACHE"])
 DATA = Path(os.environ["TOOLBOX_DATA"])
+DATASET_DIR = Path(os.environ["LOCAL_FILES_DOCUMENT_ROOT"])
 
 DATA.mkdir(exist_ok=True)
 models_file = DATA / "models.json"
@@ -306,11 +307,10 @@ def models_add(data: List[ModelGroupDefinition]):
     save_models(models_config)
     return {}, 200
 
-dataset_dir = Path(os.environ["LOCAL_FILES_DOCUMENT_ROOT"])
 @app.get("/datasets/{path:path}")
 def datasets(path: str, files: Optional[bool]=False):
-    new = dataset_dir / path
-    if new.is_relative_to(dataset_dir) and new.exists():
+    new = DATASET_DIR / path
+    if new.is_relative_to(DATASET_DIR) and new.exists():
         if not files:
             try:
                 # this is substantially faster and we've checked that new exists and is not malicious
@@ -328,7 +328,7 @@ def datasets(path: str, files: Optional[bool]=False):
             groups = None
 
         return {
-            "root": dataset_dir,
+            "root": DATASET_DIR,
             "dirs": [str(x.name) for x in new.iterdir() if x.is_dir()],
             "groups": groups,
             "count": count,
@@ -366,8 +366,21 @@ def model_options(request: Request, model: str, manifest: Optional[str] = None, 
     for k, v in model_manifest[model]["options"].items():
         if not (format := v.get("format")):
             continue
-        if format == "file:manifest.json" and manifest:
-            completions[k] = manifest
+        if format == "file:manifest.json":
+            if manifest:
+                completions[k] = manifest
+            else:
+                manifests = {}
+                for m in sorted(DATASET_DIR.rglob("manifest.json"), key=lambda x: str(x)):
+                    parent = m.parent
+                    if parent.name.startswith(".export"):
+                        parent = parent.parent
+                    if parent not in manifests:
+                        manifests[parent] = []
+                    manifests[parent].append((m.relative_to(parent), str(m)))
+                print(manifests, flush=True)
+                if len(manifests) > 0:
+                    completions[k] = list(manifests.items())
         elif format.startswith("file:"):
             if weights and weights.endswith(format[5:]):
                 completions[k] = weights
