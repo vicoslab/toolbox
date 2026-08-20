@@ -331,6 +331,8 @@ blockquote {
 .text-layout {
     max-width: 60rem;
     margin: auto;
+}
+.text-layout, .tour-description {
     a:not([class]) {
         text-decoration: none;
         color: var(--fg-accent-default);
