@@ -8,23 +8,15 @@
     <div class="tour-description" data-tour_step="dataset">
         <h3>Tour: Dataset</h3>
         <p>
-            To accomodate for different kinds of datasets and tasks, models are prepared to only require a single
-            file called a manifest, which should contain all necessary information to load in data for training.
+            If you already have your samples annotated, use the 'external dataset' option, otherwise create a project to
+            start annotating data.
         </p>
     </div>
     <div style="max-width: 70rem; margin:auto">
-        {% if "manifest" in options %}
-        <p>
-            Description from '{{ title }}':
-        <blockquote>
-            {{ options["manifest"]["description"] }}
-        </blockquote>
-        </p>
-        {% endif %}
         <div style="display: flex; justify-content: center; gap: 1rem;">
             {% set _ = params.update({"tour": tour_enum.TRAINING.value }) %}
-            <a class="button shadow" href="{{ url_for_query(request, 'model', **params) }}">I have a dataset
-                prepared</a>
+            <a class="button shadow" onclick="externalDataset()">I have an external
+                dataset</a>
             {% set _ = params.update({"tour": tour_enum.LABELING.value }) %}
             <a class="button shadow" href="{{ url_for_query(request, 'label', **params) }}">I have an existing
                 project</a>
@@ -100,6 +92,73 @@
     </div>
 </div>
 <script>
+    async function externalDataset() {
+        const { options, completions } = await fetch(`{{ url_for_query(request, 'model_options', **params) | safe }}`).then(r => r.json());
+        for (const [k, v] of Object.entries(options)) {
+            const { description, format, default_ } = v;
+            if (format === "file:manifest.json") {
+                const existing = document.createElement("h3");
+                existing.innerText = "Training from external dataset";
+
+                const prompt = document.createElement("blockquote");
+                prompt.innerText = description;
+                prompt.style.margin = "1rem 0.5rem";
+
+                const input = document.createElement("input");
+                input.name = k;
+                input.type = "text";
+                input.placeholder = default_ || "";
+                let component = input;
+                if (completions[k] instanceof Array) {
+                    // https://stackoverflow.com/questions/264640/how-can-i-create-an-editable-dropdownlist-in-html
+                    const dropdown = document.createElement("div");
+                    dropdown.className = "dropdown";
+                    component = dropdown;
+
+                    const select = document.createElement("select");
+                    select.addEventListener("change", () => {
+                        input.value = select.value;
+                        input.focus();
+                        select.value = null;
+                    });
+                    dropdown.append(input, select);
+
+                    const option_default = document.createElement("option");
+                    option_default.innerText = "-- Select from completions --";
+                    select.append(option_default);
+
+                    for (const [group, vals] of completions[k]) {
+                        const optgroup = document.createElement("optgroup");
+                        optgroup.label = group;
+
+                        for (const [name, v] of vals) {
+                            const option = document.createElement("option");
+                            option.value = v;
+                            option.innerText = name;
+                            optgroup.append(option);
+                        }
+                        select.append(optgroup);
+                    }
+                }
+                showModal(
+                    existing,
+                    "This option requires you to have input samples and annotations prepared and accessible to the toolbox (e.g. by mounting it as part of the dataset dir).",
+                    "You also need to provide a 'manifest.json' with the following structure:",
+                    prompt,
+                    component,
+                ).then(() => {
+                    if (input.value) {
+                        const oldurl = document.querySelector(`a.tour-step[data-step-name="Training"]`).href;
+                        window.location = copyUrlWith(oldurl, "manifest", input.value);
+                    } else {
+                        showToast("error", "No manifest path provided");
+                    }
+                }).catch(() => { });
+                return Promise.resolve();
+            }
+        }
+        return Promise.reject("Manifest option not found");
+    }
     function doSubmit(form) {
         const regex = new RegExp(form.regex.value);
         const dataTransfer = new DataTransfer();
