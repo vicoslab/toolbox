@@ -28,6 +28,22 @@ docker run --rm -it \
     toolbox
 ```
 
+## Configuration
+Additional configuration is done through environment variables
+
+### TOOLBOX_AUTOSTART
+If set, inference requests will be able to autostart corresponding models. For example '{"test": {"model": "geco2", "config": {}}}' will make the alias "test"
+autostart the model "geco2" with default options.
+
+> If not clear already, the value of TOOLBOX_AUTOSTART should be a json formatted string containing an object. It's keys should be worker aliases, while values
+> are objects with key "model" for model id and "config" for model specific options.
+
+### TOOLBOX_ACCESS_LOG
+If set, inference requests *ONLY to the public endpoint* are logged into the file specified in the env var (e.g. "/persist/toolbox/access.log").
+
+### TOOLBOX_MODELS
+If set, it is used as the model import string used *ONLY* to initialize the models.json file.
+
 ## Deploying
 When deploying, you need to additionally consider the following env variables:
 ```bash
