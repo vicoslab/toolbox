@@ -9,6 +9,7 @@ import asyncio
 import time
 import json
 import os
+import base64
 from pathlib import Path
 import subprocess
 from subprocess import Popen, PIPE, STDOUT
@@ -31,11 +32,19 @@ def save_models(config):
     with models_file.open("w") as f:
         json.dump(config, f)
 try:
-    models_config = json.loads(models_file.read_text())
+    if models_file.exists():
+        models_config = json.loads(models_file.read_text())
+    elif models_str := os.getenv("TOOLBOX_MODELS"):
+        models_config = { "added": [], "sources": json.loads(base64.b64decode(models_str)) }
+        save_models(models_config)
+    else:
+        models_config = { "added": [], "sources": [] }
+        save_models(models_config)
     if type(models_config) != dict:
         print("Invalid models.json, overwriting")
         raise ValueError("models.json not an object")
-except:
+except Exception as e:
+    print(f"Could not load models.json, using empty. (Error: {e})")
     models_config = { "added": [], "sources": [] }
     save_models(models_config)
 
