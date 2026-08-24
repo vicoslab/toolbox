@@ -149,6 +149,7 @@
                 ).then(() => {
                     if (input.value) {
                         const oldurl = document.querySelector(`a.tour-step[data-step-name="Training"]`).href;
+                        unlock("Training");
                         window.location = copyUrlWith(oldurl, "manifest", input.value);
                     } else {
                         showToast("error", "No manifest path provided");

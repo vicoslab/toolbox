@@ -154,26 +154,23 @@ button, input[type="submit"], input[type="button"], .button {
             transform: scaleX(0.5);
             transform-origin: top left;
         }
-        &:nth-child(2n) {
+        &:nth-child(even of :not([style])) {
             background-color: var(--bg-muted-extra);
             &::before {
                 background-color: var(--bg-muted-extra);
             }
-            + .tour-step::before {
-                border-left-color: var(--bg-muted-extra);
-            }
         }
-        &:hover {
+        &:nth-child(odd of :not([style]))::before {
+            border-left-color: var(--bg-muted-extra);
+        }
+        &:hover:hover {
             background-color: var(--bg-accent-hover);
             border-radius: 0;
             &::before {
                 background-color: var(--bg-accent-hover);
             }
-            & + .tour-step::before {
-                border-left-color: var(--bg-accent-hover);
-            }
         }
-        &.current {
+        &.current.current {
             &:first-of-type::before {
                 border-left-color: var(--bg-accent-active);
             }
@@ -182,12 +179,15 @@ button, input[type="submit"], input[type="button"], .button {
             &::before {
                 background-color: var(--bg-accent-active);
             }
-            & + .tour-step::before {
-                border-left-color: var(--bg-accent-active);
-            }
+        }
+        &:nth-child(1 of :hover ~ .tour-step:not([style]))::before {
+            border-left-color: var(--bg-accent-hover);
+        }
+        &:nth-child(1 of .current ~ .tour-step:not([style]))::before {
+            border-left-color: var(--bg-accent-active);
         }
     }
-    a.tour-step:first-of-type::before {
+    a.tour-step.tour-step:first-of-type::before {
         border-left-color: var(--bg-accent-hover);
     }
     .disabled-message {

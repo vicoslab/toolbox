@@ -161,7 +161,7 @@ def propagate(kwargs):
 
 brand_name_long = os.getenv("TOOLBOX_BRAND_NAME_LONG", "ViCoS Toolbox")
 brand_name_short = os.getenv("TOOLBOX_BRAND_NAME_SHORT", "ViCoS")
-templates.env.globals.update(dict(tour_steps=TOUR_STEPS, tour_enum=TourStep, brand_name_long=brand_name_long, brand_name_short=brand_name_short, model_manifest=model_manifest, print=print))
+templates.env.globals.update(dict(tour_steps=TOUR_STEPS, tour_enum=TourStep, brand_name_long=brand_name_long, brand_name_short=brand_name_short, model_manifest=model_manifest))
 
 @app.get("/", response_class=HTMLResponse)
 def index(request: Request):
@@ -378,7 +378,6 @@ def model_options(request: Request, model: str, manifest: Optional[str] = None, 
                     if parent not in manifests:
                         manifests[parent] = []
                     manifests[parent].append((m.relative_to(parent), str(m)))
-                print(manifests, flush=True)
                 if len(manifests) > 0:
                     completions[k] = list(manifests.items())
         elif format.startswith("file:"):

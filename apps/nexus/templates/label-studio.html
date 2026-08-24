@@ -30,11 +30,20 @@
         const frame = document.querySelector("iframe");
         const p = /^\/app\/label-studio\/projects\/(\d+)/;
         if (params.has("tour") && !params.has("project")) {
+            let id = null;
+            const tour_export = document.querySelector(`a.tour-step[data-step-name="Export"]`);
+            function preventSwitch(e) {
+                if (!id) {
+                    showToast("error", "Cannot go to next step without active project");
+                    e.preventDefault();
+                }
+            }
+            tour_export.addEventListener("click", preventSwitch);
             setInterval(() => {
                 const pathname = frame.contentWindow.location.pathname;
                 const match = pathname.match(p);
                 if (match && match.length == 2) {
-                    const id = match[1];
+                    id = match[1];
                     document.querySelectorAll("a").forEach(x => {
                         const url = new URL(x.href);
                         const params = new URLSearchParams(url.search);
