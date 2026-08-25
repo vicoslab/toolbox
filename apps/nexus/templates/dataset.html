@@ -109,7 +109,8 @@
                 input.type = "text";
                 input.placeholder = default_ || "";
                 let component = input;
-                if (completions[k] instanceof Array) {
+                if (completions[k] !== undefined) {
+                    const [autofill, compls] = completions[k];
                     // https://stackoverflow.com/questions/264640/how-can-i-create-an-editable-dropdownlist-in-html
                     const dropdown = document.createElement("div");
                     dropdown.className = "dropdown";
@@ -127,7 +128,7 @@
                     option_default.innerText = "-- Select from completions --";
                     select.append(option_default);
 
-                    for (const [group, vals] of completions[k]) {
+                    for (const [group, vals] of compls) {
                         const optgroup = document.createElement("optgroup");
                         optgroup.label = group;
 
