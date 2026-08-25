@@ -1,0 +1,253 @@
+{% extends "layout.html" %}
+
+{% block title %}Homepage{% endblock %}
+
+{% block content %}
+<script>
+    function downloadBlob(blob, filename) {
+        const link = document.createElement("a");
+        const url = URL.createObjectURL(blob);
+        link.href = url;
+        link.download = filename || "";
+        link.style.display = "none";
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+    async function showOverview(url) {
+        const r = await fetch(url);
+        const j = await r.json();
+        if (r.status != 200) {
+            showToast("error", j.detail)
+        }
+        const { runs, experiment, dataset, dataset_root } = j;
+        const overview = document.getElementById("overview");
+
+        function downloadDataset(segs) {
+            const link = document.createElement("a");
+            link.href = "/finish/download/dataset?path=" + [dataset_root, ...segs].join("/");
+            link.download = "";
+            link.style.display = "none";
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+        }
+        const all_dataset = document.createElement("button");
+        all_dataset.title = "Download entire dataset";
+        all_dataset.className = "shadow-sm transparent";
+        all_dataset.style.padding = 0;
+        all_dataset.innerHTML = `<img style="width: 1.5rem;" src="/static/icons/download.svg">`;
+        all_dataset.addEventListener("click", () => downloadDataset([]));
+        const h_dataset = document.createElement("h2");
+        h_dataset.innerText = "Dataset";
+        h_dataset.style = "display: flex; align-items: center; gap: 0.5rem;";
+        h_dataset.append(all_dataset);
+
+        const wrapper_dataset = document.createElement("div");
+        wrapper_dataset.append(h_dataset, showFiles(dataset, downloadDataset))
+        overview.append(wrapper_dataset);
+
+        let run_tree = {}
+        const run_mapping = {}
+        let name_collision = false;
+        for (const [id, name, files] of runs) {
+            if (!name_collision && name in run_mapping) {
+                name_collision = true;
+                showToast("error", `Multiple runs with same name ('${name}') detected. Showing ids as a fallback.`)
+                run_tree = Object.fromEntries(Object.entries(run_tree).map(([name, files]) => [run_mapping[name], run_tree[name]]));
+            }
+            if (name_collision) {
+                run_tree[id] = files;
+            } else {
+                run_tree[name] = files;
+                run_mapping[name] = id;
+            }
+        }
+        async function downloadRuns(runs) {
+            if (name_collision) {
+                var runs = Object.fromEntries(runs.map((segs) => [segs[0], segs.length > 1 ? segs.slice(1).join("/") : null]));
+            } else {
+                var runs = Object.fromEntries(runs.map((segs) => [run_mapping[segs[0]], segs.length > 1 ? segs.slice(1).join("/") : null]));
+            }
+            const r = await fetch("/finish/download/runs", { body: JSON.stringify({ experiment, runs }), method: "POST", headers: { "Content-Type": "application/json" } });
+            if (r.status == 200) {
+                const disposition = r.headers.get("content-disposition");
+                const match = disposition.match(/filename="?([^"]+)"?/);
+                console.log(disposition, match);
+                downloadBlob(await r.blob(), match ? match[1] : undefined);
+            } else {
+                showToast("error", "Encountered error during runs download");
+            }
+        }
+        const all_runs = document.createElement("button");
+        all_runs.title = "Download all runs";
+        all_runs.className = "shadow-sm transparent";
+        all_runs.style.padding = 0;
+        all_runs.innerHTML = `<img style="width: 1.5rem;" src="/static/icons/download.svg">`;
+        all_runs.addEventListener("click", () => downloadRuns(runs.map(([id, name, files]) => [name_collision ? id : name])));
+        const h_runs = document.createElement("h2");
+        h_runs.innerText = "Runs";
+        h_runs.style = "display: flex; align-items: center; gap: 0.5rem;";
+        h_runs.append(all_runs);
+        const wrapper_runs = document.createElement("div");
+        wrapper_runs.append(h_runs, showFiles(run_tree, x => downloadRuns([x])));
+        overview.append(wrapper_dataset, wrapper_runs);
+    }
+    function compareFiles([name_a, children_a], [name_b, children_b]) {
+        const children = (children_a === null) - (children_b === null);
+        if (children !== 0) return children;
+        return name_a.localeCompare(name_b, undefined, { numeric: true, sensitivity: "base" })
+    }
+    function showFiles(files, onDownload) {
+        const browser = document.createElement("div");
+        browser.className = "file-browser";
+        browser.append(...listFiles(files));
+        browser.addEventListener("click", e => {
+            let el = e.target;
+            if (el.classList.contains("download")) {
+                const segs = [];
+                while (el != browser) {
+                    el = el.parentElement;
+                    if (el.classList.contains("file") && el.tagName !== "SUMMARY") {
+                        segs.push(el.innerText);
+                    } else if (el.classList.contains("directory")) {
+                        segs.push(el.children[0].innerText);
+                    }
+                }
+                onDownload(segs.reverse());
+            }
+        });
+        return browser;
+    }
+    function listFiles(files) {
+        return Object.entries(files).sort(compareFiles).map(([file, children]) => {
+            if (children !== null) {
+                const folder = document.createElement("summary");
+                folder.innerText = file;
+                folder.className = "file";
+                const download = document.createElement("button");
+                download.className = "transparent shadow-sm download";
+                download.innerHTML = `<img src="/static/icons/download.svg">`;
+                folder.append(download);
+
+                const wrap = document.createElement("details");
+                wrap.className = "directory";
+                wrap.append(folder, ...listFiles(children));
+                return wrap;
+            } else {
+                const leaf = document.createElement("div");
+                leaf.className = "file";
+                leaf.innerText = file;
+                const download = document.createElement("button");
+                download.className = "transparent shadow-sm download";
+                download.innerHTML = `<img src="/static/icons/download.svg">`;
+                leaf.append(download);
+                return leaf;
+            }
+        });
+    }
+</script>
+<div class="wrapper">
+    <div class="tour-description" data-tour_step="export">
+        <h3>Tour: Finish</h3>
+        <p>
+            This is the end of the tour. Here is an overview of all datasets and artifacts created during the tour.
+        </p>
+        <blockquote>
+            Note: this is not the only place where you can view/download this data. Artifacts can be queried and
+            downloaded in the monitoring tab. If you have access to the deployment machine, they are also saved
+            into persistent storage there.
+        </blockquote>
+    </div>
+    <div class="text-layout">
+        {% if "model" not in params or ("manifest" not in params and "project" not in params) %}
+        Tour overview can only be shown after a dataset is created or manifest is known.
+        {% else %}
+        <div id="overview"></div>
+        <script async>showOverview("{{ url_for_query(request, 'finish_list', **params) | safe }}")</script>
+        {% endif %}
+    </div>
+</div>
+<style>
+    #overview {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+
+        >div {
+            flex-grow: 1;
+            flex-basis: 0;
+        }
+    }
+
+    .file {
+        padding: 0.15rem 0.25rem;
+        font-size: small;
+        border-bottom: none;
+
+        &:hover {
+            background-color: var(--bg-muted-extra);
+
+            .download {
+                opacity: 1;
+            }
+        }
+    }
+
+    .file-browser {
+        background-color: var(--bg-muted);
+        padding: 0.5rem;
+        border: 1px solid var(--border);
+        max-height: 30rem;
+        overflow: auto;
+        user-select: none;
+    }
+
+    .download {
+        height: 1rem;
+        padding: 0;
+        opacity: 0;
+        justify-self: flex-end;
+        float: right;
+
+        >img {
+            width: 1rem;
+            /* make sure the button gets the event */
+            pointer-events: none;
+        }
+    }
+
+    summary::marker {
+        content: "";
+    }
+
+    summary::before {
+        content: "";
+        display: inline-block;
+        margin-right: 0.5rem;
+        width: 0.5rem;
+        height: 0.5rem;
+        border-right: 1px solid var(--border);
+        border-bottom: 1px solid var(--border);
+        rotate: -45deg;
+        transition: rotate 0.1s ease-in-out;
+    }
+
+    details:open {
+        >summary::before {
+            rotate: 45deg;
+        }
+
+        div.file,
+        details {
+            margin-left: 0.5rem;
+            border-bottom: none;
+        }
+    }
+
+    summary~.file {
+        padding-left: 0.5rem;
+    }
+</style>
+{% endblock %}

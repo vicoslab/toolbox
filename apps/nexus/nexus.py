@@ -1,12 +1,13 @@
 from fastapi import FastAPI, Header, Request, HTTPException, Form, UploadFile
 from fastapi.sse import EventSourceResponse, ServerSentEvent
-from fastapi.responses import RedirectResponse, HTMLResponse
+from fastapi.responses import RedirectResponse, HTMLResponse, FileResponse, Response
 from fastapi.templating import Jinja2Templates
-from typing import Annotated, List, Optional
+from typing import Annotated, List, Optional, Dict
 from pydantic import BaseModel, AnyHttpUrl
 import asyncio
 
 import time
+import io
 import json
 import os
 import base64
@@ -17,6 +18,7 @@ import shutil
 import re
 from enum import Enum
 from datetime import datetime
+import zipfile
 
 import mlflow
 mlflow.set_tracking_uri("http://localhost:8081")
@@ -103,6 +105,7 @@ class TourStep(Enum):
     TRAINING = 5
     MONITORING = 6
     INFERENCE = 7
+    FINISH = 8
 
 TOUR_STEPS = [
     # id, title, endpoint, train_only
@@ -114,6 +117,7 @@ TOUR_STEPS = [
     (TourStep.TRAINING.value, "Training", "model", True),
     (TourStep.MONITORING.value, "Monitoring", "dashboard",  True),
     (TourStep.INFERENCE.value, "Inference", "model", False),
+    (TourStep.FINISH.value, "Finish tour", "finish", False),
 ]
 
 # make sure virutal env doesn't bleed into subprocesses
@@ -590,6 +594,96 @@ def export(request: Request, export_request: ExportRequest):
     params = propagate(request.query_params)
     params["pid"] = start_task(["uv", "run", "export.py"], "../ls-utils", f"Export worker for project {export_request.project}", extra_env=env)
     return { "pid": params["pid"], "logs": str(url_for_query(request, "logs", **params)) }
+
+def file_tree(path: Path):
+    tree = {}
+    for root, dirs, files in path.walk():
+        current = tree
+        for part in root.relative_to(path).parts:
+            current = current[part]
+        for directory in dirs:
+            current[directory] = {}
+        for file in files:
+            current[file] = None
+    return tree
+
+@app.get("/finish")
+def finish(request: Request):
+    return templates.TemplateResponse(request=request, name="finish.html", context=dict(params=propagate(request.query_params)))
+
+@app.get("/finish/list")
+def finish_list(request: Request, model: str, manifest: str):
+    run_files = []
+    if not (model_info := model_manifest.get(model)):
+        raise HTTPException(status_code=404, detail="Model does not exist")
+    if not (manifest := Path(manifest)).exists():
+        raise HTTPException(status_code=404, detail="Manifest does not exist")
+
+    root = manifest.parent
+    if root.name.startswith(".export"):
+        root = root.parent
+
+    manifests = [str(x) for x in root.rglob("manifest.json")]
+    runs = mlflow.search_runs(experiment_names=[model_info["title"]], max_results=100, output_format="list")
+    for run in runs:
+        params = run.data.params.values()
+        if not any((m in params for m in manifests)):
+            continue
+
+        path = Path(ARTIFACTS) / run.info.experiment_id / run.info.run_id / "artifacts"
+        if len(tree := file_tree(path)) > 0:
+            run_files.append((run.info.run_id, run.info.run_name, tree))
+    
+    return { "runs": run_files, "experiment": run.info.experiment_id, "dataset": file_tree(root), "dataset_root": str(root) }
+
+def zip_response(dirs, filename):
+    zip_buffer = io.BytesIO()
+    try:
+        with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+            for x in dirs:
+                if x.is_dir():
+                    for root, dirs, files in x.walk():
+                        for f in files:
+                            zip_file.write(root / f, (root / f).relative_to(x.parent))
+                else:
+                    zip_file.write(x, x.name)
+            
+        zip_buffer.seek(0)
+        headers = {"Content-Disposition": "attachment; filename=" + filename}
+        return Response(zip_buffer.getvalue(), headers=headers, media_type="application/zip")
+    except Exception as e:
+        print(e, flush=True)
+        raise HTTPException(detail='There was an error processing the data', status_code=400)
+    finally:
+        zip_buffer.close()
+
+@app.get("/finish/download/dataset")
+def finish_dataset(request: Request, path: str):
+    if not (path := Path(path)).exists() or not path.is_relative_to(DATASET_DIR):
+        raise HTTPException(status_code=400, detail="Invalid path")
+    if path.is_file():
+        return FileResponse(path, media_type="application/octet-stream", filename=path.name)
+    else:
+        return zip_response([path], "dataset.zip")
+
+class DownloadRuns(BaseModel):
+    experiment: int
+    runs: Dict[str, Optional[str]]
+@app.post("/finish/download/runs")
+def finish_runs(request: Request, data: DownloadRuns):
+    print(data, flush=True)
+    paths = []
+    for run, subpath in data.runs.items():
+        path = Path(ARTIFACTS) / str(data.experiment) / run / "artifacts"
+        if subpath:
+            path = path / subpath
+        if not path.exists():
+            raise HTTPException(status_code=400, detail="Invalid path")
+        paths.append(path)
+    if len(paths) == 1 and paths[0].exists() and paths[0].is_file():
+        return FileResponse(paths[0], media_type="application/octet-stream", filename=path.name)
+    else:
+        return zip_response(paths, "runs.zip")
 
 @app.get("/task/status", response_class=HTMLResponse)
 def status(request: Request):
