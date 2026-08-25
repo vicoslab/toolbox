@@ -101,7 +101,7 @@
             } else {
                 const close = document.createElement("button");
                 close.className = "close transparent shadow-sm";
-                close.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 50 50" stroke-linecap="round" fill="none" stroke-width="4px" stroke="currentColor"><path d="M 15 35 L 35 15 M 15 15 L 35 35"/></svg>`;
+                close.innerHTML = `<img src="/static/icons/remove.svg" style="width: 1.25rem;">`;
                 tourHelp.append(close);
                 close.addEventListener("click", () => {
                     tourHelp.remove();

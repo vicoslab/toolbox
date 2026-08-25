@@ -26,17 +26,10 @@
         <div class="manage-group">
             <span>version: {{ rev }}</span>
             <button class="shadow-sm transparent" onclick="remove(`{{ owner }}`, `{{ group }}`)">
-                <svg xmlns="http://www.w3.org/2000/svg" class="icon" viewBox="0 0 24 24" stroke-linecap="round"
-                    stroke-linejoin="round" fill="none" stroke-width="1px" stroke="currentColor">
-                    <path
-                        d="M 6 7 L 6 20 H 18 L 18 7 M 4 7 H 20 M 9 7 A 1 1 0 0 1 15 7 M 9 10 V 17 M 15 10 V 17 M 12 10 V 17" />
-                </svg>
+                <img style="width: 1.5rem;" src="/static/icons/trash.svg">
             </button>
             <button class="shadow-sm transparent" onclick="update(`{{ owner }}`, `{{ group }}`)">
-                <svg xmlns="http://www.w3.org/2000/svg" class="icon" viewBox="0 0 24 24" stroke-linecap="round"
-                    stroke-linejoin="round" fill="none" stroke-width="1px" stroke="currentColor">
-                    <path d="M 6 12 A 1.5 1.5 90 0 0 18 12 C 18 6 10.5 4.5 7.5 9 M 7.5 6 V 9 H 10.5" />
-                </svg>
+                <img style="width: 1.5rem;" src="/static/icons/refresh.svg">
             </button>
         </div>
     </h2>
@@ -53,11 +46,7 @@
         <h3>{{ info.title }}</h3>
         <p>{{ info.description }}</p>
         <button class="shadow-sm transparent" onclick="delete_(`{{ name }}`); return false;">
-            <svg xmlns="http://www.w3.org/2000/svg" class="icon" viewBox="0 0 24 24" stroke-linecap="round"
-                stroke-linejoin="round" fill="none" stroke-width="1px" stroke="currentColor">
-                <path
-                    d="M 6 7 L 6 20 H 18 L 18 7 M 4 7 H 20 M 9 7 A 1 1 0 0 1 15 7 M 9 10 V 17 M 15 10 V 17 M 12 10 V 17" />
-            </svg>
+            <img style="width: 1.5rem;" src="/static/icons/trash.svg">
         </button>
     </a>
     {% else %}
@@ -67,10 +56,7 @@
         <p>{{ info.description }}</p>
         <button class="transparent"
             onclick="install(`{{ url_for_query(request, 'model_install', **params) }}`, `{{ name }}`); return false;">
-            <svg xmlns="http://www.w3.org/2000/svg" class="icon" viewBox="0 0 24 24" stroke-linecap="round"
-                stroke-linejoin="round" fill="none" stroke-width="1px" stroke="currentColor">
-                <path d="M 12 4 V 17 L 8 13 M 12 17 L 16 13 M 18 20 H 6" />
-            </svg>
+            <img style="width: 1.5rem;" src="/static/icons/download.svg">
         </button>
     </a>
     {% endif %}
@@ -78,12 +64,7 @@
     {% endfor %}
     <h2 class="add-group">
         <label for="add-model" class="prompt-add">Add model source from clipboard</label>
-        <button id="add-model">
-            <svg xmlns="http://www.w3.org/2000/svg" class="icon" viewBox="0 0 24 24" stroke-linecap="round"
-                stroke-linejoin="round" fill="none" stroke-width="2px" stroke="currentColor">
-                <path d="M 12 5 V 19 M 5 12 H 19" />
-            </svg>
-        </button>
+        <button id="add-model"><img class="icon" src="/static/icons/add.svg"></button>
     </h2>
 </div>
 <script>

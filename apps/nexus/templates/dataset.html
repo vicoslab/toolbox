@@ -268,9 +268,7 @@
             browser.replaceChildren(...dirs.sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" })).map(name => {
                 const b = document.createElement("button");
                 b.className = "shadow";
-                b.innerHTML = `
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" fill="none" stroke-width="1px" stroke="currentColor"><path d="M 5 8 H 21 V 18 H 5 V 8 M 16 8 L 17 6 H 21 V 8"/></svg>
-                            <span>${name}</span>`;
+                b.innerHTML = `<img src="/static/icons/directory.svg"><span>${name}</span>`;
                 b.addEventListener("click", e => {
                     e.preventDefault();
                     if (name === "..") {

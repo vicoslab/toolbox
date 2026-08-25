@@ -42,10 +42,7 @@
             <summary>{{ alias }}
                 <button title="Stop worker '{{ alias }}'?" class="shadow-sm transparent delete-worker"
                     onclick="showModal(`Stop worker '{{ alias }}'?`).then(() => stopWorker(this, {{ pid }}))">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 50 50" stroke-linecap="round" fill="none"
-                        stroke-width="4px" stroke="currentColor">
-                        <path d="M 15 35 L 35 15 M 15 15 L 35 35" />
-                    </svg>
+                    <img src="/static/icons/remove.svg">
                 </button>
             </summary>
             <form class="inference-tab" action="/infer/{{ alias }}">
@@ -67,10 +64,7 @@
                     <h2 style="flex-basis: 100%;">Model options</h2>
                     <div id="set-options"></div>
                     <button title="Add option" class="add-option shadow">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="icon" viewBox="0 0 24 24" stroke-linecap="round"
-                            stroke-linejoin="round" fill="none" stroke-width="1.25px" stroke="currentColor">
-                            <path d="M 12 5 V 19 M 5 12 H 19" />
-                        </svg>
+                        <img class="icon" src="/static/icons/add.svg">
                         <div id="list-options" popover=""></div>
                     </button>
                 </div>
@@ -94,10 +88,7 @@
         <h2 style="flex-basis: 100%;">Model options</h2>
         <div id="set-options"></div>
         <button title="Add option" class="add-option shadow">
-            <svg xmlns="http://www.w3.org/2000/svg" class="icon" viewBox="0 0 24 24" stroke-linecap="round"
-                stroke-linejoin="round" fill="none" stroke-width="1.25px" stroke="currentColor">
-                <path d="M 12 5 V 19 M 5 12 H 19" />
-            </svg>
+            <img class="icon" src="/static/icons/add.svg">
             <div id="list-options" popover=""></div>
         </button>
     </div>
@@ -216,7 +207,8 @@
             value.innerText = v;
 
             const remove = document.createElement("button");
-            remove.innerHTML = `<svg class="shadow-sm" xmlns="http://www.w3.org/2000/svg" viewBox="5 5 40 40" stroke-linecap="round" fill="none" stroke-width="4px" stroke="currentColor"><path d="M 15 35 L 35 15 M 15 15 L 35 35"/></svg>`;
+            remove.title = "Remove option";
+            remove.innerHTML = `<img src="/static/icons/remove.svg" class="shadow-sm">`;
             remove.className = "transparent";
             remove.style.width = "1rem";
             remove.style.height = "1rem";

@@ -28,7 +28,7 @@ class SoftReset extends HTMLElement {
     connectedCallback() {
         const form = this.internals_.form || (() => { throw new Error("Soft reset must be part of a form") })();
         const back = document.createElement("button");
-        back.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" fill="none" stroke-width="2px" stroke="currentColor"><path d="M 19 12 H 5 L 10 7 L 5 12 L 10 17"/></svg>`;
+        back.innerHTML = `<img src="/static/icons/back.svg">`;
         back.style.display = "none";
         back.addEventListener("click", e => {
             e.preventDefault();
@@ -78,7 +78,7 @@ class ImageInput extends HTMLElement {
         const close = document.createElement("button");
         close.style.display = "none";
         close.id = "close";
-        close.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 50 50" stroke-linecap="round" fill="none" stroke-width="4px" stroke="currentColor"><path d="M 15 35 L 35 15 M 15 15 L 35 35"/></svg>`;
+        close.innerHTML = `<img src="/static/icons/remove.svg">`;
         close.addEventListener("click", e => {
             e.preventDefault();
             this.internals_.form.reset();
@@ -327,7 +327,7 @@ class VideoInput extends HTMLElement {
         const close = document.createElement("button");
         close.style.display = "none";
         close.id = "close";
-        close.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 50 50" stroke-linecap="round" fill="none" stroke-width="4px" stroke="currentColor"><path d="M 15 35 L 35 15 M 15 15 L 35 35"/></svg>`;
+        close.innerHTML = `<img src="/static/icons/remove.svg">`;
 
         const record = document.createElement("button");
         record.style.display = "none";
@@ -339,11 +339,11 @@ class VideoInput extends HTMLElement {
 
         const cameraOption = document.createElement("div");
         cameraOption.className = "cameraOption";
-        cameraOption.innerHTML = `<svg viewBox="0 0 24 24" height=2.5rem  fill="none" stroke="currentColor" style="display: block; margin: auto;"><path d="M 2 18 V 6 H 16 V 18 Z M 18 11 L 22 7 V 17 L 18 13"></path></svg>Camera capture`;
+        cameraOption.innerHTML = `<img src="/static/icons/camera.svg" style="display: block; margin: auto; height: 2.5rem;">Camera capture`;
 
         const displayOption = document.createElement("div");
         displayOption.className = "displayOption";
-        displayOption.innerHTML = `<svg viewBox="0 0 24 24" height=2.5rem fill="none" stroke="currentColor" style="display: block; margin: auto;"><path d="M 2 3 L 22 3 L 22 17 L 2 17 Z M 14 19 L 16 21 L 8 21 L 10 19"></path></svg>Display capture`;
+        displayOption.innerHTML = `<img src="/static/icons/display.svg" style="display: block; margin: auto; height: 2.5rem;">Display capture`;
 
         const inputOptions = document.createElement("div");
         inputOptions.append(fileOption, cameraOption, displayOption);
