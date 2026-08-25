@@ -2,6 +2,10 @@
     --brand-primary: oklch(87.375% 0.08128 226.731);
     --brand-secondary: oklch(70.82% 0.14065 253.359);
     --bg-primary: white; /*#950606*/
+    --bg-secondary: #eff9ff;
+    --bg-muted: rgb(235, 235, 235);
+    --bg-muted-extra: rgb(220, 220, 220);
+    --fg-primary: black;
     --fg-accent-default: #3781c1; 
     --fg-accent-hover: #2a73d3;
     --fg-accent-active: #1aa8db;
@@ -12,5 +16,5 @@
     --font-heading: monospace;
     --font-body: monospace;
 
-    --border: black;
+    --border: var(--fg-primary);
 }

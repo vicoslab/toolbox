@@ -2,6 +2,7 @@
     --brand-primary: oklch(79.214% 0.11998 20.054);
     --brand-secondary: oklch(67.841% 0.18816 23.544);
     --bg-primary: white; /*#950606*/
+    --bg-secondary: #ffefef;
     --bg-muted: rgb(235, 235, 235);
     --bg-muted-extra: rgb(220, 220, 220);
     --fg-primary: black;

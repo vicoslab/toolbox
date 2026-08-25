@@ -84,6 +84,7 @@ button, input[type="submit"], input[type="button"], .button {
     text-decoration: none;
     font-size: 0.8rem;
     font-weight: 600;
+    font-family: var(--font-heading);
     cursor: pointer;
     &:hover {
         background-color: var(--bg-accent-hover);
@@ -160,7 +161,7 @@ button, input[type="submit"], input[type="button"], .button {
                 background-color: var(--bg-muted-extra);
             }
         }
-        &:nth-child(odd of :not([style]))::before {
+        &:nth-child(odd of :not([style])):not(:first-of-type)::before {
             border-left-color: var(--bg-muted-extra);
         }
         &:hover:hover {
@@ -187,9 +188,6 @@ button, input[type="submit"], input[type="button"], .button {
             border-left-color: var(--bg-accent-active);
         }
     }
-    a.tour-step.tour-step:first-of-type::before {
-        border-left-color: var(--bg-accent-hover);
-    }
     .disabled-message {
         z-index: 1;
         display: none;
@@ -211,7 +209,7 @@ button, input[type="submit"], input[type="button"], .button {
 
 .tour-description {
     position: relative;
-    background-color: #ffefef;
+    background-color: var(--bg-secondary);
     padding: 0.5rem 1rem;
     border: 1px solid var(--border);
     margin-bottom: 0.5rem;
@@ -253,7 +251,7 @@ fieldset {
 blockquote {
     margin: 0.25rem 0.5rem;
     padding: 0.25rem 0.5rem;
-    background-color: #f7dfdf;
+    background-color: rgba(0, 0, 0, 0.08);
     border-left: 2px solid rgb(121, 121, 121);
 }
 
