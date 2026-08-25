@@ -161,7 +161,7 @@ def propagate(kwargs):
     r = {}
     try:
         r["tour"] = int(kwargs["tour"])
-        for attr in ["model", "project", "experiment"]:
+        for attr in ["model", "project", "experiment", "manifest"]:
             if attr in kwargs:
                 r[attr] = kwargs[attr]
     except:
@@ -376,30 +376,25 @@ def model_options(request: Request, model: str, manifest: Optional[str] = None, 
         if not (format := v.get("format")):
             continue
         if format == "file:manifest.json":
-            if manifest:
-                completions[k] = manifest
-            else:
-                manifests = {}
-                for m in sorted(DATASET_DIR.rglob("manifest.json"), key=lambda x: str(x)):
-                    parent = m.parent
-                    if parent.name.startswith(".export"):
-                        parent = parent.parent
-                    if parent not in manifests:
-                        manifests[parent] = []
-                    manifests[parent].append((m.relative_to(parent), str(m)))
-                if len(manifests) > 0:
-                    completions[k] = list(manifests.items())
+            manifests = {}
+            for m in sorted(DATASET_DIR.rglob("manifest.json"), key=lambda x: str(x)):
+                parent = m.parent
+                if parent.name.startswith(".export"):
+                    parent = parent.parent
+                if parent not in manifests:
+                    manifests[parent] = []
+                manifests[parent].append((m.relative_to(parent), str(m)))
+            if manifest or len(manifests) > 0:
+                completions[k] = [manifest, list(manifests.items())]
         elif format.startswith("file:"):
-            if weights and weights.endswith(format[5:]):
-                completions[k] = weights
-            elif len(runs) > 0 and ARTIFACTS:
-                _completions = []
+            _completions = []
+            if len(runs) > 0 and ARTIFACTS:
                 for run in runs:
                     files = list(Path(ARTIFACTS).glob(f"{run.info.experiment_id}/{run.info.run_id}/artifacts/**/{format[5:]}"))
                     if len(files) > 0:
                         _completions.append((f"{datetime.fromtimestamp(run.info.start_time / 1000).strftime('%Y-%m-%d %H-%M')} :: {run.info.run_name}", [(file.name, f"mlflow-artifacts:/{file.relative_to(ARTIFACTS)}") for file in files]))
-                if len(_completions) > 0:
-                    completions[k] = _completions
+            if weights or len(_completions) > 0:
+                completions[k] = [weights, _completions]
 
     options = {
         **model_info.get("options", {}),

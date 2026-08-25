@@ -174,10 +174,9 @@
             }
         });
 
-        // if there is only one completion, include it by default
-        for (const [k, v] of Object.entries(completions)) {
-            if (!(v instanceof Array)) {
-                values[k] = v;
+        for (const [k, [autofill, compls]] of Object.entries(completions)) {
+            if (autofill !== null) {
+                values[k] = autofill;
             }
         }
         for (const [k, v] of Object.entries(values)) {
@@ -271,7 +270,8 @@
                     input.placeholder = prop.default || "";
                     input.value = values[k] || null;
                     let component = input;
-                    if (completions[k] instanceof Array) {
+                    if (completions[k] !== undefined) {
+                        const [autofill, compls] = completions[k];
                         // https://stackoverflow.com/questions/264640/how-can-i-create-an-editable-dropdownlist-in-html
                         const dropdown = document.createElement("div");
                         dropdown.className = "dropdown";
@@ -289,7 +289,7 @@
                         option_default.innerText = "-- Select from completions --";
                         select.append(option_default);
 
-                        for (const [group, vals] of completions[k]) {
+                        for (const [group, vals] of compls) {
                             const optgroup = document.createElement("optgroup");
                             optgroup.label = group;
 
