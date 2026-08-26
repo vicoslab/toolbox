@@ -28,8 +28,11 @@
                 <label for="field-project">Project</label>
                 <input type="text" inputmode="numeric" pattern="\d*" name="project" id="field-project"
                     value="{{ params.project | default('') }}">
+                <h4 style="margin: 0; grid-column: 1/-1;">Optional</h4>
                 <label for="field-dir">Export path</label>
                 <input type="text" name="dir" id="field-dir" placeholder="/path/to/dataset/.export-<date>-<time>">
+                <label for="combine" title="Combine exported annotations with existing manifest">Combine</label>
+                <div id="wrap-combine"></div>
                 <button class="shadow"
                     onclick="exportDataset(`{{ url_for_query(request, 'export', **params) }}`, new FormData(this.form)); return false;">
                     Start export </button>
@@ -38,6 +41,17 @@
     </div>
 </div>
 <script>
+    (async () => {
+        const { options, completions } = await fetch(`{{ url_for_query(request, 'model_options', **params) | safe }}`).then(r => r.json());
+        for (const [k, v] of Object.entries(options)) {
+            const { description, format, default_ } = v;
+            if (format === "file:manifest.json") {
+                document.getElementById("wrap-combine").replaceWith(dropdown({ name: "combine", completions: completions[k], placeholder: default_ }));
+                return Promise.resolve();
+            }
+        }
+        return Promise.reject("Manifest option not found");
+    })()
     async function exportDataset(url, data) {
         const { pid, logs } = await fetch(url, { body: JSON.stringify(Object.fromEntries(data)), method: "POST", headers: { "Content-Type": "application/json" } }).then(r => r.json());
         showToastForLogs(pid, "Dataset export started.", logs);

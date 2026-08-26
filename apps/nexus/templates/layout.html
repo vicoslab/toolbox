@@ -238,6 +238,51 @@
                 }
             }
         }
+        function dropdown({ name, completions, placeholder, value }) {
+            const input = document.createElement("input");
+            input.id = name;
+            input.name = name;
+            input.type = "text";
+            input.placeholder = placeholder || "";
+            input.value = value || "";
+            let component = input;
+            if (completions !== undefined) {
+                const [autofill, compls] = completions;
+                // https://stackoverflow.com/questions/264640/how-can-i-create-an-editable-dropdownlist-in-html
+                const dropdown = document.createElement("div");
+                dropdown.className = "dropdown";
+                component = dropdown;
+                Object.defineProperty(component, 'value', {
+                    get: () => input.value,
+                    set: (value) => input.value = value,
+                });
+                const select = document.createElement("select");
+                select.addEventListener("change", () => {
+                    input.value = select.value;
+                    input.focus();
+                    select.value = null;
+                });
+                dropdown.append(input, select);
+
+                const option_default = document.createElement("option");
+                option_default.innerText = "-- Select from completions --";
+                select.append(option_default);
+
+                for (const [group, vals] of compls) {
+                    const optgroup = document.createElement("optgroup");
+                    optgroup.label = group;
+
+                    for (const [name, v] of vals) {
+                        const option = document.createElement("option");
+                        option.value = v;
+                        option.innerText = name;
+                        optgroup.append(option);
+                    }
+                    select.append(optgroup);
+                }
+            }
+            return component;
+        }
     </script>
 </body>
 

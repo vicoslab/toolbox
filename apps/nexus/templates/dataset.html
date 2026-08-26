@@ -119,49 +119,13 @@
                 prompt.innerText = description;
                 prompt.style.margin = "1rem 0.5rem";
 
-                const input = document.createElement("input");
-                input.name = k;
-                input.type = "text";
-                input.placeholder = default_ || "";
-                let component = input;
-                if (completions[k] !== undefined) {
-                    const [autofill, compls] = completions[k];
-                    // https://stackoverflow.com/questions/264640/how-can-i-create-an-editable-dropdownlist-in-html
-                    const dropdown = document.createElement("div");
-                    dropdown.className = "dropdown";
-                    component = dropdown;
-
-                    const select = document.createElement("select");
-                    select.addEventListener("change", () => {
-                        input.value = select.value;
-                        input.focus();
-                        select.value = null;
-                    });
-                    dropdown.append(input, select);
-
-                    const option_default = document.createElement("option");
-                    option_default.innerText = "-- Select from completions --";
-                    select.append(option_default);
-
-                    for (const [group, vals] of compls) {
-                        const optgroup = document.createElement("optgroup");
-                        optgroup.label = group;
-
-                        for (const [name, v] of vals) {
-                            const option = document.createElement("option");
-                            option.value = v;
-                            option.innerText = name;
-                            optgroup.append(option);
-                        }
-                        select.append(optgroup);
-                    }
-                }
+                const input = dropdown({ name: k, completions: completions[k], placeholder: default_ });
                 showModal(
                     existing,
                     "This option requires you to have input samples and annotations prepared and accessible to the toolbox (e.g. by mounting it as part of the dataset dir).",
                     "You also need to provide a 'manifest.json' with the following structure:",
                     prompt,
-                    component,
+                    input,
                 ).then(() => {
                     if (input.value) {
                         const oldurl = document.querySelector(`a.tour-step[data-step-name="Training"]`).href;

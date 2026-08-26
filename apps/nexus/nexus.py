@@ -586,6 +586,7 @@ class ExportRequest(BaseModel):
     project: int
     task: str
     dir: str | None = None
+    combine: str | None = None
 
 @app.post("/export")
 def export(request: Request, export_request: ExportRequest):
@@ -593,7 +594,8 @@ def export(request: Request, export_request: ExportRequest):
 
     if export_request.dir:
         env["EXPORT_DIR"] = export_request.dir
-
+    if export_request.combine:
+        env["COMBINE"] = export_request.combine
     params = propagate(request.query_params)
     params["pid"] = start_task(["uv", "run", "export.py"], "../ls-utils", f"Export worker for project {export_request.project}", extra_env=env)
     return { "pid": params["pid"], "logs": str(url_for_query(request, "logs", **params)) }

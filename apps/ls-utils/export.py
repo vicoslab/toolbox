@@ -15,6 +15,7 @@ DATASET_DIR = Path(os.environ['LOCAL_FILES_DOCUMENT_ROOT'])
 API_KEY = os.environ['LABEL_STUDIO_USER_TOKEN']
 PROJECT_ID = os.environ['PROJECT_ID']
 TASK = os.environ['TASK']
+COMBINE = os.getenv('COMBINE')
 
 date = datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
 
@@ -163,7 +164,13 @@ for task in j:
 
 manifest = str(EXPORT_DIR / 'manifest.json')
 with open(manifest, 'w') as f:
-    json.dump({ 'data': data, 'version': 2 }, f)
+    if COMBINE and (combine := Path(COMBINE)).exists():
+        old = json.loads(combine.read_text())
+        old['data'] = old.get('data', []) + data
+        old['version'] = 3
+        json.dump(old, f)
+    else:
+        json.dump({ 'data': data, 'version': 2 }, f)
 
 print(f"Project {PROJECT_ID} successfully exported to '{EXPORT_DIR}'")
 print(f"Manifest:", manifest)

@@ -264,45 +264,8 @@
             }
             switch (prop.type) {
                 case "string": {
-                    const input = document.createElement("input");
-                    input.name = k;
-                    input.type = "text";
-                    input.placeholder = prop.default || "";
-                    input.value = values[k] || null;
-                    let component = input;
-                    if (completions[k] !== undefined) {
-                        const [autofill, compls] = completions[k];
-                        // https://stackoverflow.com/questions/264640/how-can-i-create-an-editable-dropdownlist-in-html
-                        const dropdown = document.createElement("div");
-                        dropdown.className = "dropdown";
-                        component = dropdown;
-
-                        const select = document.createElement("select");
-                        select.addEventListener("change", () => {
-                            input.value = select.value;
-                            input.focus();
-                            select.value = null;
-                        });
-                        dropdown.append(input, select);
-
-                        const option_default = document.createElement("option");
-                        option_default.innerText = "-- Select from completions --";
-                        select.append(option_default);
-
-                        for (const [group, vals] of compls) {
-                            const optgroup = document.createElement("optgroup");
-                            optgroup.label = group;
-
-                            for (const [name, v] of vals) {
-                                const option = document.createElement("option");
-                                option.value = v;
-                                option.innerText = name;
-                                optgroup.append(option);
-                            }
-                            select.append(optgroup);
-                        }
-                    }
-                    showModal(title, description, component).then(() => setValue(k, input.value)).catch(() => { });
+                    const input = dropdown({ name: k, completions: completions[k], placeholder: prop.default, value: values[k] });
+                    showModal(title, description, input).then(() => setValue(k, input.value)).catch(() => { });
                     break;
                 }
                 case "boolean": {
