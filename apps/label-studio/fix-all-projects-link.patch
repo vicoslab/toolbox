@@ -1,0 +1,21 @@
+diff --git a/web/apps/labelstudio/src/pages/Home/HomePage.tsx b/web/apps/labelstudio/src/pages/Home/HomePage.tsx
+index 7ab42abc1..f1e4dc60b 100644
+--- a/web/apps/labelstudio/src/pages/Home/HomePage.tsx
++++ b/web/apps/labelstudio/src/pages/Home/HomePage.tsx
+@@ -19,6 +19,7 @@ import {
+   sortedProjectsAtom,
+   visitedIdsAtom,
+ } from "./atoms";
++import { absoluteURL } from "../../utils/helpers";
+ 
+ const resources = [
+   {
+@@ -164,7 +165,7 @@ export const HomePage: Page = () => {
+               data && data?.count > 0 ? (
+                 <>
+                   Recent Projects{" "}
+-                  <a href="/projects" className="text-lg font-normal hover:underline">
++                  <a href={absoluteURL("/projects")} className="text-lg font-normal hover:underline">
+                     View All
+                   </a>
+                 </>
