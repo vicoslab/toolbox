@@ -385,7 +385,7 @@ dialog {
 }
 .toast {
     position: relative;
-    padding: 0.25rem 0.5rem;
+    padding: 0.5rem;
     border: 1px solid var(--border);
     .toast-title {
         margin-right: 0.5rem;

@@ -128,7 +128,14 @@
             return new Promise((resolve) => {
                 setTimeout(async () => {
                     await resolve(toast);
-                    if (toast.keepAlive !== true) {
+                    if (toast.keepAlive === true) {
+                        const close = document.createElement("button");
+                        close.innerHTML = `<img style="height: 1.2rem" src="/static/icons/remove.svg">`;
+                        close.addEventListener("click", () => toast.remove());
+                        close.style = "position: absolute; top: 0.5rem; right: 0.5rem; padding: 0;";
+                        close.className = "transparent shadow-sm";
+                        toast.append(close);
+                    } else {
                         toast.remove();
                     }
                 }, 5000);
@@ -173,7 +180,7 @@
                 lines.append(last);
             });
 
-            showToast("info", message, wrap, actions);
+            return showToast("info", message, wrap, actions);
         }
 
         function copyUrlWith(url, k, v) {

@@ -46,7 +46,7 @@
         for (const [k, v] of Object.entries(options)) {
             const { description, format, default_ } = v;
             if (format === "file:manifest.json") {
-                document.getElementById("wrap-combine").replaceWith(dropdown({ name: "combine", completions: completions[k], placeholder: default_ }));
+                document.getElementById("wrap-combine").replaceWith(dropdown({ name: "combine", completions: completions[k], placeholder: "Path to manifest to combine with" }));
                 return Promise.resolve();
             }
         }
@@ -54,7 +54,7 @@
     })()
     async function exportDataset(url, data) {
         const { pid, logs } = await fetch(url, { body: JSON.stringify(Object.fromEntries(data)), method: "POST", headers: { "Content-Type": "application/json" } }).then(r => r.json());
-        showToastForLogs(pid, "Dataset export started.", logs);
+        showToastForLogs(pid, "Dataset export started.", logs).then(toast => toast.keepAlive = true);
     }
 </script>
 {% endblock %}
