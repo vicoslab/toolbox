@@ -25,10 +25,17 @@
                     <option value="anomaly-detection" selected>Anomaly detection</option>
                     <option value="orientation-estimation">Orientation estimation</option>
                 </select>
-                <label for="field-project">Project</label>
-                <input type="text" inputmode="numeric" pattern="\d*" name="project" id="field-project"
-                    value="{{ params.project | default('') }}">
+                {% if not params.project %}
+                <label for="field-project">Label Studio project</label>
+                <input type="text" inputmode="numeric" pattern="\d*" name="project" id="field-project" value=""
+                    required>
+                {% endif %}
                 <h4 style="margin: 0; grid-column: 1/-1;">Optional</h4>
+                {% if params.project %}
+                <label for="field-project">Label Studio project</label>
+                <input type="text" inputmode="numeric" pattern="\d*" name="project" id="field-project"
+                    value="{{ params.project }}" required>
+                {% endif %}
                 <label for="field-dir">Export path</label>
                 <input type="text" name="dir" id="field-dir" placeholder="/path/to/dataset/.export-<date>-<time>">
                 <label for="combine" title="Combine exported annotations with existing manifest">Combine</label>
@@ -51,7 +58,23 @@
             }
         }
         return Promise.reject("Manifest option not found");
-    })()
+    })();
+    (async () => {
+        const projects = (await fetch("/app/label-studio/api/projects").then(x => x.json())).results;
+        const input = document.getElementById("field-project");
+        const select = document.createElement("select");
+        select.append(...projects.map(x => {
+            const option = document.createElement("option");
+            option.value = x.id;
+            option.innerText = `'${x.title}' (ID:${x.id})`;
+            return option;
+        }));
+        select.name = "project";
+        select.id = "field-project";
+        select.required = "";
+        select.value = input.value;
+        input.replaceWith(select);
+    })();
     async function exportDataset(url, data) {
         const { pid, logs } = await fetch(url, { body: JSON.stringify(Object.fromEntries(data)), method: "POST", headers: { "Content-Type": "application/json" } }).then(r => r.json());
         showToastForLogs(pid, "Dataset export started.", logs).then(toast => toast.keepAlive = true);
