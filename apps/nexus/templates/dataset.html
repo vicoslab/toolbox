@@ -174,10 +174,9 @@
     }
     function updatePreview(form) {
         const data = new FormData(form);
-        if (!preview.files) return;
         const include = new RegExp(data.get("regex_include"));
         const exclude = new RegExp(data.get("regex_exclude") || "(?!.*)");
-        const files = preview.files.filter(x => x.match(include) && !x.match(exclude));
+        const files = (preview.files || []).filter(x => x.match(include) && !x.match(exclude));
         const getColor = (i) => `hsl(${(25 * i) % 360} 100% 50% / 0.2)`;
         const length = files.length;
         const groupSize = Number.parseInt(form.group_size.value);
@@ -213,6 +212,7 @@
         const form = manageProject.querySelector("form");
         const preview = manageProject.querySelector("#preview");
         const segs = [];
+        let dataset_root;
         async function showGroups() {
             const form = manageProject.querySelector("form");
             if (manageProject.classList.contains("add")) {
@@ -231,9 +231,11 @@
             } else if (form.files.files.length > 0) {
                 preview.files = [...form.files.files].map(x => x.name);
                 updatePreview(form);
-            } else {
-                const { files } = await fetch(["/datasets", ...segs].join("/") + "?files=true").then(x => x.status === 200 ? x.json() : Promise.reject("Dataset listing not successful"));
+            } else if (form.dataset.value) {
+                const { files } = await fetch(`/datasets${form.dataset.value.replace(dataset_root, "")}?files=true`).then(x => x.status === 200 ? x.json() : Promise.reject("Dataset listing not successful"));
                 preview.files = files;
+            } else {
+                preview.files = [];
             }
             updatePreview(form);
         }
@@ -245,6 +247,7 @@
         manageProject.querySelector("#button-stage2").addEventListener("click", nextStage);
         (async function list() {
             const { root, dirs, count } = await fetch(["/datasets", ...segs].join("/")).then(x => x.status === 200 ? x.json() : Promise.reject("Dataset listing not successful"));
+            dataset_root = root;
             if (segs.length > 0) {
                 dirs.splice(0, 0, "..");
             }
