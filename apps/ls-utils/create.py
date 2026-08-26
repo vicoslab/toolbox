@@ -31,7 +31,9 @@ project = ls.projects.create(label_config=config, title=request['title'])
 
 print(project.id)
 
-p = re.compile(request['regex'])
+p = re.compile(request['regex_include'])
+p_not = re.compile(request['regex_exclude'] or "(?!.*)")
+print('Using patterns', p, p_not)
 if (dataset := request['dataset']) and (dataset := Path(dataset)).exists():
     # need to create import storage regardless otherwise some permissions check fails and you get 404s
     ls.import_storage.local.create(
@@ -40,11 +42,10 @@ if (dataset := request['dataset']) and (dataset := Path(dataset)).exists():
         path=str(dataset),
         # recursive_scan=True,
         use_blob_urls=True,
-        regex_filter=request['regex']
     )
 
     LABEL_STUDIO_HOST = os.environ['LABEL_STUDIO_HOST']
-    files = sorted([f'{LABEL_STUDIO_HOST}/data/local-files/?d={x.relative_to(DATASET_DIR)}' for x in dataset.rglob("*") if x.is_file() and p.match(str(x))])
+    files = sorted([f'{LABEL_STUDIO_HOST}/data/local-files/?d={x.relative_to(DATASET_DIR)}' for x in dataset.rglob("*") if x.is_file() and p.search(str(x)) and not p_not.search(str(x))])
     if size == 1:
         tasks = [ { 'image': file } for file in files]
     elif request['group_separation'] == 'interlace':
@@ -55,7 +56,7 @@ if (dataset := request['dataset']) and (dataset := Path(dataset)).exists():
     else:
         raise ValueError('Group separation has invalid value')
     ls.projects.import_tasks(id=project.id, request=[{"data": task} for task in tasks])
-    (dataset / 'groups.json').write_text(json.dumps({ 'group_size': size, 'regex': request['regex'] }))
+    (dataset / 'groups.json').write_text(json.dumps({ 'group_size': size, 'regex_include': request['regex_include'], 'regex_exclude': request['regex_exclude'] }))
 
 extra = dict(model=MODEL_DIR.name, project=project.id)
 ls.ml.create(title="Inference worker", project=project.id, url="http://localhost:9090", is_interactive=True, extra_params=json.dumps(extra))

@@ -37,7 +37,7 @@
                         <label for="dataset-name">Name</label>
                         <input type="text" name="title" id="dataset-name">
                         <label for="dataset-path">Path</label>
-                        <input type="text" name="dataset" id="dataset-path">
+                        <input type="text" name="dataset" id="dataset-path" required>
                     </fieldset>
                     <div class="stage-panels">
                         <div class="file-management">
@@ -47,27 +47,42 @@
                         </div>
                         <div class="groups">
                             <div>
-                                <h4 style="margin: 0;">Grouping</h4>
+                                <h4 style="margin: 0;">Filters</h4>
                                 <p>
-                                    If your dataset groups multiple images per sample, configure the grouping here.
-                                    Otherwise review the file list and correct pattern if necessary.
+                                    Use include or exclude regex patterns to filter out which images from selection to
+                                    upload.
                                 </p>
                                 <fieldset style="border: none;">
-                                    <label for="group-size">Group size</label>
-                                    <input type="number" name="group_size" value="1" id="group-size" min="1"
-                                        pattern="\d*" onchange="updatePreview(this.form)">
-                                    <label for="regex">Pattern</label>
-                                    <input type="text" name="regex" value=".*" id="regex"
+                                    <label for="regex-include">Include</label>
+                                    <input type="text" name="regex_include" value=".*" id="regex-include"
                                         oninput="updatePreview(this.form)">
-                                    <div style="grid-column: 1/-1;">
-                                        <input type="radio" name="group_separation" value="interlace"
-                                            id="group-separation-interlace" checked onchange="updatePreview(this.form)">
-                                        <label for="group-separation-interlace">Interlace</label>
-                                        <input type="radio" name="group_separation" value="divide"
-                                            id="group-separation-divide" onchange="updatePreview(this.form)">
-                                        <label for="group-separation-divide">Divide</label>
-                                    </div>
+                                    <label for="regex-exclude">Exclude</label>
+                                    <input type="text" name="regex_exclude" value="" id="regex-exclude"
+                                        oninput="updatePreview(this.form)">
                                 </fieldset>
+                                <details>
+                                    <summary>
+                                        <h4 style="display: inline-block;">Grouping (advanced)</h4>
+                                    </summary>
+                                    <p>
+                                        If your dataset groups multiple images per sample, configure the grouping here.
+                                        Otherwise review the file list and correct pattern if necessary.
+                                    </p>
+                                    <fieldset style="border: none;">
+                                        <label for="group-size">Group size</label>
+                                        <input type="number" name="group_size" value="1" id="group-size" min="1"
+                                            pattern="\d*" onchange="updatePreview(this.form)">
+                                        <div style="grid-column: 1/-1;">
+                                            <input type="radio" name="group_separation" value="interlace"
+                                                id="group-separation-interlace" checked
+                                                onchange="updatePreview(this.form)">
+                                            <label for="group-separation-interlace">Interlace</label>
+                                            <input type="radio" name="group_separation" value="divide"
+                                                id="group-separation-divide" onchange="updatePreview(this.form)">
+                                            <label for="group-separation-divide">Divide</label>
+                                        </div>
+                                    </fieldset>
+                                </details>
                                 <div class="error"></div>
                             </div>
                             <style></style>
@@ -162,10 +177,11 @@
         return Promise.reject("Manifest option not found");
     }
     function doSubmit(form) {
-        const regex = new RegExp(form.regex.value);
+        const regex_include = new RegExp(form.regex_include.value);
+        const regex_exclude = new RegExp(form.regex_exclude.value || "(?!.*)");
         const dataTransfer = new DataTransfer();
         for (const file of form.files.files) {
-            if (file.name.match(regex)) {
+            if (file.name.match(regex_include) && !file.name.match(regex_exclude)) {
                 dataTransfer.items.add(file);
             }
         }
@@ -195,8 +211,9 @@
     function updatePreview(form) {
         const data = new FormData(form);
         if (!preview.files) return;
-        const regex = new RegExp(data.get("regex"));
-        const files = preview.files.filter(x => x.match(regex));
+        const include = new RegExp(data.get("regex_include"));
+        const exclude = new RegExp(data.get("regex_exclude") || "(?!.*)");
+        const files = preview.files.filter(x => x.match(include) && !x.match(exclude));
         const getColor = (i) => `hsl(${(25 * i) % 360} 100% 50% / 0.2)`;
         const length = files.length;
         const groupSize = Number.parseInt(form.group_size.value);
@@ -240,7 +257,8 @@
                     form.dataset.value = storages[0].path;
                     const { groups } = await fetch("/datasets" + storages[0].path.replace(root, "")).then(x => x.json());
                     form.group_size.value = groups?.group_size || 1;
-                    form.regex.value = groups?.regex || ".*";
+                    form.regex_include.value = groups?.regex_include || ".*";
+                    form.regex_exclude.value = groups?.regex_exclude || "";
                     preview.files = [...form.files.files].map(x => x.name);
                     updatePreview(form);
                 } else {

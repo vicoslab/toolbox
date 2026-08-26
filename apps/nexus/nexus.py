@@ -518,7 +518,8 @@ class DatasetCreation(BaseModel):
     title: str | None
     group_size: int
     group_separation: str
-    regex: str
+    regex_include: str
+    regex_exclude: str
     files: Optional[list[UploadFile]] = []
 
 @app.post("/dataset", response_class=HTMLResponse)
@@ -534,7 +535,9 @@ async def dataset(request: Request, data: Annotated[DatasetCreation, Form()], mo
             raise HTTPException(status_code=400, detail="Cannot create dataset from upload if directory already exists")
         await receive_files(dataset, data.files)
 
-    env = { "MODEL_DIR": model_manifest[model]["dir"], "CREATION_REQUEST": json.dumps(dict(dataset=data.dataset, title=data.title, group_size=data.group_size, group_separation=data.group_separation, regex=data.regex)) }
+    data_dict = data.model_dump()
+    del data_dict["files"]
+    env = { "MODEL_DIR": model_manifest[model]["dir"], "CREATION_REQUEST": json.dumps(data_dict) }
     pid = start_task(["uv", "run", "create.py"], "../ls-utils", f"Project creation", extra_env=env, blocking=True)
     task = tasks[pid]
     id = None
