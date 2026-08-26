@@ -57,7 +57,9 @@
         </details>
         {% endfor %}
         <details name="workers" {% if first|default(true) %}open{% endif %}>
-            <summary>Start new</summary>
+            <summary>
+                <img style="height: 1.5rem; margin: auto;" alt="Create worker" src="/static/icons/add.svg">
+            </summary>
 
             <div class="inference-tab">
                 <div class="edit-options" style="display: none;">
