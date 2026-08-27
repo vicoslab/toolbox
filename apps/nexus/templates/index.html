@@ -5,6 +5,7 @@
 {% block content %}
 <div class="wrapper">
     <div class="text-layout">
+        <span class="toolbox-logo"></span>
         <h2>Welcome to {{ brand_name_long }}!</h2>
         <p>
             {{ brand_name_long }} is a collection of tools which is designed to aid the development and practical
@@ -12,9 +13,77 @@
             developed by our researchers, to openly available models and tools, which aid in the development and
             adaptation of our models to new problems.
         </p>
+        <h3>Steps</h3>
+        <div class="card">
+            <img src="/static/icons/question.svg">
+            <h4>Model selection</h4>
+            Select a model based on your use case.
+        </div>
+        <div class="card">
+            <img src="/static/icons/camera.svg">
+            <h4>Prepare dataset</h4>
+            Collect a diverse set of representative images.
+        </div>
+        <div class="card">
+            <img src="/static/icons/draw.svg">
+            <h4>Annotation</h4>
+            Annotate images with labels (depending on the model, this may be a mask, points, ...). If you use external
+            tools, you will need to create a file with information about the dataset (follow guidelines for your
+            selected model).
+        </div>
+        <div class="card">
+            <img src="/static/icons/gear.svg">
+            <h4>Training</h4>
+            Train model based on your annotations to obtain weights.
+        </div>
+        <div class="card">
+            <img src="/static/icons/display.svg">
+            <h4>Monitoring</h4>
+            Monitor training metrics for issues.
+        </div>
+        <div class="card">
+            <img src="/static/icons/remove.svg">
+            <h4>Evaluation</h4>
+            Run inference on unseen examples and inspect incorrect results.
+        </div>
+        <div class="card">
+            <img src="/static/icons/refresh.svg">
+            <h4>Iterate</h4>
+            Collect additional samples or correct annotations if necessary, and repeat previous steps to obtain new
+            weights.
+        </div>
+        <div class="card">
+            <img src="/static/icons/download.svg">
+            <h4>Finish</h4>
+            Deploy inference worker or download annotations and training artifacts from the toolbox.
+        </div>
     </div>
 </div>
 <script>
     localStorage["toolbox.tourClosed"] = "{}";
 </script>
+<style>
+    .card {
+        display: grid;
+        grid-template-areas:
+            "icon header"
+            "icon description";
+        grid-template-columns: 2.5rem 1fr;
+        gap: 0.5rem;
+        margin: 1rem 0.5rem;
+        padding: 0.5rem;
+        border: 1px solid var(--border);
+        color: var(--fg-secondary);
+        box-shadow: 0px 0px 1px var(--border);
+
+        h4 {
+            color: var(--fg-primary);
+            margin: 0;
+        }
+
+        img {
+            grid-area: icon;
+        }
+    }
+</style>
 {% endblock %}

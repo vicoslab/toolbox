@@ -39,7 +39,7 @@ main {
 nav {
     display: flex;
     gap: 0.5rem;
-    align-items: center;
+    align-items: end;
     padding: 0.5rem;
     padding-bottom: 0;
     font-size: 1.2rem;
