@@ -104,6 +104,25 @@
 
             </dialog>
         </div>
+        {% if tasks | length %}
+        <h3>Tasks</h3>
+        {% for pid, task in tasks.items() %}
+        <a href="{{ url_for_query(request, 'logs', pid=pid, **params) }}" class="task">
+            {{ task.description }}
+            {% if task[tour_enum.DATASET] %}
+            (ID: {{ task[tour_enum.DATASET] }})
+            {% endif %}
+            {% if task.process %}
+            {% set verb = "Started" %}
+            {% set timestamp = now - task["start_time"] %}
+            {% else %}
+            {% set verb = "Finished" if task.code == 0 else "Exited" %}
+            {% set timestamp = now - task["end_time"] %}
+            {% endif %}
+            <span class="timestamp">{{ verb }} {{ timestamp }} ago</span>
+        </a>
+        {% endfor %}
+        {% endif %}
     </div>
 </div>
 <script>

@@ -86,20 +86,38 @@
         </details>
     </div>
     {% else %}
-    <div class="edit-options" style="display: none;">
-        <h2 style="flex-basis: 100%;">Model options</h2>
-        <div id="set-options"></div>
-        <button title="Add option" class="add-option shadow">
-            <img class="icon" src="/static/icons/add.svg">
-            <div id="list-options" popover=""></div>
-        </button>
+    <div class="text-layout">
+        <div class="edit-options" style="display: none;">
+            <h2 style="flex-basis: 100%;">Model options</h2>
+            <div id="set-options"></div>
+            <button title="Add option" class="add-option shadow">
+                <img class="icon" src="/static/icons/add.svg">
+                <div id="list-options" popover=""></div>
+            </button>
+        </div>
+        <div class="model-dispatch">
+            <button id="model-training" class="shadow"
+                onclick="startTraining(`{{ url_for_query(request, 'model_train', **params) }}`)">Start
+                new</button>
+        </div>
+        {% if runs | length %}
+        <h3>Tasks</h3>
+        {% for pid, task in runs.items() %}
+        <a href="{{ url_for_query(request, 'logs', pid=pid, **params) }}" class="task">
+            {{ task.description }}
+            {% if task.process %}
+            {% set verb = "Started" %}
+            {% set timestamp = now - task["start_time"] %}
+            {% else %}
+            {% set verb = "Finished" if task.code == 0 else "Exited" %}
+            {% set timestamp = now - task["end_time"] %}
+            {% endif %}
+            <span class="timestamp">{{ verb }} {{ timestamp }} ago</span>
+        </a>
+        {% endfor %}
+        {% endif %}
+        {% endif %}
     </div>
-    <div class="model-dispatch">
-        <button id="model-training" class="shadow"
-            onclick="startTraining(`{{ url_for_query(request, 'model_train', **params) }}`)">Start
-            new</button>
-    </div>
-    {% endif %}
 </div>
 
 <script src="/static/opencv.js" async></script>

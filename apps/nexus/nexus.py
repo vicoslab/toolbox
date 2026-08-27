@@ -143,7 +143,7 @@ def create_inference_worker(model, options, alias=None):
     flags = build_model_options(model_manifest[model]["options"], options)
 
     port = 9091
-    used = [task["inference"][1][0] for task in tasks.values() if task["process"] and "inference" in task]
+    used = [task[TourStep.INFERENCE][1][0] for task in tasks.values() if task["process"] and TourStep.INFERENCE in task]
     while True:
         if port not in used:
             break
@@ -155,7 +155,7 @@ def create_inference_worker(model, options, alias=None):
         f"Inference service worker for: `{model}`",
         { "VIRTUAL_ENV": CACHE / model / ".venv" }
     )
-    tasks[pid]["inference"] = (alias or model, (port, model))
+    tasks[pid][TourStep.INFERENCE] = (alias or model, (port, model))
     return pid
 
 app = FastAPI()
@@ -362,9 +362,13 @@ def model(request: Request, model: str, manifest: str | None = None, weights: st
     if weights:
         params["weights"] = weights
 
-    workers = { inf[0]: k for (k, task) in tasks.items() if (inf := task.get("inference")) and task["process"] is not None }
+    workers = { inf[0]: k for (k, task) in tasks.items() if (inf := task.get(TourStep.INFERENCE)) and task["process"] is not None }
+    now = datetime.now()
+    runs = { pid: task for pid, task in tasks.items() if TourStep.TRAINING in task }
     return templates.TemplateResponse(request=request, name="model.html", context=dict(
         **model_manifest[model],
+        now=now,
+        runs=runs,
         workers=workers,
         params=params
     ))
@@ -428,7 +432,7 @@ async def model_infer(request: Request, model: str, alias: Optional[str]=None, f
         alias = options.get("alias")
 
     for pid, task in tasks.items():
-        if task["process"] and (info := task.get("inference")) and info[0] == (alias or model):
+        if task["process"] and (info := task.get(TourStep.INFERENCE)) and info[0] == (alias or model):
             raise HTTPException(status_code=400, detail=f"Worker with alias '{alias or model}' already running")
 
     params["pid"] = create_inference_worker(model, options.items(), alias)
@@ -450,6 +454,7 @@ async def model_train(request: Request, model: str):
         f"Model training: `{model}`",
         { "VIRTUAL_ENV": CACHE / model / ".venv" }
     )
+    tasks[pid][TourStep.TRAINING] = flags
 
     params = propagate(request.query_params)
     params["model"] = model
@@ -491,14 +496,17 @@ def model_uninstall(model: str):
 
 @app.get("/active")
 def active_models():
-    return dict([task["inference"] for task in tasks.values() if "inference" in task and task["process"] is not None])
+    return dict([task[TourStep.INFERENCE] for task in tasks.values() if TourStep.INFERENCE in task and task["process"] is not None])
 
 @app.get("/dataset", response_class=HTMLResponse)
 def dataset_get(request: Request, model: str):
     if model not in model_manifest or not (CACHE / model).exists():
         return RedirectResponse(request.url_for("models"))
 
-    return templates.TemplateResponse(request=request, name="dataset.html", context=dict(**model_manifest[model], params=propagate(request.query_params)))
+    now = datetime.now()
+    old = { pid: task for pid, task in tasks.items() if TourStep.DATASET in task }
+
+    return templates.TemplateResponse(request=request, name="dataset.html", context=dict(now=now, tasks=old, **model_manifest[model], params=propagate(request.query_params)))
 
 async def receive_files(base_dir: Path, files: list[UploadFile]):
     base_dir.mkdir()
@@ -540,6 +548,7 @@ async def dataset(request: Request, data: Annotated[DatasetCreation, Form()], mo
     env = { "MODEL_DIR": model_manifest[model]["dir"], "CREATION_REQUEST": json.dumps(data_dict) }
     pid = start_task(["uv", "run", "create.py"], "../ls-utils", f"Project creation", extra_env=env, blocking=True)
     task = tasks[pid]
+    task[TourStep.DATASET] = None
     id = None
     while line_in := task["process"].stdout.readline():
         task["output"].append(line_in)
@@ -552,6 +561,7 @@ async def dataset(request: Request, data: Annotated[DatasetCreation, Form()], mo
 
     if id is None:
         return RedirectResponse(url_for_query(request, "logs", pid=pid, **params), status_code=303)
+    task[TourStep.DATASET] = id
 
     params = propagate(request.query_params)
     if params.get("tour") == TourStep.DATASET.value:
@@ -574,13 +584,16 @@ async def dataset_upload(request: Request, data: Annotated[DatasetAddition, Form
 
     await receive_files(base, data.files)
     addition = json.dumps({ "project": project, "upload_dir": str(base), "group_separation": data.group_separation })
-    task = tasks[start_task(["uv", "run", "add.py"], "../ls-utils", f"Adding tasks to project", extra_env={ "ADDITION_REQUEST": addition })]
+    pid = start_task(["uv", "run", "add.py"], "../ls-utils", f"Adding tasks to project", extra_env={ "ADDITION_REQUEST": addition })
+    tasks[pid][TourStep.DATASET] = project
 
     return RedirectResponse(url_for_query(request, "label", **params), status_code=303)
 
 @app.get("/export", response_class=HTMLResponse)
 def export_get(request: Request):
-    return templates.TemplateResponse(request=request, name="export.html", context=dict(params=propagate(request.query_params)))
+    now = datetime.now()
+    old = { pid: task for pid, task in tasks.items() if TourStep.EXPORT in task }
+    return templates.TemplateResponse(request=request, name="export.html", context=dict(now=now, tasks=old, params=propagate(request.query_params)))
 
 class ExportRequest(BaseModel):
     project: int
@@ -597,7 +610,8 @@ def export(request: Request, export_request: ExportRequest):
     if export_request.combine:
         env["COMBINE"] = export_request.combine
     params = propagate(request.query_params)
-    params["pid"] = start_task(["uv", "run", "export.py"], "../ls-utils", f"Export worker for project {export_request.project}", extra_env=env)
+    params["pid"] = start_task(["uv", "run", "export.py"], "../ls-utils", f"Export worker", extra_env=env)
+    tasks[params["pid"]][TourStep.EXPORT] = export_request.project
     return { "pid": params["pid"], "logs": str(url_for_query(request, "logs", **params)) }
 
 def file_tree(path: Path):
@@ -657,7 +671,6 @@ def zip_response(dirs, filename):
         headers = {"Content-Disposition": "attachment; filename=" + filename}
         return Response(zip_buffer.getvalue(), headers=headers, media_type="application/zip")
     except Exception as e:
-        print(e, flush=True)
         raise HTTPException(detail='There was an error processing the data', status_code=400)
     finally:
         zip_buffer.close()
@@ -676,7 +689,6 @@ class DownloadRuns(BaseModel):
     runs: Dict[str, Optional[str]]
 @app.post("/finish/download/runs")
 def finish_runs(request: Request, data: DownloadRuns):
-    print(data, flush=True)
     paths = []
     for run, subpath in data.runs.items():
         path = Path(ARTIFACTS) / str(data.experiment) / run / "artifacts"
