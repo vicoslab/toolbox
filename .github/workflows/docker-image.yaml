@@ -64,5 +64,7 @@ jobs:
           push: true
           build-args: |
             REF=${{ github.ref_name }}
+          build-contexts: |
+            branding=branding
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}

@@ -216,14 +216,14 @@
                     break;
                 }
                 case "Experiment": {
-                    const oldurl = document.querySelector(`a.tour-step[data-step-name="Monitoring"]`).href;
+                    const oldurl = document.querySelector(`a.tour-step[data-step-name="Experiments"]`).href;
                     const link = document.createElement("a");
                     link.id = "action-experiments";
                     link.href = copyUrlWith(oldurl, "experiment", value);
                     link.className = "button";
                     link.innerText = "Go to experiments";
                     actions.append(link);
-                    unlock("Monitoring");
+                    unlock("Experiments");
                     break;
                 }
                 case "Run": {

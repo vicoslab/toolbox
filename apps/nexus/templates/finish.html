@@ -87,7 +87,7 @@
         all_runs.innerHTML = `<img style="width: 1.5rem;" src="/static/icons/download.svg">`;
         all_runs.addEventListener("click", () => downloadRuns(runs.map(([id, name, files]) => [name_collision ? id : name])));
         const h_runs = document.createElement("h2");
-        h_runs.innerText = "Runs";
+        h_runs.innerText = "Experiment artifacts";
         h_runs.style = "display: flex; align-items: center; gap: 0.5rem;";
         h_runs.append(all_runs);
         const wrapper_runs = document.createElement("div");

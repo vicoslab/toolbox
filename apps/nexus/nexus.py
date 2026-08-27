@@ -115,7 +115,7 @@ TOUR_STEPS = [
     (TourStep.LABELING.value, "Labeling", "label", True),
     (TourStep.EXPORT.value, "Export", "export", True),
     (TourStep.TRAINING.value, "Training", "model", True),
-    (TourStep.MONITORING.value, "Monitoring", "dashboard",  True),
+    (TourStep.MONITORING.value, "Experiments", "dashboard",  True),
     (TourStep.INFERENCE.value, "Inference", "model", False),
     (TourStep.FINISH.value, "Finish tour", "finish", False),
 ]
@@ -172,8 +172,8 @@ def propagate(kwargs):
         pass
     return r
 
-brand_name_long = os.getenv("TOOLBOX_BRAND_NAME_LONG", "ViCoS Toolbox")
-brand_name_short = os.getenv("TOOLBOX_BRAND_NAME_SHORT", "ViCoS")
+brand_name_long = os.environ["TOOLBOX_BRAND_NAME_LONG"]
+brand_name_short = os.environ["TOOLBOX_BRAND_NAME_SHORT"]
 templates.env.globals.update(dict(tour_steps=TOUR_STEPS, tour_enum=TourStep, brand_name_long=brand_name_long, brand_name_short=brand_name_short, model_manifest=model_manifest))
 
 @app.get("/", response_class=HTMLResponse)

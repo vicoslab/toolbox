@@ -139,6 +139,12 @@ ENV LABEL_STUDIO_BASE_DATA_DIR=/persist/label-studio \
 
 ENV TOOLBOX_TEMPDIR=/tmp/toolbox
 
+ARG TOOLBOX_BRAND_NAME_LONG="ViCoS Toolbox"
+ARG TOOLBOX_BRAND_NAME_SHORT="ViCoS"
+ENV TOOLBOX_BRAND_NAME_LONG=$TOOLBOX_BRAND_NAME_LONG \
+    TOOLBOX_BRAND_NAME_SHORT=$TOOLBOX_BRAND_NAME_SHORT
+COPY --from=branding properties.css /opt/apps/nexus/static/properties.css
+
 ## label-studio
 ENV LATEST_VERSION_CHECK=0 \
     COLLECT_ANALYTICS=false \
