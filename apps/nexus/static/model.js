@@ -53,7 +53,9 @@ class ImageInput extends HTMLElement {
     connectedCallback() {
         const shadow = this.attachShadow({ mode: "open" });
 
-        const label = document.createElement("span");
+        const label = document.createElement("div");
+        label.style.position = "absolute";
+        label.style.inset = 0;
         label.style.display = "grid";
         label.style.height = "100%";
         label.style.placeItems = "center";
@@ -61,6 +63,12 @@ class ImageInput extends HTMLElement {
 
         const input = document.createElement("input");
         input.setAttribute("type", "file");
+        input.addEventListener("drop", e => {
+            e.preventDefault();
+            input.files = e.dataTransfer.files;
+            input.dispatchEvent(new Event("change"));
+            this.internals_.form.dispatchEvent(new Event("input"));
+        });
 
         if (this.hasAttribute("multiple")) {
             input.setAttribute("multiple", "");
@@ -98,7 +106,7 @@ class ImageInput extends HTMLElement {
         form.addEventListener("reset", () => {
             image.style.display = "";
             input.style.display = "";
-            label.style.display = "";
+            label.style.display = "grid";
             wrapper.style.display = "none";
             close.style.display = "none";
         });
@@ -150,9 +158,9 @@ class ImageInput extends HTMLElement {
                 max-width: 100%;
             }
             .overlay {
-                position: "absolute";
+                position: absolute;
                 inset: 0;
-                pointerEvents: "all";
+                pointer-events: auto;
             }
         `;
 
@@ -478,6 +486,12 @@ class VideoInput extends HTMLElement {
 
         shadow.append(inputOptions, wrapper, style);
 
+        input.addEventListener("drop", e => {
+            e.preventDefault();
+            input.files = e.dataTransfer.files;
+            input.dispatchEvent(new Event("change"));
+            this.internals_.form.dispatchEvent(new Event("input"));
+        });
         input.addEventListener("change", async () => {
             const file = input.files.item(0);
             if (file === null) {
