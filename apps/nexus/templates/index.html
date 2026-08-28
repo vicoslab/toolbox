@@ -14,49 +14,59 @@
             adaptation of our models to new problems.
         </p>
         <h3>Steps</h3>
-        <div class="card">
-            <img src="/static/icons/question.svg">
-            <h4>Model selection</h4>
-            Select a model based on your use case.
-        </div>
-        <div class="card">
-            <img src="/static/icons/camera.svg">
-            <h4>Prepare dataset</h4>
-            Collect a diverse set of representative images.
-        </div>
-        <div class="card">
-            <img src="/static/icons/draw.svg">
-            <h4>Annotation</h4>
-            Annotate images with labels (depending on the model, this may be a mask, points, ...). If you use external
-            tools, you will need to create a file with information about the dataset (follow guidelines for your
-            selected model).
-        </div>
-        <div class="card">
-            <img src="/static/icons/gear.svg">
-            <h4>Training</h4>
-            Train model based on your annotations to obtain weights.
-        </div>
-        <div class="card">
-            <img src="/static/icons/display.svg">
-            <h4>Monitoring</h4>
-            Monitor training metrics for issues.
-        </div>
-        <div class="card">
-            <img src="/static/icons/remove.svg">
-            <h4>Evaluation</h4>
-            Run inference on unseen examples and inspect incorrect results.
-        </div>
-        <div class="card">
-            <img src="/static/icons/refresh.svg">
-            <h4>Iterate</h4>
-            Collect additional samples or correct annotations if necessary, and repeat previous steps to obtain new
-            weights.
-        </div>
-        <div class="card">
-            <img src="/static/icons/download.svg">
-            <h4>Finish</h4>
-            Deploy inference worker or download annotations and training artifacts from the toolbox.
-        </div>
+        <ol>
+            {% set _ = params.update({ 'tour': tour_enum.MODEL_SELECTION.value }) %}
+            <a role="listitem" class="card" href="{{ url_for_query(request, 'models', **params) }}">
+                <img src="/static/icons/question.svg">
+                <h4>Model selection</h4>
+                Select a model based on your use case.
+            </a>
+            {% set _ = params.update({ 'tour': tour_enum.DATASET.value }) %}
+            <a role="listitem" class="card" href="{{ url_for_query(request, 'dataset', **params) }}">
+                <img src="/static/icons/camera.svg">
+                <h4>Prepare dataset</h4>
+                Collect a diverse set of representative images.
+            </a>
+            {% set _ = params.update({ 'tour': tour_enum.LABELING.value }) %}
+            <a role="listitem" class="card" href="{{ url_for_query(request, 'label', **params) }}">
+                <img src="/static/icons/draw.svg">
+                <h4>Annotation</h4>
+                Annotate images with labels (depending on the model, this may be a mask, points, ...). If you use
+                external
+                tools, you will need to create a file with information about the dataset (follow guidelines for your
+                selected model).
+            </a>
+            {% set _ = params.update({ 'tour': tour_enum.TRAINING.value }) %}
+            <a role="listitem" class="card" href="{{ url_for_query(request, 'model', **params) }}">
+                <img src="/static/icons/gear.svg">
+                <h4>Training</h4>
+                Train model based on your annotations to obtain weights.
+            </a>
+            {% set _ = params.update({ 'tour': tour_enum.MONITORING.value }) %}
+            <a role="listitem" class="card" href="{{ url_for_query(request, 'dashboard', **params) }}">
+                <img src="/static/icons/display.svg">
+                <h4>Experiments</h4>
+                Monitor training metrics of your experiments for any issues.
+            </a>
+            {% set _ = params.update({ 'tour': tour_enum.INFERENCE.value }) %}
+            <a role="listitem" class="card" href="{{ url_for_query(request, 'model', **params) }}">
+                <img src="/static/icons/remove.svg">
+                <h4>Evaluation</h4>
+                Run inference on unseen examples and inspect incorrect results.
+            </a>
+            <div role="listitem" class="card" style="cursor: not-allowed;">
+                <img src="/static/icons/refresh.svg">
+                <h4>Iterate</h4>
+                Collect additional samples or correct annotations if necessary, and repeat previous steps to obtain new
+                weights.
+            </div>
+            {% set _ = params.update({ 'tour': tour_enum.FINISH.value }) %}
+            <a role="listitem" class="card" href="{{ url_for_query(request, 'finish', **params) }}">
+                <img src="/static/icons/download.svg">
+                <h4>Finish</h4>
+                Deploy inference worker or download annotations and training artifacts from the toolbox.
+            </a>
+        </ol>
     </div>
 </div>
 <script>
@@ -83,6 +93,14 @@
 
         img {
             grid-area: icon;
+        }
+    }
+
+    a.card {
+        text-decoration: none;
+
+        &:hover {
+            background-color: var(--bg-accent-hover);
         }
     }
 </style>
