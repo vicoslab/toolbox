@@ -160,6 +160,9 @@
         return Promise.reject("Manifest option not found");
     }
     function doSubmit(form) {
+        loading({ message: `Uploading files` });
+        form.querySelectorAll("button[type=submit]").forEach(x => x.remove());
+        form.querySelectorAll("button").forEach(x => x.addEventListener("click", () => location.reload()));
         const regex_include = new RegExp(form.regex_include.value);
         const regex_exclude = new RegExp(form.regex_exclude.value || "(?!.*)");
         const dataTransfer = new DataTransfer();

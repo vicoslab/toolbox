@@ -290,6 +290,16 @@
             }
             return component;
         }
+        function loading({ message }) {
+            const wrapper = document.createElement("div");
+            wrapper.className = "loading";
+            wrapper.popover = "";
+            wrapper.innerHTML = `<svg viewBox="0 0 24 24" fill="transparent" stroke="currentColor" stroke-width="2px" stroke-linecap="round"><path d="M 12 19 A 1 1 0 0 0 12 5 A 1 1 0 0 0 12 19"></path></svg>`;
+            wrapper.append(message);
+            document.body.append(wrapper);
+            wrapper.showPopover();
+            return wrapper;
+        }
     </script>
 </body>
 

@@ -7,6 +7,7 @@ from pydantic import BaseModel, AnyHttpUrl
 import asyncio
 
 import time
+import requests
 import io
 import json
 import os
@@ -26,6 +27,7 @@ ARTIFACTS = os.getenv("MLFLOW_ARTIFACTS_DESTINATION")
 CACHE = Path(os.environ["TOOLBOX_CACHE"])
 DATA = Path(os.environ["TOOLBOX_DATA"])
 DATASET_DIR = Path(os.environ["LOCAL_FILES_DOCUMENT_ROOT"])
+API_KEY = os.environ["LABEL_STUDIO_API_KEY"]
 
 DATA.mkdir(exist_ok=True)
 models_file = DATA / "models.json"
@@ -631,14 +633,30 @@ def finish(request: Request):
     return templates.TemplateResponse(request=request, name="finish.html", context=dict(params=propagate(request.query_params)))
 
 @app.get("/finish/list")
-def finish_list(request: Request, model: str, manifest: str):
+def finish_list(request: Request, model: str, manifest: Optional[str]=None, project: Optional[int]=None):
     run_files = []
     if not (model_info := model_manifest.get(model)):
         raise HTTPException(status_code=404, detail="Model does not exist")
-    if not (manifest := Path(manifest)).exists():
-        raise HTTPException(status_code=404, detail="Manifest does not exist")
+    if not manifest and not project:
+        raise HTTPException(status_code=400, detail="You must provide either a project or a manifest")
+    if manifest:
+        if not (manifest := Path(manifest)).exists():
+            raise HTTPException(status_code=404, detail="Manifest does not exist")
+        root = manifest.parent
+    if project:
+        response = requests.get(
+            f"http://localhost:8080/api/storages/localfiles",
+            headers={ "Authorization": f"Token {API_KEY}" },
+            params={ "project": project },
+            timeout=30,
+        )
+        if response.status_code != 200:
+            return Response(response.text, status_code=response.status_code)
+        storages = response.json()
+        if len(storages) == 0:
+            raise HTTPException(status_code=404, detail="No import storages associated with project")
+        root = Path(storages[0]["path"])
 
-    root = manifest.parent
     if root.name.startswith(".export"):
         root = root.parent
 

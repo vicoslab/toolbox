@@ -428,6 +428,37 @@ dialog {
     }
 }
 
+.loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    position: fixed;
+    inset: 0;
+    margin: auto;
+    width: 10rem;
+    height: 10rem;
+    padding: 1rem 2rem;
+    background-color: var(--bg-primary);
+    border: 1px solid var(--border);
+    border-radius: 0.5rem;
+    path {
+        stroke-dasharray: 46 44;
+        transform-origin: center;
+        animation: dash 5s linear infinite, rotate 5s linear infinite;
+    }
+}
+@keyframes rotate {
+    to {
+        rotate: 360deg;
+    }
+}
+@keyframes dash {
+  to {
+    stroke-dashoffset: 180;
+  }
+}
+
 .dropdown {
     position: relative;
 }

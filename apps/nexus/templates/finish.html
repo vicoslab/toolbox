@@ -70,7 +70,9 @@
             } else {
                 var runs = Object.fromEntries(runs.map((segs) => [run_mapping[segs[0]], segs.length > 1 ? segs.slice(1).join("/") : null]));
             }
+            const load = loading({ message: "Preparing download" });
             const r = await fetch("/finish/download/runs", { body: JSON.stringify({ experiment, runs }), method: "POST", headers: { "Content-Type": "application/json" } });
+            load.remove();
             if (r.status == 200) {
                 const disposition = r.headers.get("content-disposition");
                 const match = disposition.match(/filename="?([^"]+)"?/);
@@ -80,19 +82,23 @@
                 showToast("error", "Encountered error during runs download");
             }
         }
-        const all_runs = document.createElement("button");
-        all_runs.title = "Download all runs";
-        all_runs.className = "shadow-sm transparent";
-        all_runs.style.padding = 0;
-        all_runs.innerHTML = `<img style="width: 1.5rem;" src="/static/icons/download.svg">`;
-        all_runs.addEventListener("click", () => downloadRuns(runs.map(([id, name, files]) => [name_collision ? id : name])));
-        const h_runs = document.createElement("h2");
-        h_runs.innerText = "Experiment artifacts";
-        h_runs.style = "display: flex; align-items: center; gap: 0.5rem;";
-        h_runs.append(all_runs);
-        const wrapper_runs = document.createElement("div");
-        wrapper_runs.append(h_runs, showFiles(run_tree, x => downloadRuns([x])));
-        overview.append(wrapper_dataset, wrapper_runs);
+        if (runs?.length > 0) {
+            const all_runs = document.createElement("button");
+            all_runs.title = "Download all runs";
+            all_runs.className = "shadow-sm transparent";
+            all_runs.style.padding = 0;
+            all_runs.innerHTML = `<img style="width: 1.5rem;" src="/static/icons/download.svg">`;
+            all_runs.addEventListener("click", () => downloadRuns(runs.map(([id, name, files]) => [name_collision ? id : name])));
+            const h_runs = document.createElement("h2");
+            h_runs.innerText = "Experiment artifacts";
+            h_runs.style = "display: flex; align-items: center; gap: 0.5rem;";
+            h_runs.append(all_runs);
+            const wrapper_runs = document.createElement("div");
+            wrapper_runs.append(h_runs, showFiles(run_tree, x => downloadRuns([x])));
+            overview.append(wrapper_runs);
+        }
+
+
     }
     function compareFiles([name_a, children_a], [name_b, children_b]) {
         const children = (children_a === null) - (children_b === null);

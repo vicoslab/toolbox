@@ -1,11 +1,16 @@
 async function makeRequest(form, action, dispatch = true) {
     const formData = new FormData(form);
     try {
+        let load;
+        if (dispatch) load = loading({ message: "Processing" });
         const response = await fetch(form.action, {
             method: "POST",
             body: formData,
         });
-        if (dispatch) form.dispatchEvent(new Event("infer"));
+        if (dispatch) {
+            form.dispatchEvent(new Event("infer"));
+            load?.remove();
+        }
         await response.json().then(response => {
             const elems = action(formData, response);
             if (elems !== null) {
