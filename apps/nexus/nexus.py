@@ -60,7 +60,8 @@ def refresh_manifest():
     for src in models_config["sources"]:
         repo = CACHE / ".models" / src["owner"] / src["group"]
         if not repo.exists():
-            subprocess.run(["git", "clone", "--filter=blob:none", "--no-checkout", src["url"], str(repo)], check=True)
+            branch = ["--branch", src["branch"]] if "branch" in src else []
+            subprocess.run(["git", "clone", "--filter=blob:none", "--no-checkout", *branch, src["url"], str(repo)], check=True)
             subprocess.run(["git", "sparse-checkout", "init", "--cone"], cwd=repo, check=True)
         src["rev"] = subprocess.run(["git", "rev-parse", "HEAD"], cwd=repo, capture_output=True, text=True, check=True).stdout.strip()
 
@@ -269,6 +270,7 @@ class ModelGroup(BaseModel):
     owner: str
     group: str
     rev: str = "origin/HEAD"
+    branch: Optional[str] = None
 
 @app.post("/models/update")
 def models_update(group_info: ModelGroup):
