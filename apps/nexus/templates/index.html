@@ -37,7 +37,9 @@
                 selected model).
             </a>
             {% set _ = params.update({ 'tour': tour_enum.TRAINING.value }) %}
-            <a role="listitem" class="card" href="{{ url_for_query(request, 'model', **params) }}">
+            <a role="listitem" class="card" {% if 'model' in params
+                %}href="{{ url_for_query(request, 'model', **params) }}" {% else %} style="cursor: not-allowed;" {%
+                endif %}>
                 <img src="/static/icons/gear.svg">
                 <h4>Training</h4>
                 Train model based on your annotations to obtain weights.
@@ -49,7 +51,9 @@
                 Monitor training metrics of your experiments for any issues.
             </a>
             {% set _ = params.update({ 'tour': tour_enum.INFERENCE.value }) %}
-            <a role="listitem" class="card" href="{{ url_for_query(request, 'model', **params) }}">
+            <a role="listitem" class="card" {% if 'model' in params
+                %}href="{{ url_for_query(request, 'model', **params) }}" {% else %} style="cursor: not-allowed;" {%
+                endif %}>
                 <img src="/static/icons/remove.svg">
                 <h4>Evaluation</h4>
                 Run inference on unseen examples and inspect incorrect results.
