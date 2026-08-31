@@ -6,7 +6,17 @@
 <div class="logs wrapper">
     <h1>Task information</h1>
     {% if description %}
-    <p>{{ description }}</p>
+    <p>
+        {% if running %}
+        <svg viewBox="0 0 24 24" fill="transparent" stroke="currentColor" stroke-width="2px" stroke-linecap="round"
+            style="width: 0.75rem;">
+            <path d="M 12 19 A 1 1 0 0 0 12 5 A 1 1 0 0 0 12 19"
+                style="stroke-dasharray: 46 44; transform-origin: center; animation: dash 5s linear infinite, rotate 5s linear infinite;">
+            </path>
+        </svg>
+        {% endif %}
+        {{ description }}
+    </p>
     <div id="actions" style="display: flex; gap: 0.5rem;">
         {% if running %}
         <button command="show-modal" commandfor="confirm-stop">Stop task</button>
