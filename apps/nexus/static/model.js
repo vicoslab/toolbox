@@ -1,23 +1,26 @@
 async function makeRequest(form, action, dispatch = true) {
     const formData = new FormData(form);
+    let load;
     try {
-        let load;
         if (dispatch) load = loading({ message: "Processing" });
         const response = await fetch(form.action, {
             method: "POST",
             body: formData,
-        });
+        }).then(x => x.json());
         if (dispatch) {
             form.dispatchEvent(new Event("infer"));
             load?.remove();
         }
-        await response.json().then(response => {
-            const elems = action(formData, response);
-            if (elems !== null) {
-                form.querySelector("#results").replaceChildren(...[elems].flat());
-            }
-        });
+        let elems = action(formData, response);
+        if (elems instanceof Promise) {
+            elems = await elems;
+        }
+        if (elems !== null) {
+            form.querySelector("#results").replaceChildren(...[elems].flat());
+        }
     } catch (e) {
+        load?.remove();
+        showToast("error", e);
         console.error(e);
     }
 }
@@ -893,6 +896,7 @@ class ShowActivation extends HTMLElement {
         this.high = 0.7;
         this.mode = "heatmap"; // overlay | heatmap
         this.group = "activation-dialog";
+        this.canvas = document.createElement("canvas");
     }
 
     drawOverlay(low, high) {
@@ -1109,7 +1113,6 @@ class ShowActivation extends HTMLElement {
             document.querySelector(".toolbar-right").append(button, dialog);
         }
 
-        this.canvas = document.createElement("canvas");
         this.canvas.width = this.map.cols;
         this.canvas.height = this.map.rows;
         this.draw(saved);
@@ -1118,8 +1121,12 @@ class ShowActivation extends HTMLElement {
         shadow.append(this.canvas);
     }
 
+    get style() {
+        return this.canvas.style;
+    }
+
     disconnectedCallback() {
-        this.map.delete();
+        this.map?.delete();
         if (this._removeSettings) this._removeSettings();
     }
 }
