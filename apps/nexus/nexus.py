@@ -316,6 +316,8 @@ class ModelGroupDefinition(ModelGroup):
 def models_add(data: List[ModelGroupDefinition]):
     for defs in data:
         defs = dict(defs)
+        if defs["branch"] is None:
+            del defs["branch"]
         defs["url"] = str(defs["url"])
         if defs not in models_config["sources"]:
             models_config["sources"].append(defs)
