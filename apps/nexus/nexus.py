@@ -426,7 +426,7 @@ class TaskResponse(BaseModel):
     duplicate: bool=False
 
 @app.post("/model/{model}/infer")
-async def model_infer(request: Request, model: str, alias: Optional[str]=None, force: bool=False):
+async def model_infer(request: Request, model: str, alias: Optional[str]=None):
     if model not in model_manifest:
         raise HTTPException(status_code=404, detail=f"Model '{model}' does not exist")
 
