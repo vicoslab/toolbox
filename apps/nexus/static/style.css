@@ -170,6 +170,9 @@ button, input[type="submit"], input[type="button"], .button {
             &::before {
                 background-color: var(--bg-accent-hover);
             }
+            &:first-of-type::before {
+                border-left-color: var(--bg-accent-hover);
+            }
         }
         &.current.current {
             &:first-of-type::before {
