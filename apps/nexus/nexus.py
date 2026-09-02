@@ -282,7 +282,7 @@ def models_update(group_info: ModelGroup):
 
     groupdir = CACHE / ".models" / group_info.owner / group_info.group
     if not groupdir.exists() or not src:
-        return { "error": "Invalid group" }, 400
+        raise HTTPException(status_code=400, detail="Invalid group")
     
     subprocess.run(["git", "fetch"], cwd=groupdir, check=True)
     subprocess.run(["git", "checkout", group_info.rev], cwd=groupdir, check=True)
@@ -293,7 +293,7 @@ def models_update(group_info: ModelGroup):
         refresh_manifest()
         save_models(models_config)
 
-    return { "rev": new }, 200
+    return { "rev": new }
 
 @app.post("/models/remove")
 def models_remove(group_info: ModelGroup):
@@ -307,7 +307,7 @@ def models_remove(group_info: ModelGroup):
     if len(models_config["sources"]) != old:
         refresh_manifest()
         save_models(models_config)
-    return {}, 200
+    return {}
 
 class ModelGroupDefinition(ModelGroup):
     models: List[str]
@@ -324,7 +324,7 @@ def models_add(data: List[ModelGroupDefinition]):
 
     refresh_manifest()
     save_models(models_config)
-    return {}, 200
+    return {}
 
 @app.get("/datasets/{path:path}")
 def datasets(path: str, files: Optional[bool]=False):
