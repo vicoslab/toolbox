@@ -59,3 +59,14 @@ If you do not intend to host a public inference endpoint, you may omit `DOMAIN_P
 ## Building
 Currently, everything is part of a single image to simplify deployment (since the apps are only single-tenant, its easier to manage as a whole unit).
 The docker build is multistage and utilises caching where possible, so building shouldn't take too long, except the initial build, which may take up to 15 minutes.
+
+## Testing
+We are using integration tests for development, which require multi GB downloads and gpu-accelerated training. While it may be technically possible to use these in CI/CD, it
+is easier to run these in the development environment:
+```bash
+    CONTAINER_ARGS="-v ~/.cache/toolbox/.uv:/cache/.uv -v ~/.cache/toolbox/.torch:/cache/.torch --publish 443:443 --device nvidia.com/gpu=all" make test
+```
+`make test` will build an image with local context, and run it with the test entrypoint. Providing a gpu and the uv and torch caches is required due to strict timeouts.
+Publishing the toolbox port is useful as testing will not exit automatically if there were any failing tests. It is then possible to manually inspect the ui/exec into the docker.
+
+`make test-git` should always be used before pushing as it will build image from git HEAD (i.e. without local changes) and run tests.
