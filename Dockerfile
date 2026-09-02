@@ -181,4 +181,4 @@ ENV DOMAIN=localhost:443 \
 
 WORKDIR /opt/supervisord
 RUN chmod 777 .
-ENTRYPOINT [ "supervisord", "-c", "/etc/supervisord.conf" ]
+ENTRYPOINT [ "supervisord", "-n", "-c", "/etc/supervisord.conf" ]
