@@ -137,9 +137,9 @@ def build_model_options(options, values):
     flags = []
     for k, v in values:
         if v != "" and k in options:
-            if v.startswith("mlflow-artifacts:") and ARTIFACTS:
+            if type(v) == str and v.startswith("mlflow-artifacts:") and ARTIFACTS:
                 v = v.replace("mlflow-artifacts:", ARTIFACTS, count=1)
-            flags.extend(["--" + k, v])
+            flags.extend(["--" + k, str(v)])
     return flags
 
 def create_inference_worker(model, options, alias=None):
