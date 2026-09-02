@@ -122,6 +122,10 @@ COPY ${src}/nexus.py ${src}/gateway.py ${src}/worker-logging.conf ${src}/uv.lock
 
 RUN --mount=type=cache,target=/root/.cache/uv XDG_DATA_HOME=/usr/local/share uv sync
 
+## ls-utils
+WORKDIR /opt/apps/ls-utils
+RUN --mount=type=cache,target=/root/.cache/uv XDG_DATA_HOME=/usr/local/share uv sync
+
 RUN mkdir -m 777 /cache /persist /data
 ## Cache dirs
 ENV TOOLBOX_CACHE=/cache \
