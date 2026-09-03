@@ -196,13 +196,18 @@
             if (!(step in unlocks)) {
                 unlocks[step] = true;
                 localStorage[unlocks_key] = JSON.stringify(unlocks);
+                document.querySelectorAll("a.tour-step[style]").forEach(x => {
+                    if (x.dataset.stepName == step) {
+                        x.removeAttribute("style");
+                    }
+                });
             }
         }
         document.querySelectorAll("a.tour-step[style]").forEach(x => {
             if (x.dataset.stepName in unlocks) {
                 x.removeAttribute("style");
             }
-        })
+        });
         function resolveQuickAction(actions, kind, value) {
             switch (kind) {
                 case "Manifest": {
@@ -301,6 +306,22 @@
             return wrapper;
         }
     </script>
+    {% if params.model and (params.manifest or params.project) %}
+    <script>
+        async function discoverUnlocks() {
+            if ("Training" in unlocks && "Experiments" in unlocks && "Inference" in unlocks) {
+                return;
+            }
+            const { runs } = await fetch("{{ url_for_query(request, 'finish_list', **params) | safe }}").then(x => x.json());
+            if (runs.length > 0) {
+                unlock("Training");
+                unlock("Experiments");
+                unlock("Inference");
+            }
+        }
+        discoverUnlocks();
+    </script>
+    {% endif %}
 </body>
 
 </html>

@@ -638,7 +638,6 @@ def finish(request: Request):
 
 @app.get("/finish/list")
 def finish_list(request: Request, model: str, manifest: Optional[str]=None, project: Optional[int]=None):
-    run_files = []
     if not (model_info := model_manifest.get(model)):
         raise HTTPException(status_code=404, detail="Model does not exist")
     if not manifest and not project:
@@ -664,6 +663,7 @@ def finish_list(request: Request, model: str, manifest: Optional[str]=None, proj
     if root.name.startswith(".export"):
         root = root.parent
 
+    run_files = []
     manifests = [str(x) for x in root.rglob("manifest.json")]
     runs = mlflow.search_runs(experiment_names=[model_info["title"]], max_results=100, output_format="list")
     for run in runs:
