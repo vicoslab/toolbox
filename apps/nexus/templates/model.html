@@ -262,7 +262,7 @@
 
             const description = document.createElement("p");
             description.className = "option-description";
-            description.innerText = prop.description;
+            description.innerText = prop.description || "";
 
             if (prop.enum) {
                 const opts = document.createElement("div");
@@ -300,9 +300,9 @@
                 case "integer": {
                     const input = document.createElement("input");
                     input.name = k;
-                    input.inputMode = "numeric";
+                    input.inputMode = prop.type === "integer" ? "numeric" : "decimal";
                     input.pattern = prop.type === "integer" ? "\d*" : "\d+(.\d+)?";
-                    input.placeholder = prop.default | "";
+                    input.placeholder = prop.default || "";
                     input.value = values[k] || null;
                     showModal(title, description, input).then(() => setValue(k, input.value)).catch(() => { });
                     break;
