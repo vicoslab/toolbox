@@ -529,7 +529,7 @@ async def receive_files(base_dir: Path, files: list[UploadFile]):
 
 class DatasetCreation(BaseModel):
     dataset: str
-    title: str | None
+    title: Optional[str] = None
     group_size: int
     group_separation: str
     regex_include: str

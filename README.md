@@ -66,6 +66,9 @@ is easier to run these in the development environment:
 ```bash
     CONTAINER_ARGS="-v ~/.cache/toolbox/.uv:/cache/.uv -v ~/.cache/toolbox/.torch:/cache/.torch --publish 443:443 --device nvidia.com/gpu=all" make test
 ```
+
+You can also add arguments to pytest using TEST_ARGS, for example `TEST_ARGS="test_nexus.py::test_import_export"`.
+
 `make test` will build an image with local context, and run it with the test entrypoint. Providing a gpu and the uv and torch caches is required due to strict timeouts.
 Publishing the toolbox port is useful as testing will not exit automatically if there were any failing tests. It is then possible to manually inspect the ui/exec into the docker.
 

@@ -89,19 +89,28 @@ if not valid:
     exit(1)
 j = resolved
 
+# determine and validate export dir
+dataset = DATASET_DIR / (dataset or f'ls-project-{PROJECT_ID}')
+if EXPORT_DIR := os.getenv('EXPORT_DIR'):
+    EXPORT_DIR = Path(EXPORT_DIR)
+    EXPORT_UPLOADS = EXPORT_DIR / f".export-uploads-{PROJECT_ID}"
+else:
+    EXPORT_DIR = dataset / f'.export-{date}'
+    EXPORT_UPLOADS = EXPORT_DIR.parent / f".export-uploads-{PROJECT_ID}"
+if not EXPORT_DIR.is_relative_to(DATASET_DIR):
+    raise ValueError('Export dir points outside data root')
+EXPORT_DIR.mkdir(parents=True, exist_ok=True)
+
 data = []
 UPLOAD_DIR = Path(os.environ['LABEL_STUDIO_BASE_DATA_DIR']) / 'media' / 'upload' / PROJECT_ID
-EXPORT_DIR = DATASET_DIR / os.getenv('EXPORT_DIR', f'{dataset or f"ls-project-{PROJECT_ID}"}/.export-{date}')
-EXPORT_DIR.mkdir(parents=True, exist_ok=True)
-EXPORT_UPLOADS = EXPORT_DIR.parent / f".export-uploads-{PROJECT_ID}"
 
 def get_path(source, relpath):
     if source == 'dataset':
-        return '../' + relpath
+        return str((dataset / relpath).relative_to(EXPORT_DIR, walk_up=True))
     elif source == 'upload':
         EXPORT_UPLOADS.mkdir(parents=True, exist_ok=True)
         shutil.copy(UPLOAD_DIR / relpath, EXPORT_UPLOADS / relpath)
-        return f'../.export-uploads-{PROJECT_ID}/' + relpath
+        return str((EXPORT_UPLOADS / relpath).relative_to(EXPORT_DIR, walk_up=True))
     else:
         raise ValueError("Invalid source for task image")
 
