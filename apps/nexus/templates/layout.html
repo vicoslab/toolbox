@@ -182,6 +182,14 @@
 
             return showToast("info", message, wrap, actions);
         }
+        const toasts_key = "toolbox-toasts";
+        {
+            const toasts = JSON.parse(localStorage.getItem(toasts_key) || "{}");
+            localStorage.setItem(toasts_key, "{}");
+            for (const [pid, message] of Object.entries(toasts)) {
+                showToastForLogs(pid, message);
+            }
+        }
 
         function copyUrlWith(url, k, v) {
             url = new URL(url);

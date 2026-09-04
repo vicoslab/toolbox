@@ -132,7 +132,7 @@
     const values = JSON.parse(localStorage.getItem(key) || "{}");
     const values_display = {};
 
-    async function stopWorker(el, pid) {
+    function stopWorker(el, pid) {
         el.parentElement.parentElement.style.backgroundColor = "var(--bg-muted)";
         el.remove();
         fetch(`/task/stop/${pid}`, { method: "POST" }).then(() => showToastForLogs(pid, "Worker is shutting down"));
@@ -148,6 +148,8 @@
         fetch(url, { body: JSON.stringify(values), method: "POST", headers: { "Content-Type": "application/json" } }).then(async r => {
             switch (r.status) {
                 case 200: {
+                    const { pid } = await r.json();
+                    localStorage.setItem(toasts_key, `{"${pid}": "Inference worker started"}`);
                     location.reload();
                     break;
                 }
