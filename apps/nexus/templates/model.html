@@ -75,11 +75,13 @@
                     <button id="model-inference" class="shadow"
                         onclick="startInference(`{{ url_for_query(request, 'model_infer', **params) }}`)">Start
                         new</button>
+                    <script>stage = "infer"</script>
                     {% else %}
                     <button id="model-training" class="shadow"
                         onclick="startTraining(`{{ url_for_query(request, 'model_train', **params) }}`)">Training</button>
                     <button id="model-inference" class="shadow"
                         onclick="startInference(`{{ url_for_query(request, 'model_infer', **params) }}`)">Inference</button>
+                    <script>stage = undefined</script>
                     {% endif %}
                 </div>
             </div>
@@ -116,8 +118,9 @@
         </a>
         {% endfor %}
         {% endif %}
-        {% endif %}
     </div>
+    <script>stage = "train"</script>
+    {% endif %}
 </div>
 
 <script src="/static/opencv.js" async></script>
@@ -162,6 +165,18 @@
         if (Object.keys(options).length > 0) {
             document.querySelector(".edit-options").style.display = "";
         }
+        if (stage !== undefined) {
+            for (const [k, v] of Object.entries(options)) {
+                if ("stage" in v && v.stage !== stage) {
+                    delete options[k];
+                }
+            }
+            for (const [k, v] of Object.entries(completions)) {
+                if ("stage" in v && v.stage !== stage) {
+                    delete completions[k];
+                }
+            }
+        }
 
         const listOptions = document.getElementById("list-options");
         const addOption = document.querySelector(".edit-options > button");
@@ -200,9 +215,12 @@
             }
         }
         for (const [k, v] of Object.entries(values)) {
-            const el = display(k, v);
-            values_display[k] = el;
-            setOptions.append(el);
+            // k may have been removed due to train/infer only options
+            if (k in options) {
+                const el = display(k, v);
+                values_display[k] = el;
+                setOptions.append(el);
+            }
         }
 
         function display(k, v) {

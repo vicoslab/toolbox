@@ -383,10 +383,11 @@ def model(request: Request, model: str, manifest: str | None = None, weights: st
 def model_options(request: Request, model: str, manifest: Optional[str] = None, weights: Optional[str] = None):
     if not (model_info := model_manifest.get(model)):
         raise HTTPException(status_code=404, detail=f"Model '{model}' does not exist")
+    options = model_info.get("options", {})
 
     runs = mlflow.search_runs(experiment_names=[model_info["title"]], max_results=100, output_format="list")
     completions = {}
-    for k, v in model_manifest[model]["options"].items():
+    for k, v in options.items():
         if not (format := v.get("format")):
             continue
         if format == "file:manifest.json":
@@ -410,15 +411,8 @@ def model_options(request: Request, model: str, manifest: Optional[str] = None, 
             if weights or len(_completions) > 0:
                 completions[k] = [weights, _completions]
 
-    options = {
-        **model_info.get("options", {}),
-        "alias": {
-            "title": "Alias",
-            "description": "Alias for inference worker",
-            "type": "string",
-        }
-    }
-    return dict(options=options, completions=completions)
+    alias = dict(title="Alias", description="Alias for inference worker", type="string")
+    return dict(options={**options, "alias": alias}, completions=completions)
 
 class TaskResponse(BaseModel):
     pid: int
