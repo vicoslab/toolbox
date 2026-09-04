@@ -248,6 +248,10 @@
                     unlock("Inference");
                     break;
                 }
+                case "Error": {
+                    showToast("error", value).then(x => x.keepAlive = true);
+                    break;
+                }
             }
         }
         function dropdown({ name, completions, placeholder, value }) {

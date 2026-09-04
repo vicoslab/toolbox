@@ -204,7 +204,7 @@ def dashboard(request: Request, experiment: int | None = None, run: str | None =
 # if line starts with eval:, visualise: or (for example) 10/300: (from something like a tqdm batch counter)
 # consecutive log lines get grouped up (most recent one is shown)
 tqdm_header = re.compile(r"^(\d+)/(\d+):|^(eval):|^(visualise):")
-quick_action = re.compile(r"^(\w+): (\S+)$")
+quick_action = re.compile(r"^(\w+): (.+)$")
 
 def refresh_logs(task):
     if proc := task.get("process"):
