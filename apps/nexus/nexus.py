@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Header, Request, HTTPException, Form, UploadFile
+from fastapi import FastAPI, Header, Request, HTTPException, Form, File, UploadFile
 from fastapi.sse import EventSourceResponse, ServerSentEvent
 from fastapi.responses import RedirectResponse, HTMLResponse, FileResponse, Response
 from fastapi.templating import Jinja2Templates
@@ -19,6 +19,7 @@ import shutil
 import re
 from enum import Enum
 from datetime import datetime
+import tempfile
 import zipfile
 
 import mlflow
@@ -507,6 +508,30 @@ def dataset_get(request: Request, model: str):
     old = { pid: task for pid, task in tasks.items() if TourStep.DATASET in task }
 
     return templates.TemplateResponse(request=request, name="dataset.html", context=dict(now=now, tasks=old, **model_manifest[model], params=propagate(request.query_params)))
+
+@app.post("/dataset/external")
+async def dataset_from_upload(request: Request, file: Annotated[UploadFile, File()]):
+    name, ext = os.path.splitext(os.path.basename(file.filename))
+    with tempfile.NamedTemporaryFile(suffix=ext, mode="wb") as f:
+        while (chunk := await file.read(1024)):
+            f.write(chunk)
+        f.flush()
+
+        with tempfile.TemporaryDirectory(delete=False) as d:
+            shutil.unpack_archive(f.name, d)
+
+            root = Path(d)
+            if len(files := list(root.iterdir())) == 1:
+                name = files[0]
+                root = root / name
+
+            if (target := DATASET_DIR / name).exists():
+                raise HTTPException(status_code=400, detail=f"Dataset {str(target.name)} already exists")
+            elif (manifest := root / "manifest.json").exists():
+                shutil.move(root, target)
+                return { "manifest": str(target / "manifest.json") }
+            else:
+                raise HTTPException(status_code=400, detail=f"Uploaded archive doesn't contain a manifest")
 
 async def receive_files(base_dir: Path, files: list[UploadFile]):
     base_dir.mkdir()
