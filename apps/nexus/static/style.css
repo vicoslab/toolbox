@@ -395,6 +395,20 @@ dialog {
     }
 }
 
+.tag-name, .tag-value {
+    font-weight: 500;
+}
+.tag-value {
+    margin-left: 0.5rem;
+    background-color: var(--bg-accent-hover);
+    opacity: 0.75;
+    padding: 0.15rem 0.3rem;
+
+    &:hover {
+        background-color: var(--bg-accent-active);
+    }
+}
+
 #toast-wrapper {
     position: absolute;
     right: 1rem;

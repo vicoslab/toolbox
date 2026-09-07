@@ -17,6 +17,7 @@
         {% endif %}
         {{ description }}
     </p>
+    <div id="info" style="display: flex; gap: 0.5rem;"></div>
     <div id="actions" style="display: flex; gap: 0.5rem;">
         {% if running %}
         <button command="show-modal" commandfor="confirm-stop">Stop task</button>
@@ -41,6 +42,7 @@
     {% endif %}
 </div>
 <script>
+    const infos = document.getElementById("info");
     const actions = document.getElementById("actions");
     const lines = document.getElementById("lines");
     let last = document.createElement("div");
@@ -48,7 +50,15 @@
     lines.append(last);
     const eventSource = new EventSource("/task/logs/{{ pid }}/stream");
     eventSource.addEventListener("message", e => last.innerText = JSON.parse(e.data));
-    eventSource.addEventListener("quick-action", e => resolveQuickAction(actions, ...JSON.parse(e.data)));
+    eventSource.addEventListener("quick-action", e => {
+        const { action, info } = resolveQuickAction(...JSON.parse(e.data));
+        if (action) {
+            actions.append(action);
+        }
+        if (info) {
+            infos.append(info);
+        }
+    });
     eventSource.addEventListener("eof", e => document.getElementById("confirm-stop") && location.reload());
     let scrollTop = 0;
     let override = true;

@@ -130,7 +130,7 @@ if "VIRTUAL_ENV" in os.environ:
 
 def start_task(command, cwd, description, extra_env={}, blocking=False):
     proc = Popen(command, cwd = cwd, stdout = PIPE, stderr = STDOUT, text = True, env={ **os.environ, **extra_env })
-    tasks[proc.pid] = dict(description=description, output=[], run_info=None, process=proc, code=None, start_time=datetime.now())
+    tasks[proc.pid] = dict(description=description, output=[], info=[], process=proc, code=None, start_time=datetime.now())
     os.set_blocking(proc.stdout.fileno(), blocking)
     return proc.pid
 
@@ -211,8 +211,9 @@ def refresh_logs(task):
     if proc := task.get("process"):
         out = task["output"]
 
-        m = tqdm_header.match(out[-1]) if len(out) else None
-        last = m.groups() if m else None
+        last = None
+        if len(out) and type(out[-1]) == str and (m := tqdm_header.match(out[-1])):
+            last = m.groups()
 
         while line := proc.stdout.readline():
             line = line.strip()
@@ -227,7 +228,10 @@ def refresh_logs(task):
                 last = gs
             else:
                 if m := quick_action.match(line):
-                    out.append(m.groups())
+                    kind, data = m.groups()
+                    if kind == "Info":
+                        task["info"].append(json.loads(data))
+                    out.append((kind, data))
                 else:
                     out.append(line)
                 last = None
@@ -784,14 +788,7 @@ def logs(request: Request, pid: int):
     params = propagate(request.query_params)
     params["pid"] = pid
 
-    override = { **params, "tour": TourStep.MONITORING.value } if params.get("tour") == TourStep.TRAINING.value else params
-    if info := task.get("run_info"):
-        override["experiment"], override["run"] = info
-        run_url = str(url_for_query(request, "dashboard", **override))
-    else:
-        run_url = None
-
-    return templates.TemplateResponse(request=request, name="logs.html", context=dict(pid=pid, description=task["description"], running=task["code"] is None, run_shortcut=run_url, params=params))
+    return templates.TemplateResponse(request=request, name="logs.html", context=dict(pid=pid, description=task["description"], info=task["info"], running=task["code"] is None, params=params))
 
 @app.post("/task/stop/{pid}")
 def kill(request: Request, pid: int):

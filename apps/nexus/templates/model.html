@@ -238,11 +238,11 @@
             wrap.title = prop.description || "";
 
             const name = document.createElement("span");
-            name.className = "option-name";
+            name.className = "tag-name";
             name.innerText = prop.title;
 
             const value = document.createElement("span");
-            value.className = "option-value";
+            value.className = "tag-value";
             value.innerText = v;
 
             const remove = document.createElement("button");
@@ -272,7 +272,7 @@
                 values_display[k] = el;
                 setOptions.append(el);
             } else {
-                values_display[k].querySelector(".option-value").innerText = v;
+                values_display[k].querySelector(".tag-value").innerText = v;
             }
         }
         function editOption(k, prop) {
@@ -360,17 +360,6 @@
 
         button {
             font-weight: 500;
-        }
-
-        .option-value {
-            margin-left: 0.5rem;
-            background-color: var(--bg-accent-hover);
-            opacity: 0.75;
-            padding: 0.15rem 0.3rem;
-
-            &:hover {
-                background-color: var(--bg-accent-active);
-            }
         }
     }
 

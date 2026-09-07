@@ -168,7 +168,12 @@
             }
 
             eventSource.addEventListener("message", e => last.innerText = JSON.parse(e.data));
-            eventSource.addEventListener("quick-action", e => resolveQuickAction(actions, ...JSON.parse(e.data)));
+            eventSource.addEventListener("quick-action", e => {
+                const { action } = resolveQuickAction(...JSON.parse(e.data));
+                if (action) {
+                    actions.append(action);
+                }
+            });
             eventSource.addEventListener("newline", e => {
                 count += 1;
                 if (count > 5) {
@@ -216,7 +221,7 @@
                 x.removeAttribute("style");
             }
         });
-        function resolveQuickAction(actions, kind, value) {
+        function resolveQuickAction(kind, value) {
             switch (kind) {
                 case "Manifest": {
                     const oldurl = document.querySelector(`a.tour-step[data-step-name="Training"]`).href;
@@ -224,9 +229,8 @@
                     link.href = copyUrlWith(oldurl, "manifest", value);
                     link.className = "button";
                     link.innerText = "Go to training";
-                    actions.append(link);
                     unlock("Training");
-                    break;
+                    return { action: link };
                 }
                 case "Experiment": {
                     const oldurl = document.querySelector(`a.tour-step[data-step-name="Experiments"]`).href;
@@ -235,9 +239,8 @@
                     link.href = copyUrlWith(oldurl, "experiment", value);
                     link.className = "button";
                     link.innerText = "Go to experiments";
-                    actions.append(link);
                     unlock("Experiments");
-                    break;
+                    return { action: link };
                 }
                 case "Run": {
                     const old = actions.querySelector("#action-experiments");
@@ -252,15 +255,35 @@
                     link.href = copyUrlWith(oldurl, "weights", value);
                     link.className = "button";
                     link.innerText = "Go to inference";
-                    actions.append(link);
                     unlock("Inference");
-                    break;
+                    return { action: link };
+                }
+                case "Info": {
+                    const { title, description, value: val, link } = JSON.parse(value);
+
+                    const name = document.createElement("span");
+                    name.innerText = title;
+                    name.className = "tag-name";
+                    const v = document.createElement("span");
+                    v.innerText = val;
+                    v.className = "tag-value";
+
+                    const info = document.createElement("a");
+                    info.className = "button";
+                    info.title = description;
+                    if (link) {
+                        info.href = link;
+                    }
+                    info.target = "_blank";
+                    info.append(name, v);
+                    return { info };
                 }
                 case "Error": {
                     showToast("error", value).then(x => x.keepAlive = true);
                     break;
                 }
             }
+            return {};
         }
         function dropdown({ name, completions, placeholder, value }) {
             const input = document.createElement("input");
