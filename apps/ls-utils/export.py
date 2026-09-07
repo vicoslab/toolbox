@@ -114,6 +114,12 @@ def get_path(source, relpath):
     else:
         raise ValueError("Invalid source for task image")
 
+split_mapping = {
+    'Train': 'train',
+    'Validation': 'val',
+    'Test': 'test',
+}
+splits = {}
 for task in j:
     if image := task.get('image'):
         source, relpath = image
@@ -169,17 +175,22 @@ for task in j:
         if points is not None:
             item['points'] = points
     
-    data.append(item)
+    split = split_mapping.get(task.get('split'), 'data')
+    if split not in splits:
+        splits[split] = []
+    splits[split].append(item)
 
 manifest = str(EXPORT_DIR / 'manifest.json')
 with open(manifest, 'w') as f:
     if COMBINE and (combine := Path(COMBINE)).exists():
         old = json.loads(combine.read_text())
-        old['data'] = old.get('data', []) + data
-        old['version'] = 3
+        for split, items in splits.items():
+            old[split] = old.get(split, []) + items
+        old['version'] = 4
         json.dump(old, f)
     else:
-        json.dump({ 'data': data, 'version': 2 }, f)
+        splits['version'] = 4
+        json.dump(splits, f)
 
 print(f"Project {PROJECT_ID} successfully exported to '{EXPORT_DIR}'")
 print(f"Toolbox:Manifest:", manifest)
