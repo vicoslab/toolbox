@@ -1,0 +1,30 @@
+diff --git a/web/libs/app-common/src/pages/AccountSettings/sections/Hotkeys/Help.tsx b/web/libs/app-common/src/pages/AccountSettings/sections/Hotkeys/Help.tsx
+index 1fdf57507..2323713dc 100644
+--- a/web/libs/app-common/src/pages/AccountSettings/sections/Hotkeys/Help.tsx
++++ b/web/libs/app-common/src/pages/AccountSettings/sections/Hotkeys/Help.tsx
+@@ -6,6 +6,7 @@ import { KeyboardKey } from "./Key";
+ import { HOTKEY_SECTIONS, URL_TO_SECTION_MAPPING } from "./defaults";
+ import type { Hotkey, Section } from "./utils";
+ import { getTypedDefaultHotkeys } from "./utils";
++import { absoluteURL } from "../../../../../../datamanager/src/utils/helpers";
+ 
+ // Type definitions for imported constants
+ interface UrlMapping {
+@@ -67,7 +68,7 @@ const HotkeyHelpModal = ({ sectionsToShow }: HotkeyHelpModalProps) => {
+    */
+   const handleCustomizeClick = useCallback((e: React.MouseEvent) => {
+     e.preventDefault();
+-    window.location.href = "/user/account/hotkeys";
++    window.location.href = absoluteURL("/user/account/hotkeys");
+   }, []);
+ 
+   /**
+@@ -160,7 +161,7 @@ const HotkeyHelpModal = ({ sectionsToShow }: HotkeyHelpModalProps) => {
+           <p className="text-sm text-neutral-content-subtler mt-1">
+             View all available keyboard shortcuts.&nbsp;
+             <a
+-              href="/user/account/hotkeys"
++              href={absoluteURL("/user/account/hotkeys")}
+               onClick={handleCustomizeClick}
+               className="text-primary-content hover:underline hover:text-primary-content-hover"
+             >
