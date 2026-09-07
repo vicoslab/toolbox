@@ -107,12 +107,12 @@ def helper_install_model(group):
     psutil.Process(pid).wait(60 * 5)
 
 def test_model_ssn():
-    helper_install_model({ 'owner':'TestInstall','group':'TestGroup','models':['super-simple-net'],'url':'https://github.com/vicoslab/toolbox-models' })
+    helper_install_model({ 'owner':'TestInstall','group':'TestGroup','models':['super-simple-net'],'url':'https://github.com/vicoslab/toolbox-models', 'branch': 'dev' })
     weights = helper_training('super-simple-net', {'manifest': str(testdata / 'manifest.json'), 'epochs': 2, 'batch': 16})
     helper_inference_ssn('test', {'weights': weights }, [testdata / 'damaged_0_0000_ls3_camera0.jpg'], [0.9])
 
 def test_import_export():
-    helper_install_model({ 'owner':'TestInstall','group':'TestGroup','models':['super-simple-net'],'url':'https://github.com/vicoslab/toolbox-models' })
+    helper_install_model({ 'owner':'TestInstall','group':'TestGroup','models':['super-simple-net'],'url':'https://github.com/vicoslab/toolbox-models', 'branch': 'dev' })
     assert (response := client.get('/datasets')).status_code == 200
     assert testdata.name in response.json()['dirs']
 
