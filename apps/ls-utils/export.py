@@ -182,4 +182,4 @@ with open(manifest, 'w') as f:
         json.dump({ 'data': data, 'version': 2 }, f)
 
 print(f"Project {PROJECT_ID} successfully exported to '{EXPORT_DIR}'")
-print(f"Manifest:", manifest)
+print(f"Toolbox:Manifest:", manifest)

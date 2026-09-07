@@ -57,3 +57,6 @@ def parse(schema):
         args = sys.argv[1:]
 
     return vars(parser.parse_args(args))
+
+def emit_action(kind, value):
+    print(f'Toolbox:{kind}: {value}', flush=True)
