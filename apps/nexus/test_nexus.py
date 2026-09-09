@@ -127,8 +127,8 @@ def test_import_export():
         assert ls.post(f'/api/tasks/{task["id"]}/annotations', json={}).status_code == 201
     
     exportdir = Path('/data/testexport')
-    export_request = {'project': project, 'task': 'anomaly-detection', 'dir': str(exportdir) }
-    assert (response := client.post('/export', json=export_request)).status_code == 200
+    export_request = {'project': project, 'dir': str(exportdir) }
+    assert (response := client.post('/export?model=super-simple-net', json=export_request)).status_code == 200
     assert (pid := response.json()['pid']) and psutil.pid_exists(pid)
     psutil.Process(pid).wait(60)
     assert (manifest := exportdir / 'manifest.json').exists()

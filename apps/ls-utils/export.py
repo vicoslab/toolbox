@@ -10,11 +10,19 @@ import re
 import shutil
 import numpy as np
 from PIL import Image
+import importlib
+import site
+
+site.addsitedir(os.environ['MODEL_FILES'])
+try:
+    import ls_adapter as model
+except ImportError as err:
+    print('Could not load model files')
+    exit(1)
 
 DATASET_DIR = Path(os.environ['LOCAL_FILES_DOCUMENT_ROOT'])
 API_KEY = os.environ['LABEL_STUDIO_USER_TOKEN']
 PROJECT_ID = os.environ['PROJECT_ID']
-TASK = os.environ['TASK']
 COMBINE = os.getenv('COMBINE')
 
 date = datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
@@ -42,7 +50,7 @@ with io.BytesIO() as b:
     for chunk in ls.projects.exports.download(
         id=PROJECT_ID,
         export_pk=job.id,
-        export_type='JSON_MIN',
+        export_type='JSON',
         request_options={'chunk_size': 1024},
     ):
         b.write(chunk)
@@ -75,12 +83,11 @@ def detect_storage(image):
         valid = False
 
 for task in j:
-    if image := task.get('image'):
-        resolved.append({ **task, 'image': detect_storage(image) })
-    elif images := task.get('images'):
-        resolved.append({ **task, 'images': [detect_storage(im) for im in images]})
-    else:
-        resolved.append({ **task })
+    if image := task['data'].get('image'):
+        task['data']['image'] = detect_storage(image)
+    elif images := task['data'].get('images'):
+        task['data']['images'] = [detect_storage(im) for im in images]
+    resolved.append(task)
 
 if not valid:
     print('Warning: only saving json because image dataset in export failed validation.')
@@ -121,59 +128,17 @@ split_mapping = {
 }
 splits = {}
 for task in j:
-    if image := task.get('image'):
+    item = {}
+    results = [x['result'] for x in task['annotations']]
+    if image := task['data'].get('image'):
         source, relpath = image
-        item = { 'image_path': get_path(source, relpath) }
-        relpaths = [relpath]
-    elif images := task.get('images'):
-        item = { 'images': [get_path(*im) for im in images]}
-        relpaths = [relpath for (_, relpath) in images]
-    else:
-        item = {}
-
-    labels = None
-    mask = None
-    points = None
-    if 'labels' in task:
-        for tag in task['labels']:
-            if rle := tag.get('rle'):
-                if labels is None:
-                    width = tag['original_width']
-                    height = tag['original_height']
-                    labels = tag['labels']
-                    mask = np.reshape(brush.decode_rle(rle), [height, width, 4])[:, :, 3]
-                elif labels != tag['labels']:
-                    print(f'Warning (skipping): mixing different labels in `{relpaths}`')
-                else:
-                    mask += np.reshape(brush.decode_rle(rle), [height, width, 4])[:, :, 3]
-            elif verts := tag.get('vertices'):
-                if len(verts) != 2:
-                    print(f'Warning (skipping): vertices len != 2')
-                    continue
-
-                if points is None:
-                    points = []
-                    size = {
-                        'x': tag['original_width'],
-                        'y': tag['original_height'],   
-                    }
-                
-                points.append([int(v[p]/100*size[p]) for v in verts for p in ['x', 'y']])
-
-    if TASK == 'anomaly-detection':
-        if mask is not None:
-            # todo: would there be multiple masks (what about shared)?
-            for relpath in relpaths:
-                filename = (EXPORT_DIR / relpath).with_suffix('.label.png')
-                filename.parent.mkdir(parents=True, exist_ok=True)
-                Image.fromarray(mask).save(filename)
-                item['label'] = 'abnormal' if mask.sum() > 0 else 'normal'
-                item['mask_path'] = str(filename.relative_to(EXPORT_DIR))
-        elif task['annotator'] is not None:
-            item['label'] = 'normal'
-    elif TASK == 'orientation-estimation':
-        if points is not None:
-            item['points'] = points
+        item['image_path'] = get_path(source, relpath)
+        if len(task['annotations']) > 0:
+            item.update(model.export(results, EXPORT_DIR, [relpath], False) or {})
+    elif images := task['data'].get('images'):
+        item['images'] = [get_path(*im) for im in images]
+        if len(task['annotations']) > 0:
+            item.update(model.export(results, EXPORT_DIR, [relpath for (_, relpath) in images], False) or {})
     
     split = split_mapping.get(task.get('split'), 'data')
     if split not in splits:

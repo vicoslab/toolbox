@@ -626,13 +626,14 @@ def export_get(request: Request):
 
 class ExportRequest(BaseModel):
     project: int
-    task: str
     dir: str | None = None
     combine: str | None = None
 
 @app.post("/export")
-def export(request: Request, export_request: ExportRequest):
-    env = dict(TASK=export_request.task, PROJECT_ID=str(export_request.project))
+def export(request: Request, model: str, export_request: ExportRequest):
+    if not (model_info := model_manifest.get(model)):
+        raise HTTPException(status_code=404, detail="Model does not exist")
+    env = dict(MODEL_FILES=model_info["dir"], PROJECT_ID=str(export_request.project))
 
     if export_request.dir:
         env["EXPORT_DIR"] = export_request.dir
