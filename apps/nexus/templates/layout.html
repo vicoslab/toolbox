@@ -142,6 +142,39 @@
             });
         }
 
+        function appendAction(actions, action) {
+            if (!action.id) {
+                actions.append(action);
+                return;
+            }
+            const old = actions.querySelector("#" + action.id);
+            if (old) {
+                if (old.options instanceof Object) {
+                    old.options[action.key] = action.href;
+                } else if (action.key != old.key) {
+                    old.options = Object.fromEntries([[old.key, old.href], [action.key, action.href]]);
+                    old.removeAttribute("href");
+                    old.addEventListener("click", () => {
+                        const input = document.createElement("select");
+                        input.style.maxWidth = "100%";
+                        input.style.direction = "rtl";
+
+                        for (const k in old.options) {
+                            const opt = document.createElement("option");
+                            opt.value = k;
+                            opt.innerText = k;
+                            input.append(opt);
+                            input.value = k;
+                        }
+                        showModal(`'${old.innerText}' contains multiple references. Select one:`, input).then(() => {
+                            window.location = old.options[input.value];
+                        }).catch(() => { });
+                    });
+                }
+            } else {
+                actions.append(action);
+            }
+        }
         function showToastForLogs(pid, message, url = undefined) {
             const eventSource = new EventSource(`/task/logs/${pid}/stream`);
             const lines = document.createElement("pre");
@@ -171,7 +204,7 @@
             eventSource.addEventListener("quick-action", e => {
                 const { action } = resolveQuickAction(...JSON.parse(e.data));
                 if (action) {
-                    actions.append(action);
+                    appendAction(actions, action);
                 }
             });
             eventSource.addEventListener("newline", e => {
@@ -226,6 +259,7 @@
                 case "Manifest": {
                     const oldurl = document.querySelector(`a.tour-step[data-step-name="Training"]`).href;
                     const link = document.createElement("a");
+                    link.key = value;
                     link.href = copyUrlWith(oldurl, "manifest", value);
                     link.className = "button";
                     link.innerText = "Go to training";
@@ -235,6 +269,7 @@
                 case "Experiment": {
                     const oldurl = document.querySelector(`a.tour-step[data-step-name="Experiments"]`).href;
                     const link = document.createElement("a");
+                    link.key = value;
                     link.id = "action-experiments";
                     link.href = copyUrlWith(oldurl, "experiment", value);
                     link.className = "button";
@@ -246,12 +281,15 @@
                     const old = actions.querySelector("#action-experiments");
                     if (old) {
                         old.href = copyUrlWith(old.href, "run", value);
+                        old.key += "-" + value;
                     }
                     break;
                 }
                 case "Weights": {
                     const oldurl = document.querySelector(`a.tour-step[data-step-name="Inference"]`).href;
                     const link = document.createElement("a");
+                    link.key = value;
+                    link.id = "action-training";
                     link.href = copyUrlWith(oldurl, "weights", value);
                     link.className = "button";
                     link.innerText = "Go to inference";

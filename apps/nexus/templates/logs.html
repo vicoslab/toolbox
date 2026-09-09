@@ -53,7 +53,7 @@
     eventSource.addEventListener("quick-action", e => {
         const { action, info } = resolveQuickAction(...JSON.parse(e.data));
         if (action) {
-            actions.append(action);
+            appendAction(actions, action);
         }
         if (info) {
             infos.append(info);
