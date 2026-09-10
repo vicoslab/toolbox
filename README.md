@@ -73,3 +73,9 @@ You can also add arguments to pytest using TEST_ARGS, for example `TEST_ARGS="te
 Publishing the toolbox port is useful as testing will not exit automatically if there were any failing tests. It is then possible to manually inspect the ui/exec into the docker.
 
 `make test-git` should always be used before pushing as it will build image from git HEAD (i.e. without local changes) and run tests.
+
+### Model tests
+To test model specific tests (from models installed in your cache), you can use
+```bash
+CONTAINER_ARGS="-v ~/.cache/toolbox:/cache --device nvidia.com/gpu=all" make test-installed
+```

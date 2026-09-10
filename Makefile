@@ -15,3 +15,7 @@ test: do-test
 
 do-test:
 	docker run --rm --entrypoint ./run-tests.sh -it --shm-size 2G --workdir /opt/apps/nexus $(CONTAINER_ARGS) $(ID) $(TEST_ARGS)
+
+test-installed: ID = $$(docker build --build-context branding=branding -q .)
+test-installed:
+	docker run --rm --entrypoint uv -it --shm-size 2G --workdir /cache/.models $(CONTAINER_ARGS) $(ID) run pytest
