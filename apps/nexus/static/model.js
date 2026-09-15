@@ -83,13 +83,14 @@ class ImageInput extends HTMLElement {
         }
 
         const wrapper = document.createElement("div");
+        wrapper.className = "showing";
         wrapper.style.position = "relative";
         wrapper.style.display = "none";
         wrapper.style.pointerEvents = "none";
-        wrapper.style.width = "fit-content";
         wrapper.style.margin = "auto";
 
         const image = document.createElement("img");
+        image.style.display = "none";
         const slot = document.createElement("slot");
         const close = document.createElement("button");
         close.style.display = "none";
@@ -109,13 +110,13 @@ class ImageInput extends HTMLElement {
         wrapper.append(image, overlay);
 
         const form = this.internals_.form || (() => { throw new Error("Inference input must be part of a form") })();
-        form.addEventListener("infer", () => image.style.display = "none"); // custom event
-        form.addEventListener("softreset", () => image.style.display = ""); // custom event
+        form.addEventListener("infer", () => wrapper.classList.remove("showing")); // custom event
+        form.addEventListener("softreset", () => wrapper.classList.add("showing")); // custom event
         form.addEventListener("reset", () => {
-            image.style.display = "";
             input.style.display = "";
             label.style.display = "grid";
             wrapper.style.display = "none";
+            wrapper.classList.add("showing");
             close.style.display = "none";
         });
         const name = this.getAttribute("name") || (() => { throw new Error("Inference input must have a name") })();
@@ -842,8 +843,8 @@ class ShowDetections extends HTMLElement {
             }
 
             .reference {
-                object-fit: contain;
                 max-width: 100%;
+                height: auto;
             }
 
             .masks {
