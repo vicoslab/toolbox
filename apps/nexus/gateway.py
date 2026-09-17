@@ -80,11 +80,13 @@ def setup():
 def health():
     return {"model_class":"Proxy","status":"UP"}
 
-def get_region_label(region):
-    for r in region["results"]:
-        for k in r["value"]:
-            if k.endswith("labels"):
-                return r["value"][k][0]
+def get_region_label(regions):
+    # regions should have the same labels due to filtering in the frontend
+    for region in regions:
+        for r in region["results"]:
+            for k in r["value"]:
+                if k.endswith("labels"):
+                    return r["value"][k][0]
     return None
 
 def try_autostart(alias):
@@ -118,7 +120,7 @@ def predict():
 
     data = request.json
     # interactive requests will have a context, and should be set up such that the region contains info on which model to run
-    if (context := data["params"]["context"]) and (region := context.get("region")) and (alias := get_region_label(region)): pass
+    if (context := data["params"]["context"]) and (regions := context.get("regions")) and (alias := get_region_label(regions)): pass
     # otherwise try to run the model associated with the project
     elif (alias := projects.get(data["project"])): pass
     else: abort(404)
