@@ -39,6 +39,7 @@ def save_models(config):
 try:
     if models_file.exists():
         models_config = json.loads(models_file.read_text())
+        models_config["added"] = list(set(models_config.get("added", [])))
     elif models_str := os.getenv("TOOLBOX_MODELS"):
         models_config = { "added": [], "sources": json.loads(base64.b64decode(models_str)) }
         save_models(models_config)
@@ -480,7 +481,8 @@ def model_install(request: Request, model: str):
         params["model"] = model
         raise HTTPException(status_code=400, detail=f"Model '{model}' already exists or installation is in progress")
 
-    models_config["added"].append(model)
+    if model not in models_config["added"]:
+        models_config["added"].append(model)
     save_models(models_config)
 
     params["model"] = model
