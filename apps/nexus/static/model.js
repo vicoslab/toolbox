@@ -149,6 +149,12 @@ class ImageInput extends HTMLElement {
 
         const style = document.createElement("style");
         style.textContent = `
+            .showing {
+                width: fit-content;
+                > img {
+                    display: block !important;
+                }
+            }
             input[type="file"] {
                 opacity: 0;
                 position: absolute;
