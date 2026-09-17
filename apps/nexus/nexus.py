@@ -266,7 +266,8 @@ def models(request: Request):
         for m in group["models"]:
             if (CACHE / m).exists():
                 installed.append(m)
-            available[m] = model_manifest[m]
+            if info := model_manifest.get(m):
+                available[m] = info
         if rev := group.get("rev"): # make sure we can manage models even if rev is borked
             rev = rev[:7]
         groups[(group["group"], group["owner"])] = rev, installed, available
@@ -304,7 +305,7 @@ def models_update(group_info: ModelGroup):
 @app.post("/models/remove")
 def models_remove(group_info: ModelGroup):
     ownerdir = CACHE / ".models" / group_info.owner
-    shutil.rmtree(ownerdir / group_info.group, ignore_errors=True)
+    shutil.rmtree(ownerdir / group_info.group)
     if len(list(ownerdir.iterdir())) == 0:
         ownerdir.rmdir()
 
