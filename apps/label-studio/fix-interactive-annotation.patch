@@ -1,5 +1,5 @@
 diff --git a/web/apps/labelstudio/src/pages/DataManager/DataManager.jsx b/web/apps/labelstudio/src/pages/DataManager/DataManager.jsx
-index 584333f74..91298d550 100644
+index 584333f74..ffaf5d692 100644
 --- a/web/apps/labelstudio/src/pages/DataManager/DataManager.jsx
 +++ b/web/apps/labelstudio/src/pages/DataManager/DataManager.jsx
 @@ -1,4 +1,5 @@
@@ -8,7 +8,7 @@ index 584333f74..91298d550 100644
  import { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
  import { generatePath, useHistory } from "react-router";
  import { Link, NavLink } from "react-router-dom";
-@@ -155,16 +156,14 @@ export const DataManagerPage = ({ ...props }) => {
+@@ -155,16 +156,15 @@ export const DataManagerPage = ({ ...props }) => {
      });
  
      if (interactiveBacked) {
@@ -19,16 +19,17 @@ index 584333f74..91298d550 100644
 -        const result = annotation.serializeAnnotation().filter((res) => ids.includes(res.id));
 -
 +        const regions = annotation.regions.filter(x => x.labels.length == region.labels.length && x.labels.every((it, i) => it == region.labels[i]) && (added || x != region));
++        const labels = Object.fromEntries(region.results.map(r => [r.from_name.name, r.selectedLabels.map(x => x.value)]));
          const suggestionsRequest = api.callApi("mlInteractive", {
            params: { pk: interactiveBacked.id },
            body: {
              task: task.id,
 -            context: { result },
-+            context: { regions },
++            context: { regions, labels },
            },
          });
  
-@@ -188,7 +187,9 @@ export const DataManagerPage = ({ ...props }) => {
+@@ -188,7 +188,9 @@ export const DataManagerPage = ({ ...props }) => {
  
            return null;
          });
