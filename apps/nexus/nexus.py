@@ -217,7 +217,7 @@ def refresh_logs(task):
             last = m.groups()
 
         while line := proc.stdout.readline():
-            line = line.strip()
+            line = line.rstrip()
             if len(line) == 0:
                 continue
             if m := tqdm_header.match(line):
