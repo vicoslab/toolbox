@@ -68,7 +68,9 @@ def test_manage_groups():
     assert (response := client.post('/models/update', json=pinned)).status_code == 200
     assert response.json() == { 'rev': pinned['rev'] }
     assert subprocess.run(['git', 'rev-parse', 'HEAD'], cwd=group_dir, text=True, capture_output=True).stdout.strip() == pinned['rev']
-    assert (response := client.post('/models/update', json={k:v for (k,v) in pinned.items() if k != 'rev'})).status_code == 200
+    assert (response := client.post('/models/update', json={ **pinned, 'rev': None })).status_code == 200
+    assert response.json()['rev'] == pinned['rev'] # detached head is left alone
+    assert (response := client.post('/models/update', json={ **pinned, 'rev': 'origin/HEAD' })).status_code == 200
     assert response.json()['rev'] != pinned['rev']
 
     assert (response := client.post('models/remove', json=group)).status_code == 200

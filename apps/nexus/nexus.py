@@ -276,7 +276,7 @@ def models(request: Request):
 class ModelGroup(BaseModel):
     owner: str
     group: str
-    rev: str = "origin/HEAD"
+    rev: Optional[str] = None
     branch: Optional[str] = None
 
 @app.post("/models/update")
@@ -291,9 +291,18 @@ def models_update(group_info: ModelGroup):
     if not groupdir.exists() or not src:
         raise HTTPException(status_code=400, detail="Invalid group")
     
-    subprocess.run(["git", "fetch"], cwd=groupdir, check=True)
-    subprocess.run(["git", "checkout", group_info.rev], cwd=groupdir, check=True)
-    new = subprocess.run(["git", "rev-parse", "HEAD"], cwd=groupdir, capture_output=True, text=True, check=True).stdout.strip()
+    try:
+        subprocess.run(["git", "fetch"], cwd=groupdir, check=True)
+        if group_info.rev:
+            subprocess.run(["git", "checkout", group_info.rev], cwd=groupdir, check=True)
+        ref = subprocess.run(["git", "rev-parse", "--abbrev-ref", "HEAD"], cwd=groupdir, capture_output=True, text=True, check=True).stdout.strip()
+        if ref != "HEAD": # not detached
+            if ref != src.get("branch"):
+                src["branch"] = ref
+            subprocess.run(["git", "pull", "--ff-only"], cwd=groupdir, check=True)
+        new = subprocess.run(["git", "rev-parse", "HEAD"], cwd=groupdir, capture_output=True, text=True, check=True).stdout.strip()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
     if new != src["rev"]:
         src["rev"] = new
