@@ -15,7 +15,6 @@ autostart = json.loads(os.environ.get("TOOLBOX_AUTOSTART", "{}"))
 keepalive = {}
 lifetime = 60 * 15 # 15min
 
-DOMAIN = os.environ["DOMAIN"]
 access_log = (access_log_path := os.getenv("TOOLBOX_ACCESS_LOG")) and open(access_log_path, 'w+')
 client_timeout = os.getenv("TOOLBOX_RATELIMIT_INTERVAL")
 clients = {}
@@ -137,13 +136,13 @@ def predict():
             if type(v) == list:
                 for i in range(len(v)):
                     if v[i].startswith("/app/label-studio/data/upload/"):
-                        v[i] = f"https://{DOMAIN}{v[i]}"
+                        v[i] = f"https://localhost:8080{v[i]}"
             elif v.startswith("/app/label-studio/data/upload/"):
-                task["data"][k] = f"https://{DOMAIN}{v}"
+                task["data"][k] = f"https://localhost:8080{v}"
     response = requests.post(f"http://localhost:{port}/predict", json=data)
     return (response.text, response.status_code, {'Content-Type': response.headers.get('Content-Type', 'text/plain')})
 
-private_host, private_port = [*DOMAIN.split(":"), "443"][:2]
+private_host, private_port = [*os.environ["DOMAIN"].split(":"), "443"][:2]
 if not private_host:
     private_host = "localhost"
 def is_private_endpoint():
