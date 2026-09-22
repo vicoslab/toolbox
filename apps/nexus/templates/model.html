@@ -36,7 +36,7 @@
     {% endif %}
     {% if params.tour|default(tour_enum.INFERENCE.value) == tour_enum.INFERENCE.value %}
     <div class="inference">
-        {% for (alias, pid) in workers.items() %}
+        {% for (alias, (pid, model)) in workers.items() %}
         <details name="workers" {% if first|default(true) %}open{% endif %}>
             {% set first = false %}
             <summary>{{ alias }}
@@ -47,7 +47,7 @@
             </summary>
             <form class="inference-tab" action="/infer/{{ alias }}">
                 <fieldset>
-                    {{ form | safe }}
+                    {{ model_manifest[model]["form"] | safe }}
                 </fieldset>
                 <div class="toolbar">
                     <div class="toolbar-left"></div>

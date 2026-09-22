@@ -384,7 +384,8 @@ def model(request: Request, model: str, manifest: str | None = None, weights: st
     if weights:
         params["weights"] = weights
 
-    workers = { inf[0]: k for (k, task) in tasks.items() if (inf := task.get(TourStep.INFERENCE)) and task["process"] is not None }
+    # alias: (pid, model)
+    workers = { inf[0]: (k, inf[1][1]) for (k, task) in tasks.items() if (inf := task.get(TourStep.INFERENCE)) and task["process"] is not None }
     now = datetime.now()
     runs = { pid: task for pid, task in tasks.items() if TourStep.TRAINING in task }
     return templates.TemplateResponse(request=request, name="model.html", context=dict(
