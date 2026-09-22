@@ -238,6 +238,17 @@
         const include = new RegExp(data.get("regex_include"));
         const exclude = new RegExp(data.get("regex_exclude") || "(?!.*)");
         const files = (preview.files || []).filter(x => x.match(include) && !x.match(exclude));
+        let common = (files[0] || "/").split("/");
+        for (const file of files) {
+            const segs = file.split("/");
+            for (let i = 0; i < common.length; i++) {
+                if (segs[i] !== common[i]) {
+                    common = common.slice(0, i);
+                    break;
+                }
+            }
+        }
+        common = common.join("/") + "/";
         const getColor = (i) => `hsl(${(25 * i) % 360} 100% 50% / 0.2)`;
         const length = files.length;
         const groupSize = Number.parseInt(form.group_size.value);
@@ -254,13 +265,15 @@
             return;
         }
         error.innerText = "";
-        preview.replaceChildren(...Array(length).keys().map(i => {
+        const header = document.createElement("h3");
+        header.innerText = common;
+        preview.replaceChildren(header, ...Array(length).keys().map(i => {
             const sampleIdx = Math.floor(i / groupSize);
             const groupIdx = i % groupSize;
             const f = document.createElement("div");
             switch (data.get("group_separation")) {
-                case "interlace": f.innerText = files[i]; break;
-                case "divide": f.innerText = files[length / groupSize * groupIdx + sampleIdx]; break;
+                case "interlace": f.innerText = files[i].substring(common.length); break;
+                case "divide": f.innerText = files[length / groupSize * groupIdx + sampleIdx].substring(common.length); break;
             }
             if (groupSize != 1) {
                 f.style.backgroundColor = getColor(sampleIdx);
