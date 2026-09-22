@@ -158,7 +158,7 @@ def create_inference_worker(model, options, alias=None):
         ["uv", "run", "gunicorn", "--bind", f":{port}", "--log-config", Path.cwd() / "worker-logging.conf", "infer:app", "--"] + flags,
         model_manifest[model]["dir"],
         f"Inference service worker for: `{model}`",
-        { "VIRTUAL_ENV": CACHE / model / ".venv" }
+        { "VIRTUAL_ENV": CACHE / model / ".venv", "LABEL_STUDIO_URL": "http://localhost:8080" }
     )
     tasks[pid][TourStep.INFERENCE] = (alias or model, (port, model))
     return pid
