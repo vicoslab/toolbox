@@ -23,7 +23,7 @@
     {% endif %}
     {% endfor %}
     <h2>Finished</h2>
-    {% for pid, task in tasks.items() %}
+    {% for pid, task in tasks.items() | reverse %}
     {% if not task.process %}
     <a href="{{ url_for_query(request, 'logs', pid=pid, **params) }}" class="task">
         {{ task.description }}

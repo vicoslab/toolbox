@@ -42,7 +42,7 @@
         </form>
         {% if tasks | length %}
         <h3>Tasks</h3>
-        {% for pid, task in tasks.items() %}
+        {% for pid, task in tasks.items() | reverse %}
         <a href="{{ url_for_query(request, 'logs', pid=pid, **params) }}" class="task">
             {{ task.description }} (ID: {{ task[tour_enum.EXPORT] }})
             {% if task.process %}

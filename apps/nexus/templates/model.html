@@ -104,7 +104,7 @@
         </div>
         {% if runs | length %}
         <h3>Tasks</h3>
-        {% for pid, task in runs.items() %}
+        {% for pid, task in runs.items() | reverse %}
         <a href="{{ url_for_query(request, 'logs', pid=pid, **params) }}" class="task">
             {{ task.description }}
             {% if task.process %}
