@@ -11,8 +11,6 @@
     <nav>
         <span class="toolbox-logo"></span>
         {% if "tour" in params %}
-        {% set newparams = dict(params) %}
-        {% set _ = newparams.pop("tour") %}
         <ul class="tour">
             {% set model = model|default(params.model) %}
             {% set train = model in model_manifest and model_manifest[model]["train"] %}
@@ -24,12 +22,12 @@
             {% elif id in [tour_enum.TRAINING.value, tour_enum.MONITORING.value, tour_enum.INFERENCE.value] and
             params.tour != id %}
             <a role="listitem" class="tour-step{{ current }}" style="display: none;"
-                href="{{ url_for_query(request, step_endpoint, tour = id, **newparams) }}"
+                href="{{ url_for_query(request, step_endpoint, params, tour = id) }}"
                 data-step-name="{{ step_name }}">{{
                 step_name }}</a>
             {% else %}
             <a role="listitem" class="tour-step{{ current }}"
-                href="{{ url_for_query(request, step_endpoint, tour = id, **newparams) }}"
+                href="{{ url_for_query(request, step_endpoint, params, tour = id) }}"
                 data-step-name="{{ step_name }}">{{
                 step_name }}</a>
             {% endif %}
@@ -43,7 +41,7 @@
         <a href="/dashboard" {% if request.endpoint=='dashboard' %}aria-current="page" {% endif %}>Experiments</a>
         <a href="/models" {% if request.endpoint=='models' %}aria-current="page" {% endif %}>Models</a>
         {% endif %}
-        <a href="{{ url_for('status').include_query_params(**params) }}" id="status">Status</a>
+        <a href="{{ url_for_query(request, 'status', params) }}" id="status">Status</a>
     </nav>
     <dialog id="confirmation" style="max-width: 512px;">
         <div class="content" style="margin-bottom: 1rem;"></div>
@@ -385,7 +383,7 @@
             if ("Training" in unlocks && "Experiments" in unlocks && "Inference" in unlocks) {
                 return;
             }
-            const { runs } = await fetch("{{ url_for_query(request, 'finish_list', **params) | safe }}").then(x => x.json());
+            const { runs } = await fetch("{{ url_for_query(request, 'finish_list', params) | safe }}").then(x => x.json());
             if (runs.length > 0) {
                 unlock("Training");
                 unlock("Experiments");

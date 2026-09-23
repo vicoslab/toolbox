@@ -456,7 +456,7 @@ async def model_infer(request: Request, model: str, alias: Optional[str]=None):
 
     if params.get("tour") == TourStep.MONITORING.value:
         params["tour"] = TourStep.INFERENCE.value
-    return TaskResponse(pid=params["pid"], logs=str(url_for_query(request, "logs", **params)))
+    return TaskResponse(pid=params["pid"], logs=str(url_for_query(request, "logs", params)))
 
 @app.post("/model/{model}/train")
 async def model_train(request: Request, model: str):
@@ -479,7 +479,7 @@ async def model_train(request: Request, model: str):
     # skip labeling steps
     if params.get("tour") == TourStep.DATASET.value:
         params["tour"] = TourStep.TRAINING.value
-    return TaskResponse(pid=pid, logs=str(url_for_query(request, "logs", **params)))
+    return TaskResponse(pid=pid, logs=str(url_for_query(request, "logs", params)))
 
 @app.post("/model/{model}/install")
 def model_install(request: Request, model: str):
@@ -498,7 +498,7 @@ def model_install(request: Request, model: str):
 
     params["model"] = model
     params["pid"] = start_task(["bash", "-c", f"./setup.sh && echo \"Finished installing '{model}'\""], model_dir, f"Installing model: `{model}`")
-    return { "pid": params["pid"], "logs": str(url_for_query(request, "logs", **params)) }
+    return { "pid": params["pid"], "logs": str(url_for_query(request, "logs", params)) }
 
 @app.post("/model/{model}/uninstall")
 def model_uninstall(model: str):
@@ -602,14 +602,14 @@ async def dataset(request: Request, data: Annotated[DatasetCreation, Form()], mo
     os.set_blocking(task["process"].stdout.fileno(), False)
 
     if id is None:
-        return RedirectResponse(url_for_query(request, "logs", pid=pid, **params), status_code=303)
+        return RedirectResponse(url_for_query(request, "logs", params, pid=pid), status_code=303)
     task[TourStep.DATASET] = id
 
     params = propagate(request.query_params)
     if params.get("tour") == TourStep.DATASET.value:
         params["tour"] = TourStep.LABELING.value
     params["project"] = id
-    return RedirectResponse(url_for_query(request, "label", **params), status_code=303)
+    return RedirectResponse(url_for_query(request, "label", params), status_code=303)
 
 class DatasetAddition(BaseModel):
     dataset: str
@@ -629,7 +629,7 @@ async def dataset_upload(request: Request, data: Annotated[DatasetAddition, Form
     pid = start_task(["uv", "run", "add.py"], "../ls-utils", f"Adding tasks to project", extra_env={ "ADDITION_REQUEST": addition })
     tasks[pid][TourStep.DATASET] = project
 
-    return RedirectResponse(url_for_query(request, "label", **params), status_code=303)
+    return RedirectResponse(url_for_query(request, "label", params), status_code=303)
 
 @app.get("/export", response_class=HTMLResponse)
 def export_get(request: Request):
@@ -655,7 +655,7 @@ def export(request: Request, model: str, export_request: ExportRequest):
     params = propagate(request.query_params)
     params["pid"] = start_task(["uv", "run", "export.py"], "../ls-utils", f"Export worker", extra_env=env)
     tasks[params["pid"]][TourStep.EXPORT] = export_request.project
-    return { "pid": params["pid"], "logs": str(url_for_query(request, "logs", **params)) }
+    return { "pid": params["pid"], "logs": str(url_for_query(request, "logs", params)) }
 
 def file_tree(path: Path):
     tree = {}
@@ -812,14 +812,14 @@ def kill(request: Request, pid: int):
         task["process"].terminate()
     params = propagate(request.query_params)
     params["pid"] = pid
-    return RedirectResponse(url_for_query(request, "logs", **params), status_code=303) # 303 changes to GET
+    return RedirectResponse(url_for_query(request, "logs", params), status_code=303) # 303 changes to GET
 
 from starlette.routing import Route
 routes = { r.name: set(r.param_convertors.keys()) for r in app.router.routes if isinstance(r, Route) }
-def url_for_query(request, route, **params):
+def url_for_query(request, route, params, **overrides):
     path, query = {}, {}
     path_params = routes.get(route, {})
-    for k, v in params.items():
+    for k, v in { **params, **overrides }.items():
         if k in path_params:
             path[k] = v
         else:

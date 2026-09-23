@@ -12,7 +12,7 @@
         information about training samples to the training procedure.
 
         If you came here from the 'Export' step, the dataset manifest should be filled in for you already. Otherwise
-        you can find past exports on the <a href="{{ url_for_query(request, 'status', **params) }}">status</a> page.
+        you can find past exports on the <a href="{{ url_for_query(request, 'status', params) }}">status</a> page.
     </p>
     <p>
         For your own dataset, you are expected to prepare a dataset manifest yourself and manually enter the path
@@ -73,14 +73,14 @@
                 <div class="model-dispatch">
                     {% if params.tour %}
                     <button id="model-inference" class="shadow"
-                        onclick="startInference(`{{ url_for_query(request, 'model_infer', **params) }}`)">Start
+                        onclick="startInference(`{{ url_for_query(request, 'model_infer', params) }}`)">Start
                         new</button>
                     <script>stage = "infer"</script>
                     {% else %}
                     <button id="model-training" class="shadow"
-                        onclick="startTraining(`{{ url_for_query(request, 'model_train', **params) }}`)">Training</button>
+                        onclick="startTraining(`{{ url_for_query(request, 'model_train', params) }}`)">Training</button>
                     <button id="model-inference" class="shadow"
-                        onclick="startInference(`{{ url_for_query(request, 'model_infer', **params) }}`)">Inference</button>
+                        onclick="startInference(`{{ url_for_query(request, 'model_infer', params) }}`)">Inference</button>
                     <script>stage = undefined</script>
                     {% endif %}
                 </div>
@@ -99,13 +99,13 @@
         </div>
         <div class="model-dispatch">
             <button id="model-training" class="shadow"
-                onclick="startTraining(`{{ url_for_query(request, 'model_train', **params) }}`)">Start
+                onclick="startTraining(`{{ url_for_query(request, 'model_train', params) }}`)">Start
                 new</button>
         </div>
         {% if runs | length %}
         <h3>Tasks</h3>
         {% for pid, task in runs.items() | reverse %}
-        <a href="{{ url_for_query(request, 'logs', pid=pid, **params) }}" class="task">
+        <a href="{{ url_for_query(request, 'logs', params, pid=pid) }}" class="task">
             {{ task.description }}
             {% if task.process %}
             {% set verb = "Started" %}
@@ -163,7 +163,7 @@
 
     (async () => {
         const setOptions = document.getElementById("set-options");
-        const { options, completions } = await fetch(`{{ url_for_query(request, 'model_options', **params) | safe }}`).then(r => r.json());
+        const { options, completions } = await fetch(`{{ url_for_query(request, 'model_options', params) | safe }}`).then(r => r.json());
         if (Object.keys(options).length > 0) {
             document.querySelector(".edit-options").style.display = "";
         }

@@ -15,20 +15,20 @@
         </p>
         <h3>Steps</h3>
         <ol>
-            {% set _ = params.update({ 'tour': tour_enum.MODEL_SELECTION.value }) %}
-            <a role="listitem" class="card" href="{{ url_for_query(request, 'models', **params) }}">
+            <a role="listitem" class="card"
+                href="{{ url_for_query(request, 'models', params, tour=tour_enum.MODEL_SELECTION.value) }}">
                 <img src="/static/icons/question.svg">
                 <h4>Model selection</h4>
                 Select a model based on your use case.
             </a>
-            {% set _ = params.update({ 'tour': tour_enum.DATASET.value }) %}
-            <a role="listitem" class="card" href="{{ url_for_query(request, 'dataset', **params) }}">
+            <a role="listitem" class="card"
+                href="{{ url_for_query(request, 'dataset', params, tour=tour_enum.DATASET.value) }}">
                 <img src="/static/icons/camera.svg">
                 <h4>Prepare dataset</h4>
                 Collect a diverse set of representative images.
             </a>
-            {% set _ = params.update({ 'tour': tour_enum.LABELING.value }) %}
-            <a role="listitem" class="card" href="{{ url_for_query(request, 'label', **params) }}">
+            <a role="listitem" class="card"
+                href="{{ url_for_query(request, 'label', params, tour=tour_enum.LABELING.value) }}">
                 <img src="/static/icons/draw.svg">
                 <h4>Annotation</h4>
                 Annotate images with labels (depending on the model, this may be a mask, points, ...). If you use
@@ -36,24 +36,22 @@
                 tools, you will need to create a file with information about the dataset (follow guidelines for your
                 selected model).
             </a>
-            {% set _ = params.update({ 'tour': tour_enum.TRAINING.value }) %}
             <a role="listitem" class="card" {% if 'model' in params
-                %}href="{{ url_for_query(request, 'model', **params) }}" {% else %} style="cursor: not-allowed;" {%
-                endif %}>
+                %}href="{{ url_for_query(request, 'model', params, tour=tour_enum.TRAINING.value) }}" {% else %}
+                style="cursor: not-allowed;" {% endif %}>
                 <img src="/static/icons/gear.svg">
                 <h4>Training</h4>
                 Train model based on your annotations to obtain weights.
             </a>
-            {% set _ = params.update({ 'tour': tour_enum.MONITORING.value }) %}
-            <a role="listitem" class="card" href="{{ url_for_query(request, 'dashboard', **params) }}">
+            <a role="listitem" class="card"
+                href="{{ url_for_query(request, 'dashboard', params, tour=tour_enum.MONITORING.value) }}">
                 <img src="/static/icons/display.svg">
                 <h4>Experiments</h4>
                 Monitor training metrics of your experiments for any issues.
             </a>
-            {% set _ = params.update({ 'tour': tour_enum.INFERENCE.value }) %}
             <a role="listitem" class="card" {% if 'model' in params
-                %}href="{{ url_for_query(request, 'model', **params) }}" {% else %} style="cursor: not-allowed;" {%
-                endif %}>
+                %}href="{{ url_for_query(request, 'model', params, tour=tour_enum.INFERENCE.value) }}" {% else %}
+                style="cursor: not-allowed;" {% endif %}>
                 <img src="/static/icons/remove.svg">
                 <h4>Evaluation</h4>
                 Run inference on unseen examples and inspect incorrect results.
@@ -64,8 +62,8 @@
                 Collect additional samples or correct annotations if necessary, and repeat previous steps to obtain new
                 weights.
             </div>
-            {% set _ = params.update({ 'tour': tour_enum.FINISH.value }) %}
-            <a role="listitem" class="card" href="{{ url_for_query(request, 'finish', **params) }}">
+            <a role="listitem" class="card"
+                href="{{ url_for_query(request, 'finish', params, tour=tour_enum.FINISH.value) }}">
                 <img src="/static/icons/download.svg">
                 <h4>Finish</h4>
                 Deploy inference worker or download annotations and training artifacts from the toolbox.

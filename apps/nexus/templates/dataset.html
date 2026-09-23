@@ -13,11 +13,10 @@
 <div class="wrapper">
     <div style="max-width: 70rem; margin:auto">
         <div style="display: flex; justify-content: center; gap: 1rem;">
-            {% set _ = params.update({"tour": tour_enum.TRAINING.value }) %}
             <a class="button shadow" onclick="externalDataset()">I have an external
                 dataset</a>
-            {% set _ = params.update({"tour": tour_enum.LABELING.value }) %}
-            <a class="button shadow" href="{{ url_for_query(request, 'label', **params) }}">I have an existing
+            <a class="button shadow"
+                href="{{ url_for_query(request, 'label', params, tour=tour_enum.LABELING.value) }}">I have an existing
                 project</a>
             {% if "project" in params %}
             <button class="shadow" onclick="showAddDialog(this.form)">Add data to
@@ -97,7 +96,7 @@
                         <button class="shadow" type="button" onclick="this.form.classList.remove('s2')">Back</button>
                         <button class="shadow create" type="submit">Create</button>
                         <button class="shadow add" type="submit"
-                            formaction="{{ url_for_query(request, 'dataset_upload', **params)}}">Upload</button>
+                            formaction="{{ url_for_query(request, 'dataset_upload', params)}}">Upload</button>
                     </div>
                 </form>
 
@@ -106,7 +105,7 @@
         {% if tasks | length %}
         <h3>Tasks</h3>
         {% for pid, task in tasks.items() %}
-        <a href="{{ url_for_query(request, 'logs', pid=pid, **params) }}" class="task">
+        <a href="{{ url_for_query(request, 'logs', params, pid=pid) }}" class="task">
             {{ task.description }}
             {% if task[tour_enum.DATASET] %}
             (ID: {{ task[tour_enum.DATASET] }})
@@ -126,7 +125,7 @@
 </div>
 <script>
     async function externalDataset() {
-        const { options, completions } = await fetch(`{{ url_for_query(request, 'model_options', **params) | safe }}`).then(r => r.json());
+        const { options, completions } = await fetch(`{{ url_for_query(request, 'model_options', params, tour=tour_enum.TRAINING.value) | safe }}`).then(r => r.json());
         for (const [k, v] of Object.entries(options)) {
             const { description, format, default_ } = v;
             if (format === "file:manifest.json") {

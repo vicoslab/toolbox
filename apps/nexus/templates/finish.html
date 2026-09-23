@@ -171,7 +171,7 @@
         Tour overview can only be shown after a dataset is created or manifest is known.
         {% else %}
         <div id="overview"></div>
-        <script async>showOverview("{{ url_for_query(request, 'finish_list', **params) | safe }}")</script>
+        <script async>showOverview("{{ url_for_query(request, 'finish_list', params) | safe }}")</script>
         {% endif %}
     </div>
 </div>

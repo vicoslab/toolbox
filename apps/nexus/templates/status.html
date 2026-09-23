@@ -16,7 +16,7 @@
     <h2>Active</h2>
     {% for pid, task in tasks.items() %}
     {% if task.process %}
-    <a href="{{ url_for_query(request, 'logs', pid=pid, **params) }}" class="task">
+    <a href="{{ url_for_query(request, 'logs', params, pid=pid) }}" class="task">
         {{ task.description }}
         <span class="timestamp">Started {{ timestamps[pid] }} ago</span>
     </a>
@@ -25,7 +25,7 @@
     <h2>Finished</h2>
     {% for pid, task in tasks.items() | reverse %}
     {% if not task.process %}
-    <a href="{{ url_for_query(request, 'logs', pid=pid, **params) }}" class="task">
+    <a href="{{ url_for_query(request, 'logs', params, pid=pid) }}" class="task">
         {{ task.description }}
         {% set verb = "Finished" if task.code == 0 else "Exited" %}
         <span class="timestamp">{{ verb }} {{ timestamps[pid] }} ago</span>
