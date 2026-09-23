@@ -38,6 +38,9 @@
                 <button class="shadow"
                     onclick="exportDataset(`{{ url_for_query(request, 'export', params) }}`, new FormData(this.form)); return false;">
                     Start export </button>
+                <a class="button shadow"
+                    href="{{ url_for_query(request, 'model', params, tour=tour_enum.TRAINING.value) }}"
+                    style="place-self: end;">Skip export</a>
             </fieldset>
         </form>
         {% if tasks | length %}
