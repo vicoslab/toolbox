@@ -12,6 +12,7 @@ import numpy as np
 from PIL import Image
 import importlib
 import site
+import xml.etree.ElementTree as ET
 
 site.addsitedir(os.environ['MODEL_FILES'])
 try:
@@ -30,6 +31,7 @@ date = datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
 # Setup export
 ls = LabelStudio(base_url='http://localhost:8080', api_key=API_KEY)
 job = ls.projects.exports.create(id = PROJECT_ID, title=f'export-{PROJECT_ID}-{date}')
+config = ET.fromstring(ls.projects.get(id = PROJECT_ID).label_config)
 
 # Poll until completed or failed
 start = time.time()
@@ -138,7 +140,7 @@ for task in j:
     elif images := task['data'].get('images'):
         item['images'] = [get_path(*im) for im in images]
         if len(task['annotations']) > 0:
-            item.update(model.export(results, EXPORT_DIR, [relpath for (_, relpath) in images], False) or {})
+            item.update(model.export(annotations=results, export_dir=EXPORT_DIR, relpaths=[relpath for (_, relpath) in images], shared=False, config=config) or {})
     
     split = split_mapping.get(task.get('split'), 'data')
     if split not in splits:
