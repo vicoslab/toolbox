@@ -154,18 +154,18 @@
         });
     }
 </script>
+<div class="tour-description" data-tour_step="export">
+    <h3>Tour: Finish</h3>
+    <p>
+        This is the end of the tour. Here is an overview of all datasets and artifacts created during the tour.
+    </p>
+    <blockquote>
+        Note: this is not the only place where you can view/download this data. Artifacts can be queried and
+        downloaded in the monitoring tab. If you have access to the deployment machine, they are also saved
+        into persistent storage there.
+    </blockquote>
+</div>
 <div class="wrapper">
-    <div class="tour-description" data-tour_step="export">
-        <h3>Tour: Finish</h3>
-        <p>
-            This is the end of the tour. Here is an overview of all datasets and artifacts created during the tour.
-        </p>
-        <blockquote>
-            Note: this is not the only place where you can view/download this data. Artifacts can be queried and
-            downloaded in the monitoring tab. If you have access to the deployment machine, they are also saved
-            into persistent storage there.
-        </blockquote>
-    </div>
     <div class="text-layout">
         {% if "model" not in params or ("manifest" not in params and "project" not in params) %}
         Tour overview can only be shown after a dataset is created or manifest is known.

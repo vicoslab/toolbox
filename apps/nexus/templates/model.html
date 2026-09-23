@@ -3,37 +3,37 @@
 {% block title %}{{ title }}{% endblock %}
 
 {% block content %}
+{% if params.tour|default(-1) == tour_enum.TRAINING.value %}
+<div class="tour-description" data-tour_step="training">
+    <h3>Tour: Training</h3>
+    <p>
+        On this page you can configure options for model training. Individual options may differ between models, so
+        you should review their descriptions by hovering over. In any case, a dataset manifest is needed to provide
+        information about training samples to the training procedure.
+
+        If you came here from the 'Export' step, the dataset manifest should be filled in for you already. Otherwise
+        you can find past exports on the <a href="{{ url_for_query(request, 'status', **params) }}">status</a> page.
+    </p>
+    <p>
+        For your own dataset, you are expected to prepare a dataset manifest yourself and manually enter the path
+        for the dataset manifest in the options. Rewiew the datasets page to check what formatting is required.
+    </p>
+</div>
+{% elif params.tour|default(-1) == tour_enum.INFERENCE.value %}
+<div class="tour-description" data-tour_step="inference">
+    <h3>Tour: Inference</h3>
+    <p>
+        The inference tab is where you start inference workers based on pretrained weights or training artifacts.
+        If you came here from the training/monitoring step, the weights may be filled in already, otherwise you need
+        to add them from the options. Then you can start the inference worker.
+        The other options are the same as with training, but are not relevant unless specified otherwise.
+
+        This is the final step. Apply the trained model and review results by uploading samples into the interface.
+        Depending on the task, interaction may be required.
+    </p>
+</div>
+{% endif %}
 <div class="model-overview wrapper">
-    {% if params.tour|default(-1) == tour_enum.TRAINING.value %}
-    <div class="tour-description" data-tour_step="training">
-        <h3>Tour: Training</h3>
-        <p>
-            On this page you can configure options for model training. Individual options may differ between models, so
-            you should review their descriptions by hovering over. In any case, a dataset manifest is needed to provide
-            information about training samples to the training procedure.
-
-            If you came here from the 'Export' step, the dataset manifest should be filled in for you already. Otherwise
-            you can find past exports on the <a href="{{ url_for_query(request, 'status', **params) }}">status</a> page.
-        </p>
-        <p>
-            For your own dataset, you are expected to prepare a dataset manifest yourself and manually enter the path
-            for the dataset manifest in the options. Rewiew the datasets page to check what formatting is required.
-        </p>
-    </div>
-    {% elif params.tour|default(-1) == tour_enum.INFERENCE.value %}
-    <div class="tour-description" data-tour_step="inference">
-        <h3>Tour: Inference</h3>
-        <p>
-            The inference tab is where you start inference workers based on pretrained weights or training artifacts.
-            If you came here from the training/monitoring step, the weights may be filled in already, otherwise you need
-            to add them from the options. Then you can start the inference worker.
-            The other options are the same as with training, but are not relevant unless specified otherwise.
-
-            This is the final step. Apply the trained model and review results by uploading samples into the interface.
-            Depending on the task, interaction may be required.
-        </p>
-    </div>
-    {% endif %}
     {% if params.tour|default(tour_enum.INFERENCE.value) == tour_enum.INFERENCE.value %}
     <div class="inference">
         {% for (alias, (pid, model)) in workers.items() %}

@@ -3,15 +3,14 @@
 {% block title %}Dataset{% endblock %}
 
 {% block content %}
+<div class="tour-description" data-tour_step="dataset">
+    <h3>Tour: Dataset</h3>
+    <p>
+        If you already have your samples annotated, use the 'external dataset' option, otherwise create a project to
+        start annotating data.
+    </p>
+</div>
 <div class="wrapper">
-
-    <div class="tour-description" data-tour_step="dataset">
-        <h3>Tour: Dataset</h3>
-        <p>
-            If you already have your samples annotated, use the 'external dataset' option, otherwise create a project to
-            start annotating data.
-        </p>
-    </div>
     <div style="max-width: 70rem; margin:auto">
         <div style="display: flex; justify-content: center; gap: 1rem;">
             {% set _ = params.update({"tour": tour_enum.TRAINING.value }) %}

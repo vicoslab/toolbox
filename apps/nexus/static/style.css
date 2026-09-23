@@ -29,6 +29,8 @@ main {
     background-color: var(--bg-primary);
     border: 1px solid var(--border);
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
     iframe {
         border-radius: inherit;
         width: 100%;
@@ -215,6 +217,7 @@ button, input[type="submit"], input[type="button"], .button {
     background-color: var(--bg-secondary);
     padding: 0.5rem 1rem;
     border: 1px solid var(--border);
+    margin: 2rem;
     margin-bottom: 0.5rem;
 
     .close {
