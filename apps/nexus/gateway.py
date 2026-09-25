@@ -199,7 +199,7 @@ def infer(alias):
     return f"""
         <!DOCTYPE html>
         <html>
-            <body>
+            <body style="background: var(--bg-primary)">
                 <form action="{alias}">
                     {form}
                     <div class="toolbar">
@@ -224,5 +224,7 @@ def infer(alias):
                     width: 100%;
                 }}
             </style>
+            <script src="/static/common.js"></script>
+            <link rel="stylesheet" href="/static/style.css"></link>
         </html>
     """
