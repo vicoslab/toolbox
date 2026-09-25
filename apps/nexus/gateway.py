@@ -201,7 +201,7 @@ def infer(alias):
         <html>
             <body style="background: var(--bg-primary)">
                 <form action="{alias}">
-                    {form}
+                    {form.replace("@ALIAS@", alias)}
                     <div class="toolbar">
                         <div class="toolbar-left"></div>
                         <div class="toolbar-right"></div>

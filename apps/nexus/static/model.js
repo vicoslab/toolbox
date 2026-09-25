@@ -46,7 +46,7 @@ class SoftReset extends HTMLElement {
         });
         form.addEventListener("infer", () => back.style.display = "");
         form.addEventListener("reset", () => back.style.display = "none");
-        document.querySelector(".toolbar-left").append(back);
+        form.querySelector(".toolbar-left").append(back);
     }
 }
 
@@ -60,6 +60,7 @@ class ImageInput extends HTMLElement {
 
     connectedCallback() {
         const shadow = this.attachShadow({ mode: "open" });
+        const form = this.internals_.form || (() => { throw new Error("Inference input must be part of a form") })();
 
         const label = document.createElement("div");
         label.style.position = "absolute";
@@ -75,7 +76,7 @@ class ImageInput extends HTMLElement {
             e.preventDefault();
             input.files = e.dataTransfer.files;
             input.dispatchEvent(new Event("change"));
-            this.internals_.form.dispatchEvent(new Event("input"));
+            form.dispatchEvent(new Event("input"));
         });
 
         if (this.hasAttribute("multiple")) {
@@ -98,18 +99,17 @@ class ImageInput extends HTMLElement {
         close.innerHTML = `<img src="/static/icons/remove.svg">`;
         close.addEventListener("click", e => {
             e.preventDefault();
-            this.internals_.form.reset();
+            form.reset();
             image.src = "";
             form.querySelector("#results").replaceChildren();
         });
-        document.querySelector(".toolbar-right").append(close);
+        form.querySelector(".toolbar-right").append(close);
 
         const overlay = document.createElement("div");
         overlay.classList.add("overlay");
         overlay.append(slot);
         wrapper.append(image, overlay);
 
-        const form = this.internals_.form || (() => { throw new Error("Inference input must be part of a form") })();
         form.addEventListener("infer", () => wrapper.classList.remove("showing")); // custom event
         form.addEventListener("softreset", () => wrapper.classList.add("showing")); // custom event
         form.addEventListener("reset", () => {
@@ -466,7 +466,7 @@ class VideoInput extends HTMLElement {
                 recorder.stop();
             }
         });
-        document.querySelector(".toolbar-right").append(close, record);
+        form.querySelector(".toolbar-right").append(close, record);
 
         // this should attempt to request and display images as fast as possible, without making excessive requests or lagging behind
         this.play = async (handler) => {
@@ -628,7 +628,8 @@ class ShowDetections extends HTMLElement {
         const tagStyle = i => `--bg-accent-default: hsl(${colors[i]} 100% 50% / 0.3); --bg-accent-hover: hsl(${colors[i]} 100% 50% / 0.6); --bg-accent-active: hsl(${colors[i]} 100% 80%);`;
         const tagStyleHidden = i => `--bg-accent-default: hsl(${colors[i]} 100% 0% / 0.3); --bg-accent-hover: hsl(${colors[i]} 100% 0% / 0.4); --bg-accent-active: hsl(${colors[i]} 100% 0% / 0.5);`;
 
-        let settingsDialog = document.getElementById(this._key);
+        const form = this.closest("form");
+        let settingsDialog = form.querySelector("#" + this._key);
         if (showSettings && !settingsDialog) {
             const { button, dialog } = settings(this._key);
             settingsDialog = dialog;
@@ -719,7 +720,7 @@ class ShowDetections extends HTMLElement {
             settingsWrapper.append(toggleWrapper, sliderLabel, slider, button_wrapper);
             dialog.append(settingsWrapper);
 
-            document.querySelector(".toolbar-right").append(button, dialog);
+            form.querySelector(".toolbar-right").append(button, dialog);
         }
 
         let labels, masks, boxes;
@@ -1015,7 +1016,8 @@ class ShowActivation extends HTMLElement {
 
         const shadow = this.attachShadow({ mode: "open" });
 
-        let settingsDialog = document.getElementById(this._key);
+        const form = this.closest("form");
+        let settingsDialog = form.querySelector("#" + this._key);
         if (!settingsDialog) {
             const { button, dialog } = settings(this._key);
             settingsDialog = dialog;
@@ -1117,7 +1119,7 @@ class ShowActivation extends HTMLElement {
 
             wrapper.append(low_label, low, high_label, high, modes_wrapper, button_wrapper);
             dialog.append(wrapper);
-            document.querySelector(".toolbar-right").append(button, dialog);
+            form.querySelector(".toolbar-right").append(button, dialog);
         }
 
         this.canvas.width = this.map.cols;

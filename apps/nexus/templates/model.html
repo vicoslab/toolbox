@@ -47,7 +47,7 @@
             </summary>
             <form class="inference-tab" action="/infer/{{ alias }}">
                 <fieldset>
-                    {{ model_manifest[model]["form"] | safe }}
+                    {{ model_manifest[model]["form"] | replace("@ALIAS@", alias) | safe }}
                 </fieldset>
                 <div class="toolbar">
                     <div class="toolbar-left"></div>
