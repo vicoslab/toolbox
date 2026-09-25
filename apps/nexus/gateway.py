@@ -9,6 +9,7 @@ import logging
 from datetime import datetime
 
 forms = {}
+model_titles = {}
 workers = {}
 projects = {}
 autostart = json.loads(os.environ.get("TOOLBOX_AUTOSTART", "{}"))
@@ -31,7 +32,9 @@ limiter = Limiter(
 )
 
 def refresh_workers():
-    forms.update({ p.parent.name: p.read_text() for p in (Path(os.environ["TOOLBOX_CACHE"]) / ".models").glob("**/ui.html") })
+    model_dir = Path(os.environ["TOOLBOX_CACHE"]) / ".models"
+    forms.update({ p.parent.name: p.read_text() for p in model_dir.rglob("ui.html") })
+    model_titles.update({ json.loads(p.read_text())["title"]: p.parent.name for p in model_dir.rglob("model.json") })
     try:
         response = requests.get("http://localhost:8079/active")
         if response.status_code == 200:
@@ -85,7 +88,7 @@ def get_region_label(regions):
         for r in region["results"]:
             for k in r["value"]:
                 if k.endswith("labels"):
-                    return r["value"][k][0]
+                    return model_titles.get(r["value"][k][0])
     return None
 
 def try_autostart(alias):
@@ -124,7 +127,6 @@ def predict():
     elif (alias := projects.get(data["project"])): pass
     else: abort(404)
 
-    alias = alias.lower()
     try_autostart(alias)
     if not (worker := workers.get(alias)):
         abort(404)

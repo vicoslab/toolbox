@@ -55,8 +55,14 @@ except Exception as e:
     save_models(models_config)
 
 model_manifest = {}
+tools = {}
+tool_categories = {
+    "rectangle": "Bounding box based",
+    "keypoint": "Keypoint based"
+}
 def refresh_manifest():
     model_manifest.clear()
+    tools.clear()
     sources = {}
     did_change = False
     for src in models_config["sources"]:
@@ -95,6 +101,13 @@ def refresh_manifest():
             else:
                 src["models"].remove(name)
                 did_change = True
+        for category, vals in src.get("tools", {}).items():
+            if category not in tool_categories:
+                print("Warning:", "skipped tool category", category)
+                continue
+            if category not in tools:
+                tools[category] = []
+            tools[category] = list(set(tools[category] + vals))
     if did_change:
         save_models(models_config)
 refresh_manifest()
@@ -259,7 +272,6 @@ if not app.debug:
 @app.get("/models", response_class=HTMLResponse)
 def models(request: Request):
     groups = {}
-    installed = []
     for group in models_config["sources"]:
         installed = []
         available = {}
@@ -271,7 +283,7 @@ def models(request: Request):
         if rev := group.get("rev"): # make sure we can manage models even if rev is borked
             rev = rev[:7]
         groups[(group["group"], group["owner"])] = rev, installed, available
-    return templates.TemplateResponse(request=request, name="models.html", context=dict(groups=groups, installed=installed, params=propagate(request.query_params)))
+    return templates.TemplateResponse(request=request, name="models.html", context=dict(groups=groups, params=propagate(request.query_params)))
 
 class ModelGroup(BaseModel):
     owner: str
@@ -327,6 +339,7 @@ def models_remove(group_info: ModelGroup):
 
 class ModelGroupDefinition(ModelGroup):
     models: List[str]
+    tools: Optional[dict[str, List[str]]] = None
     url: AnyHttpUrl
 @app.post("/models/add")
 def models_add(data: List[ModelGroupDefinition]):
@@ -524,7 +537,8 @@ def dataset_get(request: Request, model: str):
     now = datetime.now()
     old = { pid: task for pid, task in tasks.items() if TourStep.DATASET in task }
 
-    return templates.TemplateResponse(request=request, name="dataset.html", context=dict(now=now, tasks=old, **model_manifest[model], params=propagate(request.query_params)))
+    tools_installed = { (category, tool_categories[category]): [(val, model_manifest[val]["title"], (CACHE / val).exists()) for val in vals] for category, vals in tools.items() if vals }
+    return templates.TemplateResponse(request=request, name="dataset.html", context=dict(now=now, tasks=old, tools=tools_installed, **model_manifest[model], params=propagate(request.query_params)))
 
 @app.post("/dataset/external")
 async def dataset_from_upload(request: Request, file: Annotated[UploadFile, File()]):
@@ -570,6 +584,7 @@ class DatasetCreation(BaseModel):
     group_separation: str
     regex_include: str
     regex_exclude: str
+    tools: Optional[str] = None
     files: Optional[list[UploadFile]] = []
 
 @app.post("/dataset", response_class=HTMLResponse)
@@ -586,6 +601,7 @@ async def dataset(request: Request, data: Annotated[DatasetCreation, Form()], mo
         await receive_files(dataset, data.files)
 
     data_dict = data.model_dump()
+    data_dict["tools"] = json.loads(data.tools or '{}')
     del data_dict["files"]
     env = { "MODEL_DIR": model_manifest[model]["dir"], "CREATION_REQUEST": json.dumps(data_dict) }
     pid = start_task(["uv", "run", "create.py"], "../ls-utils", f"Project creation", extra_env=env, blocking=True)

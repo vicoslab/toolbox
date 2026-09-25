@@ -17,6 +17,31 @@ if not config_file.exists():
 with open(config_file) as f:
     config = yaml.safe_load(f)['config']
 
+tools = request.get('tools') or {}
+tools_config = []
+
+if smtoolsline := next((line for line in config.split('\n') if '@SMART_TOOLS@' in line), None):
+    lspace = smtoolsline[:smtoolsline.index('@SMART_TOOLS@')]
+
+    i = 0
+    print('tools', tools, flush=True)
+    if items := tools.get('rectangle'):
+        tools_config.append('<Header size="5" value="Bounding box based models that return segmentations of instances similar to selected region." />')
+        tools_config.append('<RectangleLabels name="toolbox-tools-bbox" toName="image" smartOnly="true">')
+        for item in items:
+            tools_config.append(f'\t<Label value="{item}" hotkey=" "/>')
+            i += 1
+        tools_config.append('</RectangleLabels>')
+    if items := tools.get('keypoint'):
+        tools_config.append('<Header size="5" value="Keypoint based segmentation assistance. Hold down alt (or option) for negative examples." />')
+        tools_config.append('<KeypointLabels name="toolbox-tools-keypoint" toName="image" smartOnly="true" dynamic="true">')
+        for item in items:
+            tools_config.append(f'\t<Label value="{item}" hotkey=" "/>')
+            i += 1
+        tools_config.append('</KeypointLabels>')
+
+    config = config.replace('@SMART_TOOLS@', ('\n' + lspace).join(tools_config))
+
 ls = LabelStudio(base_url='http://localhost:8080', api_key=API_KEY)
 size = request['group_size']
 

@@ -94,14 +94,40 @@
                     </div>
                     <div class="stage2">
                         <button class="shadow" type="button" onclick="this.form.classList.remove('s2')">Back</button>
-                        <button class="shadow create" type="submit">Create</button>
-                        <button class="shadow add" type="submit"
+                        <input type="hidden" name="tools">
+                        <button class="shadow create" onclick="addTools(this.form)" type="submit">Create</button>
+                        <button class="shadow add" onclick="addTools(this.form)" type="submit"
                             formaction="{{ url_for_query(request, 'dataset_upload', params)}}">Upload</button>
                     </div>
                 </form>
 
             </dialog>
         </div>
+        {% if tools %}
+        <h3>Tools</h3>
+        <ul style="list-style: none;" id="toolbox-tools">
+            {% for (category, category_title), items in tools.items() %}
+            <li data-category="{{ category }}">
+                <h4 style="font-weight: 500;">{{ category_title }}</h4>
+                {% for (name, title, installed) in items %}
+                {% if installed %}
+                <label class="tool button">
+                    <input type="checkbox" name="{{ title }}" checked>
+                    {{ title }}
+                </label>
+                {% else %}
+                <label class="tool button"
+                    onclick="install(`{{ url_for_query(request, 'model_install', params, model=name) }}`, `{{ name }}`);"
+                    title="Click to install model">
+                    <input type="checkbox" name="{{ title }}" disabled>
+                    {{ title }}
+                </label>
+                {% endif %}
+                {% endfor %}
+            </li>
+            {% endfor %}
+        </ul>
+        {% endif %}
         {% if tasks | length %}
         <h3>Tasks</h3>
         {% for pid, task in tasks.items() %}
@@ -124,6 +150,26 @@
     </div>
 </div>
 <script>
+    function addTools(form) {
+        const wrapper = document.getElementById("toolbox-tools");
+        if (!wrapper) {
+            form.tools.value = null;
+            return;
+        }
+        const tools = {};
+        for (const el of wrapper.children) {
+            tools[el.dataset.category] = [...el.querySelectorAll("input")].filter(x => x.checked).map(model => model.name);
+        }
+        form.tools.value = JSON.stringify(tools);
+    }
+    function install(url, name) {
+        const i = document.createElement("i");
+        i.innerText = name;
+        showModal("Install model ", i, " ?").then(async () => {
+            const { pid, logs } = await fetch(url, { method: "post" }).then(r => r.json());
+            showToastForLogs(pid, "Model installation started.", logs).then(toast => toast.keepAlive = true);
+        }).catch(() => { });
+    }
     async function externalDataset() {
         const { options, completions } = await fetch(`{{ url_for_query(request, 'model_options', params, tour=tour_enum.TRAINING.value) | safe }}`).then(r => r.json());
         for (const [k, v] of Object.entries(options)) {
@@ -443,6 +489,46 @@
 
     .s2>.stage-panels>:first-child {
         margin-left: -100%;
+    }
+
+    .tool {
+        position: relative;
+        padding-left: 1.5rem;
+        display: inline-block;
+        margin: 0 0.5rem 0.5rem 0.5rem;
+        font-weight: 500;
+
+        input {
+            appearance: none;
+        }
+
+        &:has(input:checked) {
+            background-color: oklch(72.3% 0.219 149.579 / 0.2);
+
+            &::before {
+                content: "✓";
+                font-size: x-large;
+                position: absolute;
+                inset: 0;
+                left: 0.5rem;
+                right: unset;
+                color: limegreen
+            }
+        }
+
+        &:has(input:disabled) {
+            background-color: var(--bg-muted);
+
+            &::before {
+                content: "";
+                position: absolute;
+                inset: 0;
+                right: unset;
+                width: 2rem;
+                background: center no-repeat url("/static/icons/download.svg");
+                background-size: 80%;
+            }
+        }
     }
 
     .stage-panels {
