@@ -130,7 +130,7 @@
                 actions.append(action);
             }
         }
-        function showToastForLogs(pid, message, url = undefined) {
+        function showToastForLogs({ pid, message, url, onFinish }) {
             const eventSource = new EventSource(`/task/logs/${pid}/stream`);
             const lines = document.createElement("pre");
             lines.style.textOverflow = "ellipsis";
@@ -172,6 +172,11 @@
                 last.innerText = JSON.parse(e.data);
                 lines.append(last);
             });
+            eventSource.addEventListener("eof", e => {
+                if (onFinish) {
+                    onFinish();
+                }
+            });
 
             return showToast("info", message, wrap, actions);
         }
@@ -180,7 +185,7 @@
             const toasts = JSON.parse(localStorage.getItem(toasts_key) || "{}");
             localStorage.setItem(toasts_key, "{}");
             for (const [pid, message] of Object.entries(toasts)) {
-                showToastForLogs(pid, message);
+                showToastForLogs({ pid, message });
             }
         }
 

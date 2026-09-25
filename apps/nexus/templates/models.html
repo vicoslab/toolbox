@@ -140,8 +140,8 @@
         const i = document.createElement("i");
         i.innerText = name;
         showModal("Install model ", i, " ?").then(async () => {
-            const { pid, logs } = await fetch(url, { method: "post" }).then(r => r.json());
-            showToastForLogs(pid, "Model installation started.", logs).then(toast => toast.keepAlive = true);
+            const { pid, url: logs } = await fetch(url, { method: "post" }).then(r => r.json());
+            showToastForLogs({ pid, message: "Model installation started.", url, onFinish: () => location.reload() }).then(toast => toast.keepAlive = true);
         }).catch(() => { });
     }
 </script>

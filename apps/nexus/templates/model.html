@@ -135,7 +135,7 @@
     function stopWorker(el, pid) {
         el.parentElement.parentElement.style.backgroundColor = "var(--bg-muted)";
         el.remove();
-        fetch(`/task/stop/${pid}`, { method: "POST" }).then(() => showToastForLogs(pid, "Worker is shutting down"));
+        fetch(`/task/stop/${pid}`, { method: "POST" }).then(() => showToastForLogs({ pid, message: "Worker is shutting down" }));
     }
     function startTraining(url) {
         const updated = JSON.stringify(values);
