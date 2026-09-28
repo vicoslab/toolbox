@@ -1,0 +1,27 @@
+diff --git a/label_studio/core/settings/base.py b/label_studio/core/settings/base.py
+index 3f47a5251..95c0c2f14 100644
+--- a/label_studio/core/settings/base.py
++++ b/label_studio/core/settings/base.py
+@@ -589,7 +589,7 @@ PREDICTION_IMPORT_BATCH_SIZE = int(get_env('PREDICTION_IMPORT_BATCH_SIZE', 500))
+ PROJECT_TITLE_MIN_LEN = 3
+ PROJECT_TITLE_MAX_LEN = 50
+ LOGIN_REDIRECT_URL = '/'
+-LOGIN_URL = '/user/login/'
++LOGIN_URL = locals().get('FORCE_SCRIPT_NAME', '') + '/user/login/'
+ 
+ MIN_GROUND_TRUTH = 10
+ DATA_UNDEFINED_NAME = '$undefined$'
+diff --git a/label_studio/users/views.py b/label_studio/users/views.py
+index e819bb966..aba875d09 100644
+--- a/label_studio/users/views.py
++++ b/label_studio/users/views.py
+@@ -124,6 +124,9 @@ def user_login(request):
+         else:
+             next_page = reverse('projects:project-index')
+ 
++    if next_page.startswith('/') and (SCRIPT_NAME := getattr(settings, 'FORCE_SCRIPT_NAME', None)) and not next_page.startswith(SCRIPT_NAME):
++        next_page = SCRIPT_NAME + next_page
++
+     login_form = load_func(settings.USER_LOGIN_FORM)
+     form = login_form()
+ 
