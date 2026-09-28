@@ -105,27 +105,64 @@
         </div>
         {% if tools %}
         <h3>Tools</h3>
-        <ul style="list-style: none;" id="toolbox-tools">
-            {% for (category, category_title), items in tools.items() %}
-            <li data-category="{{ category }}">
-                <h4 style="font-weight: 500;">{{ category_title }}</h4>
-                {% for (name, title, installed) in items %}
-                {% if installed %}
-                <label class="tool button">
-                    <input type="checkbox" name="{{ title }}" checked>
-                    {{ title }}
-                </label>
-                {% else %}
-                <label class="tool button"
-                    onclick="install(`{{ url_for_query(request, 'model_install', params, model=name) }}`, `{{ name }}`);"
-                    title="Click to install model">
-                    <input type="checkbox" name="{{ title }}" disabled>
-                    {{ title }}
-                </label>
-                {% endif %}
-                {% endfor %}
+        <ul class="tool-list" id="toolbox-tools">
+            {% if "rectangle" in tools %}
+            <li data-category="rectangle" class="tool-category">
+                <div class="tool-inner">
+                    <h4 style="font-weight: 500;">Bounding box based</h4>
+                    {% for (name, title, installed) in tools["rectangle"] %}
+                    {% if installed %}
+                    <label class="tool button">
+                        <input type="checkbox" name="{{ title }}" checked>
+                        {{ title }}
+                    </label>
+                    {% else %}
+                    <label class="tool button"
+                        onclick="install(`{{ url_for_query(request, 'model_install', params, model=name) }}`, `{{ name }}`);"
+                        title="Click to install model">
+                        <input type="checkbox" name="{{ title }}" disabled>
+                        {{ title }}
+                    </label>
+                    {% endif %}
+                    {% endfor %}
+                </div>
+                <div class="tool-info">
+                    <strong style="display: block; margin-bottom: 0.5rem;">Bounding box based tools</strong>
+                    require you to draw a rectangle around your target, and may return
+                    annotation suggestions such as segmentation masks.
+                    <img src="/static/content/tools/rectangle.png">
+                </div>
             </li>
-            {% endfor %}
+            {% endif %}
+            {% if "keypoint" in tools %}
+            <li data-category="keypoint" class="tool-category">
+                <div class="tool-inner">
+                    <h4 style="font-weight: 500;">Keypoint based</h4>
+                    {% for (name, title, installed) in tools["keypoint"] %}
+                    {% if installed %}
+                    <label class="tool button">
+                        <input type="checkbox" name="{{ title }}" checked>
+                        {{ title }}
+                    </label>
+                    {% else %}
+                    <label class="tool button"
+                        onclick="install(`{{ url_for_query(request, 'model_install', params, model=name) }}`, `{{ name }}`);"
+                        title="Click to install model">
+                        <input type="checkbox" name="{{ title }}" disabled>
+                        {{ title }}
+                    </label>
+                    {% endif %}
+                    {% endfor %}
+                </div>
+                <div class="tool-info">
+                    <strong style="display: block; margin-bottom: 0.5rem;">Keypoint based tools</strong>
+                    require you to place one or more keypoints on your target, and may return annotation
+                    suggestions such as segmentation masks. Negative keypoints can be added by holding the alt (or
+                    option) key when placing.
+                    <img src="/static/content/tools/keypoint.png">
+                </div>
+            </li>
+            {% endif %}
         </ul>
         {% endif %}
         {% if tasks | length %}
@@ -489,6 +526,48 @@
 
     .s2>.stage-panels>:first-child {
         margin-left: -100%;
+    }
+
+    .tool-list {
+        list-style: none;
+        position: relative;
+    }
+
+    .tool-category {
+        display: flex;
+        justify-content: space-between;
+        max-width: calc(100% - 35rem);
+        border: 1px solid transparent;
+
+        &:hover {
+            border-color: var(--border);
+
+            .tool-info {
+                display: block;
+            }
+        }
+    }
+
+    .tool-inner {
+        position: relative;
+        padding: 0rem 1rem 0.5rem 1rem;
+        width: 100%;
+    }
+
+    .tool-info {
+        display: none;
+        max-width: 30rem;
+        position: absolute;
+        top: 0;
+        right: 0;
+        padding: 0.5rem;
+
+        img {
+            width: 75%;
+            display: block;
+            margin: auto;
+            margin-top: 0.5rem;
+        }
     }
 
     .tool {

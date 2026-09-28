@@ -55,11 +55,9 @@ except Exception as e:
     save_models(models_config)
 
 model_manifest = {}
+# category -> [model id]
+# categories right now are 'keypoint' and 'rectangle'
 tools = {}
-tool_categories = {
-    "rectangle": "Bounding box based",
-    "keypoint": "Keypoint based"
-}
 def refresh_manifest():
     model_manifest.clear()
     tools.clear()
@@ -102,9 +100,6 @@ def refresh_manifest():
                 src["models"].remove(name)
                 did_change = True
         for category, vals in src.get("tools", {}).items():
-            if category not in tool_categories:
-                print("Warning:", "skipped tool category", category)
-                continue
             if category not in tools:
                 tools[category] = []
             tools[category] = list(set(tools[category] + vals))
@@ -537,7 +532,7 @@ def dataset_get(request: Request, model: str):
     now = datetime.now()
     old = { pid: task for pid, task in tasks.items() if TourStep.DATASET in task }
 
-    tools_installed = { (category, tool_categories[category]): [(val, model_manifest[val]["title"], (CACHE / val).exists()) for val in vals] for category, vals in tools.items() if vals }
+    tools_installed = { category: [(val, model_manifest[val]["title"], (CACHE / val).exists()) for val in vals] for category, vals in tools.items() if vals }
     return templates.TemplateResponse(request=request, name="dataset.html", context=dict(now=now, tasks=old, tools=tools_installed, **model_manifest[model], params=propagate(request.query_params)))
 
 @app.post("/dataset/external")
