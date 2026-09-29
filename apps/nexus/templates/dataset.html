@@ -127,10 +127,12 @@
                     {% endfor %}
                 </div>
                 <div class="tool-info">
-                    <strong style="display: block; margin-bottom: 0.5rem;">Bounding box based tools</strong>
-                    require you to draw a rectangle around your target, and may return
-                    annotation suggestions such as segmentation masks.
                     <img src="/static/content/tools/rectangle.png">
+                    <p>
+                        <strong style="display: block; margin-bottom: 0.5rem;">Bounding box based tools</strong>
+                        require you to draw a rectangle around your target, and may return
+                        annotation suggestions such as segmentation masks.
+                    </p>
                 </div>
             </li>
             {% endif %}
@@ -155,11 +157,13 @@
                     {% endfor %}
                 </div>
                 <div class="tool-info">
-                    <strong style="display: block; margin-bottom: 0.5rem;">Keypoint based tools</strong>
-                    require you to place one or more keypoints on your target, and may return annotation
-                    suggestions such as segmentation masks. Negative keypoints can be added by holding the alt (or
-                    option) key when placing.
                     <img src="/static/content/tools/keypoint.png">
+                    <p>
+                        <strong style="display: block; margin-bottom: 0.5rem;">Keypoint based tools</strong>
+                        require you to place one or more keypoints on your target, and may return annotation
+                        suggestions such as segmentation masks. Negative keypoints can be added by holding the alt (or
+                        option) key when placing.
+                    </p>
                 </div>
             </li>
             {% endif %}
@@ -545,14 +549,14 @@
     .tool-category {
         display: flex;
         justify-content: space-between;
-        max-width: calc(100% - 35rem);
+        max-width: 48%;
         border: 1px solid transparent;
 
         &:hover {
             border-color: var(--border);
 
             .tool-info {
-                display: block;
+                display: flex;
             }
         }
     }
@@ -565,17 +569,17 @@
 
     .tool-info {
         display: none;
-        max-width: 30rem;
+        max-width: 48%;
         position: absolute;
         top: 0;
         right: 0;
         padding: 0.5rem;
 
         img {
-            width: 75%;
-            display: block;
-            margin: auto;
-            margin-top: 0.5rem;
+            float: left;
+            max-width: 35%;
+            margin: 1rem;
+            object-fit: contain;
         }
     }
 
