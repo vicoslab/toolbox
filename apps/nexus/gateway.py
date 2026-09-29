@@ -143,7 +143,7 @@ def predict():
             else:
                 if v.startswith("/app/label-studio/data/upload/"):
                     task["data"][k] = f"http://localhost:8080{v}"
-                task["data"][k].replace(os.environ["LABEL_STUDIO_HOST"], "http://localhost:8080")
+                task["data"][k] = task["data"][k].replace(os.environ["LABEL_STUDIO_HOST"], "http://localhost:8080")
     response = requests.post(f"http://localhost:{port}/predict", json=data)
     return (response.text, response.status_code, {'Content-Type': response.headers.get('Content-Type', 'text/plain')})
 
