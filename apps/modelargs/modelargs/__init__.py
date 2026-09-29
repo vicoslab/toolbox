@@ -42,9 +42,14 @@ def parse(schema):
             elif v['type'] == 'string':
                 pass
             elif v['type'] == 'boolean':
-                def err():
-                    raise ValueError(f'Invalid boolean value for property `{k}`')
-                args['type'] = lambda x: x == 'true' or not x == 'false' or err()
+                def boolean(x):
+                    if x in ('true', 'True'):
+                        return True
+                    elif x in ('false', 'False'):
+                        return False
+                    else:
+                        raise ValueError(f'Invalid boolean value for property `{k}`')
+                args['type'] = boolean
             else:
                 raise ValueError(f'Property `{k}` has unexpected type: {v["type"]}`')
 
