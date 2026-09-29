@@ -99,7 +99,8 @@ def refresh_manifest():
             else:
                 src["models"].remove(name)
                 did_change = True
-        for category, vals in src.get("tools", {}).items():
+        # src may contain tools = null, which should be tolerated
+        for category, vals in (src.get("tools") or {}).items():
             if category not in tools:
                 tools[category] = []
             tools[category] = list(set(tools[category] + vals))
@@ -342,6 +343,8 @@ def models_add(data: List[ModelGroupDefinition]):
         defs = dict(defs)
         if defs["branch"] is None:
             del defs["branch"]
+        if defs["tools"] is None:
+            del defs["tools"]
         defs["url"] = str(defs["url"])
         if defs not in models_config["sources"]:
             models_config["sources"].append(defs)
