@@ -155,9 +155,9 @@ def is_private_endpoint():
     return private_host == req_host and private_port == req_port
 
 # PUBLIC :: ui endpoint and proxy for individual models
+# @limiter.limit("1 per 5 seconds", methods=["POST"], exempt_when=is_private_endpoint)
+# @limiter.limit("100 per day", methods=["POST"], exempt_when=is_private_endpoint)
 @app.route("/infer/<alias>", methods=["GET", "POST"])
-@limiter.limit("1 per 5 seconds", methods=["POST"], exempt_when=is_private_endpoint)
-@limiter.limit("100 per day", methods=["POST"], exempt_when=is_private_endpoint)
 def infer(alias):
     if app.debug:
         refresh_workers()
