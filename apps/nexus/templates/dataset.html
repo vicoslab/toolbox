@@ -316,8 +316,18 @@
     }
     function updatePreview(form) {
         const data = new FormData(form);
-        const include = new RegExp(data.get("regex_include"));
-        const exclude = new RegExp(data.get("regex_exclude") || "(?!.*)");
+        const error = form.querySelector(".error");
+        const reg = (pattern) => {
+            try {
+                return new RegExp(pattern);
+            } catch (e) {
+                error.innerText = "Invalid regex pattern for file inclusion/exclusion.";
+                return null;
+            }
+        };
+        const include = reg(data.get("regex_include"));
+        const exclude = reg(data.get("regex_exclude") || "(?!.*)");
+        if (include === null || exclude === null) return;
         const files = (preview.files || []).filter(x => x.match(include) && !x.match(exclude));
         let common = (files[0] || "/").split("/");
         for (const file of files) {
@@ -334,7 +344,6 @@
         const length = files.length;
         const groupSize = Number.parseInt(form.group_size.value);
         const style = manageProject.querySelector("style");
-        const error = form.querySelector(".error");
         if (length % groupSize != 0) {
             style.innerText = "";
             preview.replaceChildren(...files.map((x, i) => {
