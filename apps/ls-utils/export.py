@@ -136,7 +136,7 @@ for task in j:
         source, relpath = image
         item['image_path'] = get_path(source, relpath)
         if len(task['annotations']) > 0:
-            item.update(model.export(results, EXPORT_DIR, [relpath], False) or {})
+            item.update(model.export(annotations=results, export_dir=EXPORT_DIR, relpaths=[relpath], shared=False, config=config) or {})
     elif images := task['data'].get('images'):
         item['images'] = [get_path(*im) for im in images]
         if len(task['annotations']) > 0:
