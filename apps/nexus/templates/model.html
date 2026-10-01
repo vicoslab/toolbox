@@ -131,13 +131,26 @@
     const key = `toolbox-model-${model}`;
     const values = JSON.parse(localStorage.getItem(key) || "{}");
     const values_display = {};
+    let options, completions;
 
     function stopWorker(el, pid) {
         el.parentElement.parentElement.style.backgroundColor = "var(--bg-muted)";
         el.remove();
         fetch(`/task/stop/${pid}`, { method: "POST" }).then(() => showToastForLogs({ pid, message: "Worker is shutting down" }));
     }
+    function checkRequiredOptions() {
+        if (stage !== undefined) {
+            for (const [k, v] of Object.entries(options)) {
+                if (v.required?.includes(stage) && !(k in values)) {
+                    showToast("error", `Missing required option '${v.title}'`);
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
     function startTraining(url) {
+        if (!checkRequiredOptions()) return;
         const updated = JSON.stringify(values);
         localStorage.setItem(key, updated);
         fetch(url, { body: updated, method: "POST", headers: { "Content-Type": "application/json" } }).then(r => r.json()).then(({ pid, logs }) => {
@@ -145,6 +158,7 @@
         });
     }
     function startInference(url) {
+        if (!checkRequiredOptions()) return;
         fetch(url, { body: JSON.stringify(values), method: "POST", headers: { "Content-Type": "application/json" } }).then(async r => {
             switch (r.status) {
                 case 200: {
@@ -163,7 +177,7 @@
 
     (async () => {
         const setOptions = document.getElementById("set-options");
-        const { options, completions } = await fetch(`{{ url_for_query(request, 'model_options', params) | safe }}`).then(r => r.json());
+        ({ options, completions } = await fetch(`{{ url_for_query(request, 'model_options', params) | safe }}`).then(r => r.json()));
         if (Object.keys(options).length > 0) {
             document.querySelector(".edit-options").style.display = "";
         }

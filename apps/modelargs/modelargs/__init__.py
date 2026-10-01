@@ -2,7 +2,7 @@ import argparse
 import json
 import sys
 
-def parse(schema):
+def parse(schema, stage=None):
     with open(schema) as f:
         j = json.load(f)
     
@@ -32,6 +32,9 @@ def parse(schema):
             args['choices'] = choices
             if len(choices) > 0 and type(choices[0]) == int:
                 args['type'] = int
+
+        if required := v.get('required') and stage in required:
+            args['required'] = True
         else:
             if 'type' not in v:
                 raise ValueError(f'Invalid model schema: property `{k}` missing attribute `type`')
