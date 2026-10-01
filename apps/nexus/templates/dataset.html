@@ -343,7 +343,7 @@
                 }
             }
         }
-        common = common.join("/") + "/";
+        common = common.join("/");
         const getColor = (i) => `hsl(${(25 * i) % 360} 100% 50% / 0.2)`;
         const length = files.length;
         const groupSize = Number.parseInt(form.group_size.value);
@@ -360,7 +360,7 @@
         }
         error.innerText = "";
         const header = document.createElement("h3");
-        header.innerText = common;
+        header.innerText = common + "/";
         preview.replaceChildren(header, ...Array(length).keys().map(i => {
             const sampleIdx = Math.floor(i / groupSize);
             const groupIdx = i % groupSize;
