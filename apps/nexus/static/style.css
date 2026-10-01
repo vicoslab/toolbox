@@ -378,6 +378,10 @@ dialog {
         background-color: var(--fg-secondary);
         color: var(--bg-primary);
     }
+    .line {
+        max-width: 100%;
+        text-wrap: wrap;
+    }
 }
 
 .task {
