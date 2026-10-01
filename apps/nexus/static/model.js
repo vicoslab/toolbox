@@ -6,12 +6,23 @@ async function makeRequest(form, action, dispatch = true) {
         const response = await fetch(form.action, {
             method: "POST",
             body: formData,
-        }).then(x => x.json());
+        });
+        switch (response.status) {
+            case 200: break;
+            case 404:
+                showToast("error", "Inference worker not running. Start one or check for errors in logs.");
+                load?.remove();
+                return;
+            default:
+                showToast("error", "Unknown error occured.");
+                load?.remove();
+                return;
+        }
         if (dispatch) {
             form.dispatchEvent(new Event("infer"));
             load?.remove();
         }
-        let elems = action(formData, response);
+        let elems = action(formData, await response.json());
         if (elems instanceof Promise) {
             elems = await elems;
         }
