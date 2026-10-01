@@ -90,8 +90,8 @@
         input.replaceWith(select);
     })();
     async function exportDataset(url, data) {
-        const { pid, url: logs } = await fetch(url, { body: JSON.stringify(Object.fromEntries(data)), method: "POST", headers: { "Content-Type": "application/json" } }).then(r => r.json());
-        showToastForLogs({ pid, message: "Dataset export started.", url }).then(toast => toast.keepAlive = true);
+        const { pid, logs } = await fetch(url, { body: JSON.stringify(Object.fromEntries(data)), method: "POST", headers: { "Content-Type": "application/json" } }).then(r => r.json());
+        showToastForLogs({ pid, message: "Dataset export started.", url: logs }).then(toast => toast.keepAlive = true);
     }
 </script>
 {% endblock %}
