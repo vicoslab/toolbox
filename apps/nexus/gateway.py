@@ -19,7 +19,7 @@ lifetime = 60 * 15 # 15min
 access_log = None
 if access_log_path := os.getenv("TOOLBOX_ACCESS_LOG"):
     access_log_path = Path(access_log_path)
-    access_log_path.parent.mkdir(parents=True)
+    access_log_path.parent.mkdir(parents=True, exist_ok=True)
     access_log = access_log_path.open(mode='w+')
 client_timeout = os.getenv("TOOLBOX_RATELIMIT_INTERVAL")
 clients = {}
