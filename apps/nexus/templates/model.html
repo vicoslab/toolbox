@@ -309,11 +309,21 @@
                     break;
                 }
                 case "boolean": {
-                    const input = document.createElement("input");
-                    input.name = k;
-                    input.type = "checkbox";
-                    input.checked = values[k] || ("default" in prop);
-                    showModal(title, description, input).then(() => setValue(k, input.checked)).catch(() => { });
+                    const radio_yes = document.createElement("input");
+                    radio_yes.name = k;
+                    radio_yes.type = "radio";
+                    radio_yes.checked = !!(values[k] || prop.default);
+                    const radio_yes_label = document.createElement("label");
+                    radio_yes_label.append(radio_yes, "true");
+
+                    const radio_no = document.createElement("input");
+                    radio_no.name = k;
+                    radio_no.type = "radio";
+                    radio_no.checked = !(values[k] || prop.default);
+                    const radio_no_label = document.createElement("label");
+                    radio_no_label.append(radio_no, "false");
+
+                    showModal(title, description, radio_yes_label, radio_no_label).then(() => setValue(k, radio_yes.checked === true)).catch(() => { });
                     break;
                 }
                 case "number":
