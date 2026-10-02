@@ -326,14 +326,14 @@
                     const radio_yes = document.createElement("input");
                     radio_yes.name = k;
                     radio_yes.type = "radio";
-                    radio_yes.checked = !!(values[k] || prop.default);
+                    radio_yes.checked = !!(values[k] ?? prop.default ?? false);
                     const radio_yes_label = document.createElement("label");
                     radio_yes_label.append(radio_yes, "true");
 
                     const radio_no = document.createElement("input");
                     radio_no.name = k;
                     radio_no.type = "radio";
-                    radio_no.checked = !(values[k] || prop.default);
+                    radio_no.checked = !(values[k] ?? prop.default ?? false);
                     const radio_no_label = document.createElement("label");
                     radio_no_label.append(radio_no, "false");
 
