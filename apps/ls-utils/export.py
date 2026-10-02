@@ -131,7 +131,7 @@ split_mapping = {
 splits = {}
 for task in j:
     item = {}
-    results = [x['result'] for x in task['annotations']]
+    results = ([x['result'] for x in task['annotations']] + [None])[0]
     if image := task['data'].get('image'):
         source, relpath = image
         item['image_path'] = get_path(source, relpath)
@@ -141,8 +141,12 @@ for task in j:
         item['images'] = [get_path(*im) for im in images]
         if len(task['annotations']) > 0:
             item.update(model.export(annotations=results, export_dir=EXPORT_DIR, relpaths=[relpath for (_, relpath) in images], shared=False, config=config) or {})
-    
-    split = split_mapping.get(task.get('split'), 'data')
+
+    split = 'data'    
+    for tag in results or []:
+        if tag['type'] == 'choices' and tag['from_name'] == 'split' and \
+            (selected := split_mapping.get(tag['value']['choices'][0])):
+            split = selected
     if split not in splits:
         splits[split] = []
     splits[split].append(item)
