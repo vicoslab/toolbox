@@ -80,7 +80,8 @@ if (dataset := request['dataset']) and (dataset := Path(dataset)).exists():
         tasks = list(map(lambda x: { 'images': list(x) }, zip(*[files[i:i+block_size] for i in range(0, len(files), block_size)])))
     else:
         raise ValueError('Group separation has invalid value')
-    ls.projects.import_tasks(id=project.id, request=[{"data": task} for task in tasks])
+    if tasks:
+        ls.projects.import_tasks(id=project.id, request=[{"data": task} for task in tasks])
     (dataset / 'groups.json').write_text(json.dumps({ 'group_size': size, 'regex_include': request['regex_include'], 'regex_exclude': request['regex_exclude'] }))
 
 extra = dict(model=MODEL_DIR.name, project=project.id)

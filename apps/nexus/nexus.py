@@ -563,7 +563,6 @@ async def dataset_from_upload(request: Request, file: Annotated[UploadFile, File
                 raise HTTPException(status_code=400, detail=f"Uploaded archive doesn't contain a manifest")
 
 async def receive_files(base_dir: Path, files: list[UploadFile]):
-    base_dir.mkdir()
     for file in files:
         try:
             contents = await file.read()
@@ -592,9 +591,12 @@ async def dataset(request: Request, data: Annotated[DatasetCreation, Form()], mo
         raise HTTPException(status_code=404, detail="Model is not installed")
 
     dataset = Path(data.dataset)
+    if not dataset.is_relative_to(DATASET_DIR):
+        raise HTTPException(status_code=400, detail=f"Cannot place dataset outside '{str(DATASET_DIR)}'")
+    dataset.mkdir(exist_ok=True, parents=True)
     data.files = [f for f in data.files if f.size > 0]
     if len(data.files) > 0:
-        if dataset.exists():
+        if len(dataset.iterdir()) > 0:
             raise HTTPException(status_code=400, detail="Cannot create dataset from upload if directory already exists")
         await receive_files(dataset, data.files)
 
@@ -637,11 +639,14 @@ async def dataset_upload(request: Request, data: Annotated[DatasetAddition, Form
     if not (base := Path(data.dataset)).exists():
         raise HTTPException(status_code=400, detail="Provided dataset does not exist")
     base = base / datetime.now().strftime("upload-%Y-%m-%d-%H-%M-%S")
-
+    base.mkdir()
     await receive_files(base, data.files)
     addition = json.dumps({ "project": project, "upload_dir": str(base), "group_separation": data.group_separation })
     pid = start_task(["uv", "run", "add.py"], "../ls-utils", f"Adding tasks to project", extra_env={ "ADDITION_REQUEST": addition })
     tasks[pid][TourStep.DATASET] = project
+
+    if params.get("tour") == TourStep.DATASET.value:
+        params["tour"] = TourStep.LABELING.value
 
     return RedirectResponse(url_for_query(request, "label", params), status_code=303)
 
