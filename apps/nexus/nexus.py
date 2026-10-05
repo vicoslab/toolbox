@@ -14,7 +14,7 @@ import os
 import base64
 from pathlib import Path
 import subprocess
-from subprocess import Popen, PIPE, STDOUT
+from subprocess import Popen, PIPE, STDOUT, CalledProcessError
 import shutil
 import re
 from enum import Enum
@@ -307,9 +307,10 @@ def models_update(group_info: ModelGroup):
         if ref != "HEAD": # not detached
             if ref != src.get("branch"):
                 src["branch"] = ref
-            subprocess.run(["git", "pull", "--ff-only"], cwd=groupdir, check=True)
+            if subprocess.run(["git", "pull", "--ff-only"], cwd=groupdir).returncode:
+                raise HTTPException(status_code=409, detail="Could not integrate remote changes. Are there local modifications?")
         new = subprocess.run(["git", "rev-parse", "HEAD"], cwd=groupdir, capture_output=True, text=True, check=True).stdout.strip()
-    except Exception as e:
+    except CalledProcessError as e:
         raise HTTPException(status_code=500, detail=str(e))
 
     if new != src["rev"]:

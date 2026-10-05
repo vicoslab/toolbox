@@ -124,10 +124,19 @@
         details.style.marginTop = "0.5rem";
         details.append(summary, label)
         showModal(`Update models in group '${group}' by '${owner}'?`, details).then(async () => {
-            await fetch("/models/update", {
-                method: "post", body: JSON.stringify({ owner, group, ...version.value !== "" && { rev: version.value } }), headers: { "Content-Type": "application/json" }
+            const result = await fetch("/models/update", {
+                method: "post",
+                body: JSON.stringify({ owner, group, ...version.value !== "" && { rev: version.value } }),
+                headers: { "Content-Type": "application/json" },
             });
-            location.reload();
+            const data = await result.json();
+            switch (result.status) {
+                case 200:
+                    location.reload();
+                    break;
+                default:
+                    showToast("error", data.detail);
+            }
         }).catch(() => { });
     }
     function delete_(name) {
