@@ -74,7 +74,7 @@
         return Promise.reject("Manifest option not found");
     })();
     (async () => {
-        const projects = (await fetch("/app/label-studio/api/projects").then(x => x.json())).results;
+        const projects = (await fetch("/app/label-studio/api/projects?page_size=1000").then(x => x.json())).results;
         const input = document.getElementById("field-project");
         const select = document.createElement("select");
         select.append(...projects.map(x => {
