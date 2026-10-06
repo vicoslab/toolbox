@@ -131,16 +131,16 @@ split_mapping = {
 splits = {}
 for task in j:
     item = {}
-    results = ([x['result'] for x in task['annotations']] + [None])[0]
+    results = None
+    if len(task['annotations']) > 0:
+        results = task['annotations'][0]['result'] or []
     if image := task['data'].get('image'):
         source, relpath = image
         item['image_path'] = get_path(source, relpath)
-        if len(task['annotations']) > 0:
-            item.update(model.export(annotations=results, export_dir=EXPORT_DIR, relpaths=[relpath], shared=False, config=config) or {})
+        item.update(model.export(annotations=results, export_dir=EXPORT_DIR, relpaths=[relpath], shared=False, config=config) or {})
     elif images := task['data'].get('images'):
         item['images'] = [get_path(*im) for im in images]
-        if len(task['annotations']) > 0:
-            item.update(model.export(annotations=results, export_dir=EXPORT_DIR, relpaths=[relpath for (_, relpath) in images], shared=False, config=config) or {})
+        item.update(model.export(annotations=results, export_dir=EXPORT_DIR, relpaths=[relpath for (_, relpath) in images], shared=False, config=config) or {})
 
     split = 'data'    
     for tag in results or []:
