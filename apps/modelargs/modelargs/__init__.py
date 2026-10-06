@@ -28,13 +28,13 @@ def parse(schema, stage=None):
         if default := v.get('default'):
             args['default'] = default
 
+        if (required := v.get('required')) and stage in required:
+            args['required'] = True
+
         if choices := v.get('enum'):
             args['choices'] = choices
             if len(choices) > 0 and type(choices[0]) == int:
                 args['type'] = int
-
-        if required := v.get('required') and stage in required:
-            args['required'] = True
         else:
             if 'type' not in v:
                 raise ValueError(f'Invalid model schema: property `{k}` missing attribute `type`')
