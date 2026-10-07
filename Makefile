@@ -1,5 +1,5 @@
-CONTAINER_ARGS ?= ''
-TEST_ARGS ?= ''
+CONTAINER_ARGS ?=
+TEST_ARGS ?=
 
 all:
 	docker build -t toolbox --build-context branding=branding .
