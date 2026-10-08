@@ -597,7 +597,7 @@ async def dataset(request: Request, data: Annotated[DatasetCreation, Form()], mo
     dataset.mkdir(exist_ok=True, parents=True)
     data.files = [f for f in data.files if f.size > 0]
     if len(data.files) > 0:
-        if len(dataset.iterdir()) > 0:
+        if next(dataset.iterdir(), False):
             raise HTTPException(status_code=400, detail="Cannot create dataset from upload if directory already exists")
         await receive_files(dataset, data.files)
 
