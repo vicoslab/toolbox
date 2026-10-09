@@ -1,0 +1,71 @@
+diff --git a/web/libs/editor/src/components/Toolbar/Toolbar.jsx b/web/libs/editor/src/components/Toolbar/Toolbar.jsx
+index 5266cf3d8..4526a8177 100644
+--- a/web/libs/editor/src/components/Toolbar/Toolbar.jsx
++++ b/web/libs/editor/src/components/Toolbar/Toolbar.jsx
+@@ -69,17 +69,8 @@ export const Toolbar = inject("store")(
+ );
+ 
+ const SmartTools = observer(({ tools }) => {
+-  const [selectedIndex, setSelectedIndex] = useState(
+-    Math.max(
+-      tools.findIndex((t) => t.selected),
+-      0,
+-    ),
+-  );
+-
+-  const selected = useMemo(() => tools[selectedIndex], [selectedIndex]);
+-
+-  const hasSelected = tools.some((t) => t.selected);
+-
++  const selected = tools[Math.max(tools.findIndex((t) => t.selected), 0)];
++  const hasSelected = selected.selected;
+   return (
+     tools.length > 0 && (
+       <div className={cn("toolbar").elem("group").toClassName()}>
+@@ -100,7 +91,6 @@ const SmartTools = observer(({ tools }) => {
+                       key={`${i}`}
+                       onClickCapture={(e) => {
+                         e.preventDefault();
+-                        setSelectedIndex(i);
+                         t.manager.selectTool(t, true);
+                       }}
+                     >
+@@ -124,7 +114,6 @@ const SmartTools = observer(({ tools }) => {
+ 
+             const nextTool = tools[nextIndex];
+ 
+-            setSelectedIndex(nextIndex);
+             nextTool.manager.selectTool(nextTool, true);
+           }}
+         />
+diff --git a/web/libs/editor/src/tags/control/Label.jsx b/web/libs/editor/src/tags/control/Label.jsx
+index f549933c7..38d94edc9 100644
+--- a/web/libs/editor/src/tags/control/Label.jsx
++++ b/web/libs/editor/src/tags/control/Label.jsx
+@@ -197,7 +197,10 @@ const Model = types
+       if (!labels.selectedLabels.length && !self.selected) {
+         // unselect other tools if they exist and selected
+         const manager = ToolsManager.getInstance({ name: self.parent.toname });
+-        const tool = Object.values(self.parent?.tools || {})[0];
++        // tool in parent is not actually the same as the one in manager. we want the one in manager for things to work
++        const orig = Object.values(self.parent?.tools || {})[0];
++        const tool = manager.tools[Object.keys(manager.tools).find(k => k.startsWith(self.parent.name + "#"))] // prefer one with id from parent's name (disambiguate smart tools)
++          ?? Object.values(manager.tools).find(x => x.control.name === orig?.control?.name && x.toolName === orig?.toolName); // settle for one with same kind
+ 
+         const selectedTool = manager.findSelectedTool();
+         const sameType = tool && selectedTool ? getType(selectedTool).name === getType(tool).name : false;
+diff --git a/web/libs/editor/src/tools/Manager.js b/web/libs/editor/src/tools/Manager.js
+index 14eb76957..5ed0e8198 100644
+--- a/web/libs/editor/src/tools/Manager.js
++++ b/web/libs/editor/src/tools/Manager.js
+@@ -136,7 +136,9 @@ class ToolsManager {
+         const type = tag.type.replace(/labels$/, "");
+ 
+         if (tag.type === "labels") return false;
+-        if (type === toolType) return false;
++        // we patch this out because e.g. multiple rectanglelabels should be thought of as disjoint
++        // also we don't need to handle smart tools separately
++        // if (type === toolType) return false;
+         return true;
+       });
+ 
