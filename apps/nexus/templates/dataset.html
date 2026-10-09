@@ -334,6 +334,7 @@
         if (include === null || exclude === null) return;
         const files = (preview.files || []).filter(x => x.match(include) && !x.match(exclude));
         let common = (files[0] || "/").split("/");
+        common.pop();
         for (const file of files) {
             const segs = file.split("/");
             for (let i = 0; i < common.length; i++) {
@@ -343,7 +344,8 @@
                 }
             }
         }
-        common = common.join("/");
+        common = common.join("/")
+        if (common.length > 0) common += "/"; // file uploads have nothing in common
         const getColor = (i) => `hsl(${(25 * i) % 360} 100% 50% / 0.2)`;
         const length = files.length;
         const groupSize = Number.parseInt(form.group_size.value);
@@ -360,7 +362,8 @@
         }
         error.innerText = "";
         const header = document.createElement("h3");
-        header.innerText = common + "/";
+        header.innerText = common;
+        if (common.length === 0) header.innerText += "/"; // file uploads have nothing in common
         preview.replaceChildren(header, ...Array(length).keys().map(i => {
             const sampleIdx = Math.floor(i / groupSize);
             const groupIdx = i % groupSize;
@@ -479,6 +482,7 @@
         flex-wrap: wrap;
         gap: 0.25rem;
         margin-bottom: 0.25rem;
+        overflow: auto;
 
         button {
             display: flex;
@@ -525,9 +529,8 @@
         }
 
         #preview {
-            overflow: hidden auto;
+            overflow: auto;
             text-overflow: ellipsis;
-            max-height: 30rem;
 
             div {
                 font-size: small;
@@ -626,6 +629,7 @@
     .stage-panels {
         display: flex;
         overflow: hidden;
+        max-height: 35rem;
 
         >:first-child {
             transition: margin-left;
