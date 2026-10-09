@@ -582,6 +582,7 @@ class DatasetCreation(BaseModel):
     group_separation: str
     regex_include: str
     regex_exclude: str
+    shared: bool = False
     tools: Optional[str] = None
     files: Optional[list[UploadFile]] = []
 

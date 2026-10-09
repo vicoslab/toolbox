@@ -6,11 +6,13 @@ import yaml
 import re
 import xml.etree.ElementTree as ET
 
+request = json.loads(os.environ['CREATION_REQUEST'])
+
 DATASET_DIR = Path(os.environ['LOCAL_FILES_DOCUMENT_ROOT'])
 API_KEY = os.environ['LABEL_STUDIO_USER_TOKEN']
 MODEL_DIR = Path(os.environ['MODEL_DIR'])
+GROUP_SIZE = request['group_size']
 
-request = json.loads(os.environ['CREATION_REQUEST'])
 config_file = MODEL_DIR / 'config.yml'
 if not config_file.exists():
     raise ValueError(f'Model dir "{MODEL_DIR}" does not contain LS config.')
@@ -18,7 +20,14 @@ with open(config_file) as f:
     config = yaml.safe_load(f)['config']
 
 tools = request.get('tools') or {}
+tools_default = '<Header size="5" value="Smart tools will appear here if enabled during project creation." />'
 tools_config = []
+
+replacement = 'value="$image"'
+if GROUP_SIZE > 1:
+    shared = ' shared="true"' if request['shared'] else ''
+    replacement = 'valueList="$images" gallery="true"' + shared
+config = config.replace('@DATA@', replacement)
 
 if smtoolsline := next((line for line in config.split('\n') if '@SMART_TOOLS@' in line), None):
     lspace = smtoolsline[:smtoolsline.index('@SMART_TOOLS@')]
@@ -40,15 +49,14 @@ if smtoolsline := next((line for line in config.split('\n') if '@SMART_TOOLS@' i
             i += 1
         tools_config.append('</KeypointLabels>')
 
-    config = config.replace('@SMART_TOOLS@', ('\n' + lspace).join(tools_config))
+    config = config.replace('@SMART_TOOLS@', ('\n' + lspace).join(tools_config) or tools_default)
 
 ls = LabelStudio(base_url='http://localhost:8080', api_key=API_KEY)
-size = request['group_size']
 
 view = ET.fromstring(config)
 for node in view:
     if node.tag == 'Image':
-        if size > 1 and 'valueList' not in node.attrib:
+        if GROUP_SIZE > 1 and 'valueList' not in node.attrib:
             raise ValueError("Cannot use group size > 1 with LabelStudio config without valueList in Image.")
 
 # todo: do any models support one/multiple images as input at the same time?
@@ -71,18 +79,18 @@ if (dataset := request['dataset']) and (dataset := Path(dataset)).exists():
 
     LABEL_STUDIO_HOST = os.environ['LABEL_STUDIO_HOST']
     files = sorted([f'{LABEL_STUDIO_HOST}/data/local-files/?d={x.relative_to(DATASET_DIR)}' for x in dataset.rglob("*") if x.is_file() and p.search(str(x)) and not p_not.search(str(x))])
-    if size == 1:
+    if GROUP_SIZE == 1:
         tasks = [ { 'image': file } for file in files]
     elif request['group_separation'] == 'interlace':
-        tasks = [ { 'images': files[i:i+size] } for i in range(0, len(files), size)]
+        tasks = [ { 'images': files[i:i+GROUP_SIZE] } for i in range(0, len(files), GROUP_SIZE)]
     elif request['group_separation'] == 'divide':
-        block_size = len(tasks) / size
+        block_size = len(tasks) / GROUP_SIZE
         tasks = list(map(lambda x: { 'images': list(x) }, zip(*[files[i:i+block_size] for i in range(0, len(files), block_size)])))
     else:
         raise ValueError('Group separation has invalid value')
     if tasks:
         ls.projects.import_tasks(id=project.id, request=[{"data": task} for task in tasks])
-    (dataset / 'groups.json').write_text(json.dumps({ 'group_size': size, 'regex_include': request['regex_include'], 'regex_exclude': request['regex_exclude'] }))
+    (dataset / 'groups.json').write_text(json.dumps({ 'group_size': GROUP_SIZE, 'regex_include': request['regex_include'], 'regex_exclude': request['regex_exclude'] }))
 
 extra = dict(model=MODEL_DIR.name, project=project.id)
 ls.ml.create(title="Inference worker", project=project.id, url="http://localhost:9090", is_interactive=True, extra_params=json.dumps(extra))
