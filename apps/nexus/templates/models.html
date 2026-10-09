@@ -97,7 +97,56 @@
                 location.reload();
             }).catch(() => { });
         } catch (e) {
-            console.log("Add-model:", e);
+            const fields = document.createElement("fieldset");
+            fields.style.marginTop = "1rem";
+            fields.append(...Object.entries({
+                url: "Source url (git)",
+                branch: "Version (branch)",
+                owner: "Author",
+                group: "Group",
+                models: "Models",
+            }).flatMap(([k, v]) => {
+                const input = document.createElement("input");
+                input.name = input.id = k;
+                input.type = "text";
+                const label = document.createElement("label");
+                label.htmlFor = input.id;
+                label.innerText = v;
+                return [label, input];
+            }));
+            const header = document.createElement("h3");
+            header.innerText = "Add model source";
+            const form = document.createElement("form");
+            form.append(fields);
+            async function manual_submit() {
+                const source = Object.fromEntries(new FormData(form));
+                source.models = source.models.split(",");
+                const response = await fetch("/models/add", { method: "post", body: JSON.stringify([source]), headers: { "Content-Type": "application/json" } });
+                switch (response.status) {
+                    case 200:
+                        location.reload();
+                        break;
+                    default:
+                        const { detail } = await response.json();
+                        const h_error = document.createElement("h4");
+                        h_error.innerText = "Error:";
+                        h_error.style.margin = 0;
+                        h_error.style.color = "var(--fg-dangerous)";
+                        const errors = document.createElement("ul");
+                        errors.style.listStyle = "none";
+                        errors.style.margin = 0;
+                        errors.style.padding = "0.5rem 1rem";
+                        errors.style.backgroundColor = "var(--bg-muted)";
+                        errors.append(h_error, ...detail.map(x => {
+                            const error = document.createElement("li");
+                            const loc = x.loc.slice(2).reduce((acc, x) => x instanceof Number ? `${acc}[${x}]` : `${acc}.${x}`);
+                            error.innerText = `${loc}: ${x.msg}`;
+                            return error;
+                        }));
+                        showModal(header, errors, form).then(manual_submit);
+                };
+            }
+            showModal(header, "Clipboard did not contain valid model string. If you wish to add new model group, please enter its information.", form).then(manual_submit);
         }
     });
     function remove(owner, group) {

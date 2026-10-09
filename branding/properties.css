@@ -10,6 +10,7 @@
     --fg-accent-default: #c13737; 
     --fg-accent-hover: #d32a2a;
     --fg-accent-active: #db1a1a;
+    --fg-dangerous: oklch(57.7% 0.245 27.325); /* tw red-600 */
     --bg-accent-default: transparent;
     --bg-accent-hover: #fae4e4;
     --bg-accent-active: #f4caca;

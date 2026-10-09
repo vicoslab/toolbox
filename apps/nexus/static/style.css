@@ -434,7 +434,7 @@ dialog {
         font-weight: 600;
     }
     &.error .toast-title {
-        color: oklch(57.7% 0.245 27.325); /* tw red-600 */
+        color: var(--fg-dangerous);
     }
     &::after {
         content: "";
