@@ -2,6 +2,42 @@ import argparse
 import json
 import sys
 
+def resolve_type(value):
+    if choices := value.get('enum'):
+        args = dict(choices=choices)
+        if len(choices) > 0 and type(choices[0]) == int:
+            args['type'] = int
+        return args
+    else:
+        if not (typ := value.get('type')):
+            raise ValueError(f'Invalid model schema: property `{k}` missing attribute `type`')
+        if typ == 'number':
+            def number(x):
+                try:
+                    return int(x)
+                except ValueError:
+                    return float(x)
+            return dict(type=number)
+        elif typ == 'integer':
+            return dict(type=int)
+        elif typ == 'string':
+            return {}
+        elif typ == 'boolean':
+            def boolean(x):
+                if x in ('true', 'True'):
+                    return True
+                elif x in ('false', 'False'):
+                    return False
+                else:
+                    raise ValueError(f'Invalid boolean value for property `{k}`')
+            return dict(type=boolean)
+        elif typ == 'array':
+            if not (item := value.get('items')):
+                raise ValueError(f'Array type is missing property `items`')
+            return { **resolve_type(item), 'nargs': '+' }
+        else:
+            raise ValueError(f'Property `{k}` has unexpected type: {v["type"]}`')
+
 def parse(schema, stage=None):
     with open(schema) as f:
         j = json.load(f)
@@ -31,31 +67,7 @@ def parse(schema, stage=None):
         if (required := v.get('required')) and stage in required:
             args['required'] = True
 
-        if choices := v.get('enum'):
-            args['choices'] = choices
-            if len(choices) > 0 and type(choices[0]) == int:
-                args['type'] = int
-        else:
-            if 'type' not in v:
-                raise ValueError(f'Invalid model schema: property `{k}` missing attribute `type`')
-            elif v['type'] == 'number':
-                args['type'] = float
-            elif v['type'] == 'integer':
-                args['type'] = int
-            elif v['type'] == 'string':
-                pass
-            elif v['type'] == 'boolean':
-                def boolean(x):
-                    if x in ('true', 'True'):
-                        return True
-                    elif x in ('false', 'False'):
-                        return False
-                    else:
-                        raise ValueError(f'Invalid boolean value for property `{k}`')
-                args['type'] = boolean
-            else:
-                raise ValueError(f'Property `{k}` has unexpected type: {v["type"]}`')
-
+        args.update(resolve_type(v))
         parser.add_argument('--' + k, **args)
 
     try:
