@@ -306,7 +306,7 @@
                     radio.type = "radio";
                     radio.id = opt;
                     radio.value = opt;
-                    radio.checked = (values[k] || prop.default) === opt;
+                    radio.checked = (values[k] ?? prop.default) === opt;
 
                     const radio_label = document.createElement("label");
                     radio_label.htmlFor = opt;
@@ -346,12 +346,32 @@
                     input.name = k;
                     input.inputMode = prop.type === "integer" ? "numeric" : "decimal";
                     input.pattern = prop.type === "integer" ? "\d*" : "\d+(.\d+)?";
-                    input.placeholder = prop.default || "";
-                    input.value = values[k] || null;
+                    input.placeholder = prop.default ?? "";
+                    input.value = values[k] ?? null;
                     showModal(title, description, input).then(() => setValue(k, input.value)).catch(() => { });
                     break;
                 }
-                default: throw Error(`Invalid type '${prop.type}'`);
+                case "array": {
+                    if (prop.items?.enum) {
+                        const opts = document.createElement("div");
+                        for (const opt of prop.items?.enum) {
+                            const box = document.createElement("input");
+                            box.name = k;
+                            box.type = "checkbox";
+                            box.value = opt;
+                            box.checked = (values[k] ?? prop.default ?? []).includes(opt);
+
+                            const box_label = document.createElement("label");
+                            box_label.append(box, opt);
+                            opts.append(box_label);
+                        }
+                        showModal(title, description, opts).then(() => setValue(k, [...opts.querySelectorAll('input:checked')].map(x => x.value))).catch(() => { });
+                        return;
+                    }
+                    showToast("error", `model-options: Invalid item in array type: '${prop.items}'`)
+                    break;
+                }
+                default: showToast("error", `model-options: Invalid type '${prop.type}'`);
             }
         }
     })();
