@@ -603,7 +603,10 @@ async def dataset(request: Request, data: Annotated[DatasetCreation, Form()], mo
         await receive_files(dataset, data.files)
 
     data_dict = data.model_dump()
-    data_dict["tools"] = json.loads(data.tools or '{}')
+    data_dict["tools"] = {
+        kind: [ (id, info["title"]) for id in tools if (info := model_manifest.get(id)) ]
+        for kind, tools in json.loads(data.tools or '{}').items()
+    }
     del data_dict["files"]
     env = { "MODEL_DIR": model_manifest[model]["dir"], "CREATION_REQUEST": json.dumps(data_dict) }
     pid = start_task(["uv", "run", "create.py"], "../ls-utils", f"Project creation", extra_env=env, blocking=True)

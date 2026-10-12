@@ -37,15 +37,15 @@ if smtoolsline := next((line for line in config.split('\n') if '@SMART_TOOLS@' i
     if items := tools.get('rectangle'):
         tools_config.append('<Header size="5" value="Bounding box based models that return segmentations of instances similar to selected region." />')
         tools_config.append('<RectangleLabels name="toolbox-tools-bbox" toName="image" smartOnly="true">')
-        for item in items:
-            tools_config.append(f'\t<Label value="{item}" hotkey=" "/>')
+        for (key, title) in items:
+            tools_config.append(f'\t<Label value="{title}" hotkey=" " alias="{key}"/>')
             i += 1
         tools_config.append('</RectangleLabels>')
     if items := tools.get('keypoint'):
         tools_config.append('<Header size="5" value="Keypoint based segmentation assistance. Hold down alt (or option) for negative examples." />')
         tools_config.append('<KeypointLabels name="toolbox-tools-keypoint" toName="image" smartOnly="true" dynamic="true">')
-        for item in items:
-            tools_config.append(f'\t<Label value="{item}" hotkey=" "/>')
+        for (key, title) in items:
+            tools_config.append(f'\t<Label value="{title}" hotkey=" " alias="{key}"/>')
             i += 1
         tools_config.append('</KeypointLabels>')
 

@@ -38,7 +38,6 @@ limiter = Limiter(
 def refresh_workers():
     model_dir = Path(os.environ["TOOLBOX_CACHE"]) / ".models"
     forms.update({ p.parent.name: p.read_text() for p in model_dir.rglob("ui.html") })
-    model_titles.update({ json.loads(p.read_text())["title"]: p.parent.name for p in model_dir.rglob("model.json") })
     try:
         response = requests.get("http://localhost:8079/active")
         if response.status_code == 200:
@@ -90,9 +89,9 @@ def get_region_label(regions):
     # regions should have the same labels due to filtering in the frontend
     for region in regions:
         for r in region["results"]:
-            for k in r["value"]:
+            for k, v in r["value"].items():
                 if k.endswith("labels"):
-                    return model_titles.get(r["value"][k][0])
+                    return v[0]
     return None
 
 def try_autostart(alias):

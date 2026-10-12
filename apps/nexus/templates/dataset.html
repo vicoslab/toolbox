@@ -115,14 +115,14 @@
                     {% for (name, title, installed) in tools["rectangle"] %}
                     {% if installed %}
                     <label class="tool button">
-                        <input type="checkbox" name="{{ title }}" checked>
+                        <input type="checkbox" name="{{ name }}" checked>
                         {{ title }}
                     </label>
                     {% else %}
                     <label class="tool button"
                         onclick="install(`{{ url_for_query(request, 'model_install', params, model=name) }}`, `{{ name }}`);"
                         title="Click to install model">
-                        <input type="checkbox" name="{{ title }}" disabled>
+                        <input type="checkbox" name="{{ name }}" disabled>
                         {{ title }}
                     </label>
                     {% endif %}
@@ -145,14 +145,14 @@
                     {% for (name, title, installed) in tools["keypoint"] %}
                     {% if installed %}
                     <label class="tool button">
-                        <input type="checkbox" name="{{ title }}" checked>
+                        <input type="checkbox" name="{{ name }}" checked>
                         {{ title }}
                     </label>
                     {% else %}
                     <label class="tool button"
                         onclick="install(`{{ url_for_query(request, 'model_install', params, model=name) }}`, `{{ name }}`);"
                         title="Click to install model">
-                        <input type="checkbox" name="{{ title }}" disabled>
+                        <input type="checkbox" name="{{ name }}" disabled>
                         {{ title }}
                     </label>
                     {% endif %}
