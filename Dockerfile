@@ -95,7 +95,7 @@ RUN echo "pip-system-certs" >> /opt/apps/label-studio-ml-backend/requirements.tx
 ARG src=apps/ls-utils
 WORKDIR /opt/apps/ls-utils
 COPY ${src}/add.py ${src}/export.py ${src}/create.py ${src}/uv.lock ${src}/pyproject.toml .
-RUN --mount=type=cache,target=/root/.cache/uv XDG_DATA_HOME=/usr/local/share uv sync
+RUN --mount=type=cache,target=/root/.cache/uv XDG_DATA_HOME=/usr/local/share uv sync --python 3.14
 
 ## MLFlow
 WORKDIR /opt/apps/mlflow
