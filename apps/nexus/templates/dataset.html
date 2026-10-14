@@ -520,9 +520,10 @@
         position: relative;
         width: 100%;
         padding: 0.5rem;
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 1rem;
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        overflow: auto;
         max-height: 0;
         transition: max-height 0.5s;
 
@@ -539,6 +540,16 @@
                 text-wrap: nowrap;
                 padding: 0 0.25rem;
             }
+        }
+    }
+
+    @media (width > 40rem) {
+        .groups>div {
+            flex-basis: 0;
+            flex-grow: 1;
+            gap: 1rem;
+            max-height: 100%;
+            overflow: auto;
         }
     }
 
@@ -631,7 +642,7 @@
     .stage-panels {
         display: flex;
         overflow: hidden;
-        max-height: 35rem;
+        max-height: calc(100vh - 27rem);
 
         >:first-child {
             transition: margin-left;
