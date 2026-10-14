@@ -91,6 +91,10 @@ def refresh_manifest():
                 model["description"] = manifest["description"]
                 model["dir"] = model_path
                 model["train"] = (model_path / "train.py").exists()
+                for category in manifest.get("x-toolbox-tools", []):
+                    if category not in tools:
+                        tools[category] = set()
+                    tools[category].add(name)
                 with open(model_path / "ui.html") as f:
                     model["form"] = f.read()
 
@@ -99,11 +103,6 @@ def refresh_manifest():
             else:
                 src["models"].remove(name)
                 did_change = True
-        # src may contain tools = null, which should be tolerated
-        for category, vals in (src.get("tools") or {}).items():
-            if category not in tools:
-                tools[category] = []
-            tools[category] = list(set(tools[category] + vals))
     if did_change:
         save_models(models_config)
 refresh_manifest()
