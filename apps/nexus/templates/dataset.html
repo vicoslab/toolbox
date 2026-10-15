@@ -48,7 +48,7 @@
                                 <h4 style="margin: 0;">Filters</h4>
                                 <p>
                                     Use include or exclude regex patterns to filter out which images from selection to
-                                    upload.
+                                    upload. Review the file list and correct patterns if necessary.
                                 </p>
                                 <fieldset style="border: none;">
                                     <label for="regex-include">Include</label>
@@ -60,24 +60,28 @@
                                 </fieldset>
                                 <details>
                                     <summary>
-                                        <h4 style="display: inline-block;">Grouping (advanced)</h4>
+                                        <h4 style="display: inline-block;">Grouped image samples</h4>
                                     </summary>
                                     <p>
-                                        If your dataset groups multiple images per sample, configure the grouping here.
-                                        Otherwise review the file list and correct pattern if necessary.
+                                        If your dataset groups multiple views per sample, configure the grouping here.
+                                        Views can be interlaced (<em>abcabc</em>) or divided (<em>aabbcc</em>). Enable
+                                        sharing to use a single annotation for all views (<em>abc</em>).
                                     </p>
                                     <fieldset style="border: none;">
                                         <label for="group-size">Group size</label>
                                         <input type="number" name="group_size" value="1" id="group-size" min="1"
                                             pattern="\d*" onchange="updatePreview(this.form)">
                                         <div style="grid-column: 1/-1;">
-                                            <input type="radio" name="group_separation" value="interlace"
-                                                id="group-separation-interlace" checked
-                                                onchange="updatePreview(this.form)">
-                                            <label for="group-separation-interlace">Interlace</label>
-                                            <input type="radio" name="group_separation" value="divide"
-                                                id="group-separation-divide" onchange="updatePreview(this.form)">
-                                            <label for="group-separation-divide">Divide</label>
+                                            <label>
+                                                <input type="radio" name="group_separation" value="interlace" checked
+                                                    onchange="updatePreview(this.form)">
+                                                Interlace
+                                            </label>
+                                            <label>
+                                                <input type="radio" name="group_separation" value="divide"
+                                                    onchange="updatePreview(this.form)">
+                                                Divide
+                                            </label>
                                         </div>
                                         <label for="shared">Shared</label>
                                         <input type="checkbox" name="shared" id="shared">
@@ -106,7 +110,7 @@
             </dialog>
         </div>
         {% if tools %}
-        <h3>Tools</h3>
+        <h3>Smart annotation tools</h3>
         <ul class="tool-list" id="toolbox-tools">
             {% if "rectangle" in tools %}
             <li data-category="rectangle" class="tool-category">
