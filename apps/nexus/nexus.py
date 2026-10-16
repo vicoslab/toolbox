@@ -91,6 +91,8 @@ def refresh_manifest():
                 model["description"] = manifest["description"]
                 model["dir"] = model_path
                 model["train"] = (model_path / "train.py").exists()
+                if notice := manifest.get("x-toolbox-notice"):
+                    model["notice"] = notice
                 for category in manifest.get("x-toolbox-tools", []):
                     if category not in tools:
                         tools[category] = set()

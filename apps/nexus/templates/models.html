@@ -51,7 +51,7 @@
     </a>
     {% else %}
     <a class="model" title="You must install the model to make it available for use."
-        onclick="install(`{{ url_for_query(request, 'model_install', params) }}`, `{{ name }}`); return false;">
+        onclick="install(`{{ url_for_query(request, 'model_install', params) }}`, `{{ name }}`, `{{ info.get('notice', '') }}`); return false;">
         <h3>{{ info.title }}</h3>
         <p>{{ info.description }}</p>
         <button class="transparent"
@@ -194,13 +194,41 @@
             location.reload();
         }).catch(() => { });
     }
-    function install(url, name) {
+    const mdUrl = /\[([^]]*)\]\(([^)]*)\)/;
+    function install(url, name, notice) {
         const i = document.createElement("i");
         i.innerText = name;
-        showModal("Install model ", i, " ?").then(async () => {
-            const { pid, logs } = await fetch(url, { method: "post" }).then(r => r.json());
-            showToastForLogs({ pid, message: "Model installation started.", url: logs, onFinish: () => location.reload() }).then(toast => toast.keepAlive = true);
-        }).catch(() => { });
+        const noticeElems = [];
+        const agree = document.createElement("input");
+        if (notice) {
+            const header = document.createElement("h4");
+            header.innerText = "Notice";
+            header.style.marginBottom = "0.5rem";
+            const text = document.createElement("span");
+            text.innerHTML = notice.replace(mdUrl, (_, name, link) => `<a href="${link}">${name}</a>`);
+            text.style.color = "var(--fg-secondary)";
+            agree.type = "checkbox";
+            const label = document.createElement("label");
+            label.style.display = "block";
+            label.style.marginTop = "0.5rem";
+            label.append(agree, "I understand");
+            noticeElems.push(header, text, label);
+        }
+        const mustAgree = document.createElement("div");
+        mustAgree.innerText = "You must acknowledge notice before installing";
+        mustAgree.style.color = "var(--fg-dangerous)";
+        mustAgree.style.display = "none";
+        (function ask() {
+            showModal("Install model ", i, " ?", ...noticeElems, mustAgree)
+                .then(async () => {
+                    if (notice && !agree.checked) {
+                        mustAgree.style.display = "block";
+                        return ask();
+                    }
+                    const { pid, logs } = await fetch(url, { method: "post" }).then(r => r.json());
+                    showToastForLogs({ pid, message: "Model installation started.", url: logs, onFinish: () => location.reload() }).then(toast => toast.keepAlive = true);
+                }).catch(() => { });
+        })();
     }
 </script>
 <style>
