@@ -51,6 +51,10 @@ try:
         raise ValueError("models.json not an object")
 except Exception as e:
     print(f"Could not load models.json, using empty. (Error: {e})")
+    if models_file.exists():
+        old = models_file.with_suffix(models_file.suffix + ".bak")
+        print(f"Saving old sources config to {str(old)}")
+        models_file.rename(old)
     models_config = { "added": [], "sources": [] }
     save_models(models_config)
 

@@ -65,6 +65,7 @@ jobs:
             REF=${{ github.ref_name }}
             TOOLBOX_BRAND_NAME_LONG=SLAIF AI Vision Toolbox by ViCoS
             TOOLBOX_BRAND_NAME_SHORT=SLAIF Toolbox
+            TOOLBOX_MODELS=W3siZ3JvdXAiOiJEZWZhdWx0Iiwib3duZXIiOiJWaUNvUyIsIm1vZGVscyI6WyJjZWRpcm5ldCIsImNlZGlybmV0LXN0ZW0iLCJkYW00c2FtIiwiZ2VjbzIiLCJzYW0zIiwic3VwZXItc2ltcGxlLW5ldCJdLCJicmFuY2giOiJzbGFpZiIsInVybCI6Imh0dHBzOi8vZ2l0aHViLmNvbS92aWNvc2xhYi90b29sYm94LW1vZGVscyJ9XQ==
           build-contexts: |
             branding=https://github.com/vicoslab/toolbox-slaif.git
           tags: ${{ steps.meta.outputs.tags }}
