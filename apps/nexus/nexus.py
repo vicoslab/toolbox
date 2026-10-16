@@ -392,7 +392,7 @@ def datasets(path: str, files: Optional[bool]=False):
 def model(request: Request, model: str, manifest: str | None = None, weights: str | None = None):
     params = propagate(request.query_params)
     if model not in model_manifest or not (CACHE / model).exists():
-        return RedirectResponse(request.url_for("models", **params))
+        return RedirectResponse(url_for_query(request, "models", params))
 
     params["model"] = model
     if manifest:
@@ -534,14 +534,16 @@ def active_models():
 
 @app.get("/dataset", response_class=HTMLResponse)
 def dataset_get(request: Request, model: str):
+    params = propagate(request.query_params)
     if model not in model_manifest or not (CACHE / model).exists():
-        return RedirectResponse(request.url_for("models"))
+        del params["model"]
+        return RedirectResponse(url_for_query(request, "models", params))
 
     now = datetime.now()
     old = { pid: task for pid, task in tasks.items() if TourStep.DATASET in task }
 
     tools_installed = { category: [(val, model_manifest[val]["title"], (CACHE / val).exists()) for val in vals] for category, vals in tools.items() if vals }
-    return templates.TemplateResponse(request=request, name="dataset.html", context=dict(now=now, tasks=old, tools=tools_installed, **model_manifest[model], params=propagate(request.query_params)))
+    return templates.TemplateResponse(request=request, name="dataset.html", context=dict(now=now, tasks=old, tools=tools_installed, **model_manifest[model], params=params))
 
 @app.post("/dataset/external")
 async def dataset_from_upload(request: Request, file: Annotated[UploadFile, File()]):
