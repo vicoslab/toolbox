@@ -100,10 +100,11 @@ def helper_inference_ssn(alias, config, files, scores):
     assert alias in response.json()
 
     time.sleep(5) # gateway scans active models every 5s
-    assert (response := requests.post(f'http://localhost:9090/infer/{alias}', files=[('images', open(f, 'rb')) for f in files])).status_code == 200
-    assert all(a > b for a,b in zip(response.json()['scores'], scores))
-
-    assert (response := client.post(f'/task/stop/{pid}')).status_code == 200
+    try:
+        assert (response := requests.post(f'http://localhost:9090/infer/{alias}', files=[('images', open(f, 'rb')) for f in files])).status_code == 200
+        assert all(a > b for a,b in zip(response.json()['scores'], scores))
+    finally:
+        assert (response := client.post(f'/task/stop/{pid}')).status_code == 200
     psutil.Process(pid).wait(60)
 
 def helper_install_model(group):
@@ -123,8 +124,8 @@ def helper_install_model(group):
 def test_model_ssn():
     testdata = ensure_dataset('super-simple-net')
     helper_install_model({ 'owner':'TestInstall','group':'TestGroup','models':['super-simple-net'],'url':'https://github.com/vicoslab/toolbox-models', 'branch': 'dev' })
-    weights = helper_training('super-simple-net', {'manifest': str(testdata / 'manifest.json'), 'epochs': 2, 'batch': 16})
-    helper_inference_ssn('test', {'weights': weights }, [testdata / 'damaged_0_0000_ls3_camera0.jpg'], [0.9])
+    weights = helper_training('super-simple-net', {'manifest': str(testdata / 'manifest.json'), 'epochs': 10, 'batch': 16, 'eval_step_size': 100})
+    helper_inference_ssn('test_model_ssn', {'weights': weights }, [testdata / 'damaged_0_0000_ls3_camera0.jpg'], [0.9])
 
 def test_import_export():
     testdata = ensure_dataset('super-simple-net')
@@ -150,7 +151,7 @@ def test_import_export():
     assert (manifest := exportdir / 'manifest.json').exists()
 
     weights = helper_training('super-simple-net', {'manifest': str(manifest), 'epochs': 2, 'batch': 16})
-    helper_inference_ssn('test', {'weights': weights }, [testdata / 'damaged_0_0000_ls3_camera0.jpg'], [0])
+    helper_inference_ssn('test_import_export', {'weights': weights }, [testdata / 'damaged_0_0000_ls3_camera0.jpg'], [0])
 
 def helper_inference_cedirnet_stem(alias, config, files, centers):
     assert (response := client.post('/model/cedirnet-stem/infer', json={ **config, 'alias': alias })).status_code == 200
@@ -159,17 +160,18 @@ def helper_inference_cedirnet_stem(alias, config, files, centers):
     assert alias in response.json()
 
     time.sleep(5) # gateway scans active models every 5s
-    assert (response := requests.post(f'http://localhost:9090/infer/{alias}', files=[('images', open(f, 'rb')) for f in files])).status_code == 200
-    centers_pred = response.json()['centers']
-    for i in range(len(centers)): # centers should be list of lists of pairs
-        # check if every center for this image has close enough prediction
-        assert all(any(math.hypot(c[0]-x[0], c[1]-x[1]) < 0.05 for x in centers_pred[i]) for c in centers[i])
-
-    assert (response := client.post(f'/task/stop/{pid}')).status_code == 200
+    try:
+        assert (response := requests.post(f'http://localhost:9090/infer/{alias}', files=[('images', open(f, 'rb')) for f in files])).status_code == 200
+        centers_pred = response.json()['centers']
+        for i in range(len(centers)): # centers should be list of lists of pairs
+            # check if every center for this image has close enough prediction
+            assert all(any(math.hypot(c[0]-x[0], c[1]-x[1]) < 0.05 for x in centers_pred[i]) for c in centers[i])
+    finally:
+        assert (response := client.post(f'/task/stop/{pid}')).status_code == 200
     psutil.Process(pid).wait(60)
 
 def test_model_cedirnet_stem():
     testdata = ensure_dataset('cedirnet-stem')
     helper_install_model({ 'owner':'TestInstall','group':'TestGroup2','models':['cedirnet-stem'],'url':'https://github.com/vicoslab/toolbox-models', 'branch': 'dev' })
-    weights = helper_training('cedirnet-stem', {'manifest': str(testdata / 'manifest.json'), 'epochs': 10})
-    helper_inference_cedirnet_stem('test', {'model': weights }, [testdata / 'PtCo_IL_a-0016_BF.png', testdata / 'PtCo_IL_a-0016_HAADF.png'], [[[0.5, 0.5]]])
+    weights = helper_training('cedirnet-stem', {'manifest': str(testdata / 'manifest.json'), 'epochs': 15})
+    helper_inference_cedirnet_stem('test_model_cedirnet_stem', {'model': weights }, [testdata / 'PtCo_IL_a-0016_BF.png', testdata / 'PtCo_IL_a-0016_HAADF.png'], [[[0.5, 0.5]]])
