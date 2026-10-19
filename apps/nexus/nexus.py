@@ -62,6 +62,7 @@ model_manifest = {}
 # category -> [model id]
 # categories right now are 'keypoint' and 'rectangle'
 tools = {}
+tags = set()
 def refresh_manifest():
     model_manifest.clear()
     tools.clear()
@@ -95,6 +96,8 @@ def refresh_manifest():
                 model["description"] = manifest["description"]
                 model["dir"] = model_path
                 model["train"] = (model_path / "train.py").exists()
+                model["tags"] = manifest.get("x-toolbox-tags", [])
+                tags.update(model["tags"])
                 if notice := manifest.get("x-toolbox-notice"):
                     model["notice"] = notice
                 for category in manifest.get("x-toolbox-tools", []):
@@ -287,7 +290,7 @@ def models(request: Request):
         if rev := group.get("rev"): # make sure we can manage models even if rev is borked
             rev = rev[:7]
         groups[(group["group"], group["owner"])] = rev, installed, available
-    return templates.TemplateResponse(request=request, name="models.html", context=dict(groups=groups, params=propagate(request.query_params)))
+    return templates.TemplateResponse(request=request, name="models.html", context=dict(tags=tags, groups=groups, params=propagate(request.query_params)))
 
 class ModelGroup(BaseModel):
     owner: str

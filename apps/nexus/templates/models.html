@@ -19,6 +19,17 @@
         </p>
     </div>
     {% endif %}
+    <ul id="tag-list" class="tags"
+        style="font-size: small; list-style: none; margin: 0; margin-bottom: 1rem; padding: 0; width: 100%; row-gap: 1rem;">
+        {% for tag in tags | sort %}
+        <li>
+            <label class="tag-toggle">
+                <input type="checkbox" style="appearance: none; margin-right: -0.5rem;">
+                {{ tag }}
+            </label>
+        </li>
+        {% endfor %}
+    </ul>
     {% set tour = params.tour|default(-1) %}
     {% for (group, owner), (rev, installed, models) in groups.items() %}
     <h2 class="model-group">
@@ -45,6 +56,14 @@
         class="model installed shadow">
         <h3>{{ info.title }}</h3>
         <p>{{ info.description }}</p>
+        <span class="source-info" title="{{ group }} by {{ owner }}">
+            {{ group }}
+        </span>
+        <ul class="tags" style="align-items: end; list-style: none; margin: 0; padding: 0; max-width: 95%;">
+            {% for tag in info.tags %}
+            <li class="tag">{{ tag }}</li>
+            {% endfor %}
+        </ul>
         <button class="shadow-sm transparent" onclick="delete_(`{{ name }}`); return false;">
             <img style="width: 1.5rem;" src="/static/icons/trash.svg">
         </button>
@@ -54,8 +73,12 @@
         onclick="install(`{{ url_for_query(request, 'model_install', params) }}`, `{{ name }}`, `{{ info.get('notice', '') }}`); return false;">
         <h3>{{ info.title }}</h3>
         <p>{{ info.description }}</p>
-        <button class="transparent"
-            onclick="install(`{{ url_for_query(request, 'model_install', params) }}`, `{{ name }}`); return false;">
+        <ul class="tags" style="align-items: end; list-style: none; margin: 0; padding: 0; max-width: 95%;">
+            {% for tag in info.tags %}
+            <li class="tag">{{ tag }}</li>
+            {% endfor %}
+        </ul>
+        <button class="transparent">
             <img style="width: 1.5rem;" src="/static/icons/download.svg">
         </button>
     </a>
@@ -230,6 +253,32 @@
                 }).catch(() => { });
         })();
     }
+    {
+        const list = document.querySelector(".model-list");
+        const tags = [...document.querySelectorAll(".tag-toggle")];
+        function updateTags() {
+            const checked = tags.filter(x => x.querySelector("input").checked).map(x => x.innerText.trim());
+            const isFiltered = checked.length > 0;
+            list.classList.toggle("filtered", isFiltered);
+            for (const model of list.querySelectorAll(".model")) {
+                let found = 0;
+                for (const tag of model.querySelectorAll(".tag")) {
+                    if (checked.includes(tag.innerText)) {
+                        tag.style = "font-weight: 600;";
+                        found++;
+                    } else {
+                        tag.style = null;
+                    }
+                }
+                // use found === checked.length to check that all match
+                model.style.display = found > 0 || !isFiltered ? null : "none";
+            }
+        }
+        updateTags();
+        // We're attaching this to the .tag-toggle label, but we only respond to the event that bubbles from the input
+        // because the 'checked' state will be correct at that point
+        tags.forEach(x => x.addEventListener("click", e => e.target.tagName === "INPUT" && updateTags()));
+    }
 </script>
 <style>
     .model-list {
@@ -237,6 +286,16 @@
         flex-wrap: wrap;
         gap: 0.5rem;
         align-content: start;
+
+        &.filtered {
+            .model-group {
+                display: none;
+            }
+
+            .source-info {
+                display: block;
+            }
+        }
     }
 
     .icon {
@@ -289,9 +348,9 @@
 
     .model {
         position: relative;
-        display: block;
+        display: flex;
+        flex-direction: column;
         text-decoration: none;
-        height: 128px;
         width: 512px;
         background-color: var(--bg-muted);
         font-size: 0.75rem;
@@ -319,6 +378,17 @@
             color: rgb(95, 114, 129);
         }
 
+        .source-info {
+            display: none;
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            text-align: end;
+            color: var(--fg-secondary);
+            font-style: italic;
+            font-weight: 600;
+        }
+
         button {
             position: absolute;
             bottom: 0.5rem;
@@ -330,6 +400,39 @@
             &:hover {
                 background-color: unset;
             }
+        }
+    }
+
+    .tags {
+        flex-grow: 1;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+
+    .tag {
+        color: var(--fg-secondary);
+
+        &:not(:last-of-type)::after {
+            content: ",";
+        }
+    }
+
+    .tag-toggle {
+        border-radius: 0.75rem;
+        background-color: var(--bg-muted);
+        padding: 0.25rem 0.5rem;
+        color: var(--fg-primary);
+        box-shadow: 0px 0px 1px var(--border);
+        cursor: pointer;
+        user-select: none;
+
+        &:hover {
+            background-color: var(--bg-accent-hover);
+        }
+
+        &:has(input:checked) {
+            background-color: var(--bg-accent-active);
         }
     }
 
