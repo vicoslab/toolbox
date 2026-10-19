@@ -13,6 +13,20 @@
             developed by our researchers, to openly available models and tools, which aid in the development and
             adaptation of our models to new problems.
         </p>
+        {% if presets %}
+        <h3>Presets</h3>
+        Selecting a preset will narrow down displayed models. Selection is not mandatory, and can always be changed
+        later.
+        <ul class="presets">
+            {% for name, preset in presets.items() %}
+            <li class="card" data-preset="{{ name }}" onclick="selectPreset(this, '{{ name }}', `{{ preset.tags }}`)">
+                <img src="/static/icons/directory.svg">
+                <h4>{{ preset.title }}</h4>
+                {{ preset.description }}
+            </li>
+            {% endfor %}
+        </ul>
+        {% endif %}
         <h3>Steps</h3>
         <ol>
             <a role="listitem" class="card"
@@ -72,9 +86,39 @@
     </div>
 </div>
 <script>
+    function selectPreset(el, preset, tags) {
+        if (localStorage["toolbox.preset"] === preset) {
+            el.classList.remove("selected");
+            delete localStorage["toolbox.preset"];
+            localStorage["toolbox.tags"] = "[]";
+        } else {
+            [...document.querySelector(".presets").children].forEach(x => x.classList.toggle("selected", x === el));
+            localStorage["toolbox.preset"] = preset;
+            localStorage["toolbox.tags"] = tags.replaceAll("'", '"');
+        }
+    }
+    [...document.querySelector(".presets").children].forEach(x => x.dataset.preset === localStorage["toolbox.preset"] && x.classList.add("selected"));
     localStorage["toolbox.tourClosed"] = "{}";
 </script>
 <style>
+    .presets {
+        display: flex;
+
+        >* {
+            flex-basis: 0;
+            flex-grow: 1;
+            cursor: pointer;
+
+            &:hover {
+                background-color: var(--bg-accent-hover);
+            }
+
+            &.selected {
+                background-color: var(--bg-accent-active);
+            }
+        }
+    }
+
     .card {
         display: grid;
         grid-template-areas:

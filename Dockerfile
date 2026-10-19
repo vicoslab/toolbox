@@ -145,8 +145,9 @@ ARG TOOLBOX_BRAND_NAME_SHORT="ViCoS"
 ARG TOOLBOX_MODELS=""
 ENV TOOLBOX_BRAND_NAME_LONG=$TOOLBOX_BRAND_NAME_LONG \
     TOOLBOX_BRAND_NAME_SHORT=$TOOLBOX_BRAND_NAME_SHORT \
+    TOOLBOX_PRESETS=static/presets.json \
     TOOLBOX_MODELS=$TOOLBOX_MODELS
-COPY --from=branding properties.css /opt/apps/nexus/static/properties.css
+COPY --from=branding --exclude=*.md * /opt/apps/nexus/static/
 
 ## label-studio
 ENV LATEST_VERSION_CHECK=0 \

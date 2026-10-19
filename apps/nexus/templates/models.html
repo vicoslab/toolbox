@@ -258,6 +258,7 @@
         const tags = [...document.querySelectorAll(".tag-toggle")];
         function updateTags() {
             const checked = tags.filter(x => x.querySelector("input").checked).map(x => x.innerText.trim());
+            localStorage["toolbox.tags"] = JSON.stringify(checked);
             const isFiltered = checked.length > 0;
             list.classList.toggle("filtered", isFiltered);
             for (const model of list.querySelectorAll(".model")) {
@@ -274,6 +275,8 @@
                 model.style.display = found > 0 || !isFiltered ? null : "none";
             }
         }
+        const saved = JSON.parse(localStorage["toolbox.tags"] || "[]");
+        tags.forEach(x => x.querySelector("input").checked = saved.includes(x.innerText.trim()));
         updateTags();
         // We're attaching this to the .tag-toggle label, but we only respond to the event that bubbles from the input
         // because the 'checked' state will be correct at that point

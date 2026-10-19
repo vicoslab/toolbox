@@ -30,6 +30,17 @@ DATA = Path(os.environ["TOOLBOX_DATA"])
 DATASET_DIR = Path(os.environ["LOCAL_FILES_DOCUMENT_ROOT"])
 API_KEY = os.environ["LABEL_STUDIO_API_KEY"]
 
+PRESETS = os.environ["TOOLBOX_PRESETS"]
+if os.path.exists(PRESETS):
+    with open(PRESETS) as f:
+        PRESETS = json.load(f)
+else:
+    try:
+        PRESETS = json.loads(PRESETS)
+    except:
+        print(f"Using empty presets because PRESETS didn't exist or was not valid json")
+        PRESETS = {}
+
 DATA.mkdir(exist_ok=True)
 models_file = DATA / "models.json"
 
@@ -206,7 +217,7 @@ def index(request: Request):
     params = propagate(request.query_params)
     if "tour" not in params:
         params["tour"] = TourStep.START.value
-    return templates.TemplateResponse(request=request, name="index.html", context=dict(params=params))
+    return templates.TemplateResponse(request=request, name="index.html", context=dict(presets=PRESETS, params=params))
 
 @app.get("/label", response_class=HTMLResponse)
 def label(request: Request, project: str | None = None):
