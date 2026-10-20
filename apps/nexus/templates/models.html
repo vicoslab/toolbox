@@ -70,9 +70,12 @@
     </a>
     {% else %}
     <a class="model" title="You must install the model to make it available for use."
-        onclick="install(`{{ url_for_query(request, 'model_install', params) }}`, `{{ name }}`, `{{ info.get('notice', '') }}`); return false;">
+        onclick="install(`{{ url_for_query(request, 'model_install', params) }}`, `{{ name }}`, `{{ group }}`, `{{ info.get('notice', '') }}`); return false;">
         <h3>{{ info.title }}</h3>
         <p>{{ info.description }}</p>
+        <span class="source-info" title="{{ group }} by {{ owner }}">
+            {{ group }}
+        </span>
         <ul class="tags" style="align-items: end; list-style: none; margin: 0; padding: 0; max-width: 95%;">
             {% for tag in info.tags %}
             <li class="tag">{{ tag }}</li>
@@ -217,10 +220,12 @@
             location.reload();
         }).catch(() => { });
     }
-    const mdUrl = /\[([^]]*)\]\(([^)]*)\)/;
-    function install(url, name, notice) {
-        const i = document.createElement("i");
-        i.innerText = name;
+    const mdUrl = /\[([^\]]*)\]\(([^)]*)\)/;
+    function install(url, name, group, notice) {
+        const i_name = document.createElement("i");
+        i_name.innerText = name.substring(8);
+        const i_group = document.createElement("i");
+        i_group.innerText = group;
         const noticeElems = [];
         const agree = document.createElement("input");
         if (notice) {
@@ -242,7 +247,7 @@
         mustAgree.style.color = "var(--fg-dangerous)";
         mustAgree.style.display = "none";
         (function ask() {
-            showModal("Install model ", i, " ?", ...noticeElems, mustAgree)
+            showModal("Install model ", i_name, " from ", i_group, " ?", ...noticeElems, mustAgree)
                 .then(async () => {
                     if (notice && !agree.checked) {
                         mustAgree.style.display = "block";

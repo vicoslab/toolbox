@@ -12,6 +12,7 @@ import io
 import json
 import os
 import base64
+import hashlib
 from pathlib import Path
 import subprocess
 from subprocess import Popen, PIPE, STDOUT, CalledProcessError
@@ -77,9 +78,10 @@ tags = set()
 def refresh_manifest():
     model_manifest.clear()
     tools.clear()
-    sources = {}
     did_change = False
     for src in models_config["sources"]:
+        if "sid" not in src:
+            src["sid"] = hashlib.sha256(f"{src["owner"]}/{src["group"]}".encode()).hexdigest()[:7]
         repo = CACHE / ".models" / src["owner"] / src["group"]
         if not repo.exists():
             branch = ["--branch", src["branch"]] if "branch" in src else []
@@ -100,6 +102,7 @@ def refresh_manifest():
             manifest = model_path / "model.json"
             model = {}
 
+            model_id = f"{src["sid"]}-{name}"
             if manifest.exists():
                 manifest = json.loads(manifest.read_text())
                 model["options"] = manifest["properties"]
@@ -113,13 +116,13 @@ def refresh_manifest():
                     model["notice"] = notice
                 for category in manifest.get("x-toolbox-tools", []):
                     if category not in tools:
-                        tools[category] = set()
-                    tools[category].add(name)
+                        tools[category] = []
+                    tools[category].append((model_id, src["group"], src["owner"]))
                 with open(model_path / "ui.html") as f:
                     model["form"] = f.read()
 
             if model != {}:
-                model_manifest[name] = model
+                model_manifest[model_id] = model
             else:
                 src["models"].remove(name)
                 did_change = True
@@ -294,10 +297,11 @@ def models(request: Request):
         installed = []
         available = {}
         for m in group["models"]:
-            if (CACHE / m).exists():
-                installed.append(m)
-            if info := model_manifest.get(m):
-                available[m] = info
+            model_id = f"{group["sid"]}-{m}"
+            if (CACHE / model_id).exists():
+                installed.append(model_id)
+            if info := model_manifest.get(model_id):
+                available[model_id] = info
         if rev := group.get("rev"): # make sure we can manage models even if rev is borked
             rev = rev[:7]
         groups[(group["group"], group["owner"])] = rev, installed, available
@@ -531,7 +535,7 @@ def model_install(request: Request, model: str):
     save_models(models_config)
 
     params["model"] = model
-    params["pid"] = start_task(["bash", "-c", f"./setup.sh && echo \"Finished installing '{model}'\""], model_dir, f"Installing model: `{model}`")
+    params["pid"] = start_task(["bash", "-c", f"./setup.sh && echo \"Finished installing '{model}'\""], model_dir, f"Installing model: `{model}`", extra_env={ "INSTALL_DIR": str(CACHE / model)})
     return { "pid": params["pid"], "logs": str(url_for_query(request, "logs", params)) }
 
 @app.post("/model/{model}/uninstall")
@@ -560,7 +564,7 @@ def dataset_get(request: Request, model: str):
     now = datetime.now()
     old = { pid: task for pid, task in tasks.items() if TourStep.DATASET in task }
 
-    tools_installed = { category: [(val, model_manifest[val]["title"], (CACHE / val).exists()) for val in vals] for category, vals in tools.items() if vals }
+    tools_installed = { category: [(val, group, owner, model_manifest[val]["title"], (CACHE / val).exists()) for val, group, owner in vals] for category, vals in tools.items() if vals }
     return templates.TemplateResponse(request=request, name="dataset.html", context=dict(now=now, tasks=old, tools=tools_installed, **model_manifest[model], params=params))
 
 @app.post("/dataset/external")
