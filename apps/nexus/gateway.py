@@ -194,7 +194,7 @@ def infer(alias):
             response = requests.post(f"http://localhost:{port}/infer", data=data, files=files)
 
             return (response.content, response.status_code, {'Content-Type': response.headers.get('Content-Type', 'text/plain')})
-        except:
+        except requests.RequestException:
             abort(404)
 
     if not (form := forms.get(model)):

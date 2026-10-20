@@ -73,7 +73,7 @@ def parse(schema, stage=None):
     try:
         i = sys.argv.index('--')
         sys.argv, args = sys.argv[:i], sys.argv[i+1:]
-    except:
+    except ValueError:
         args = sys.argv[1:]
 
     return vars(parser.parse_args(args))

@@ -37,7 +37,7 @@ if os.path.exists(PRESETS):
 else:
     try:
         PRESETS = json.loads(PRESETS)
-    except:
+    except json.JSONDecodeError:
         print(f"Using empty presets because PRESETS didn't exist or was not valid json")
         PRESETS = {}
 
@@ -204,7 +204,7 @@ def propagate(kwargs):
         for attr in ["model", "project", "experiment", "manifest"]:
             if attr in kwargs:
                 r[attr] = kwargs[attr]
-    except:
+    except ValueError:
         pass
     return r
 
@@ -384,7 +384,7 @@ def datasets(path: str, files: Optional[bool]=False):
             try:
                 # this is substantially faster and we've checked that new exists and is not malicious
                 count = int(subprocess.run(["bash", "-c", f"find {new} -type f | wc -l"], capture_output=True, text=True).stdout)
-            except:
+            except ValueError:
                 count = sum((x.is_file() for x in new.glob("**/*")))
             files = None
         else:
@@ -642,7 +642,7 @@ async def dataset(request: Request, data: Annotated[DatasetCreation, Form()], mo
         try:
             id = int(line_in)
             break
-        except:
+        except ValueError:
             pass
     os.set_blocking(task["process"].stdout.fileno(), False)
 
