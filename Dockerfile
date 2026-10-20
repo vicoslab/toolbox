@@ -126,6 +126,7 @@ RUN --mount=type=cache,target=/root/.cache/uv XDG_DATA_HOME=/usr/local/share uv 
 RUN mkdir -m 777 /cache /persist /data
 ## Cache dirs
 ENV TOOLBOX_CACHE=/cache \
+    TORCHINDUCTOR_CACHE_DIR=/tmp/torchinductor \
     UV_CACHE_DIR=/cache/.uv \
     UV_PYTHON_INSTALL_DIR=/cache/.uv-python \
     HUGGINGFACE_HUB_CACHE=/cache/.huggingface \
