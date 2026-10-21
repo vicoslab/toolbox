@@ -11,6 +11,7 @@ import json
 import requests
 import time
 import math
+from contextlib import contextmanager
 from sseclient import SSEClient
 
 class NexusTestSession(requests.Session):
@@ -25,6 +26,11 @@ class NexusTestSession(requests.Session):
         return super().request(method, joined_url, *args, **kwargs)
 
 CACHE = Path(os.environ['TOOLBOX_CACHE'])
+DATA = Path(os.environ["TOOLBOX_DATA"])
+def find_sid(fn):
+    with open(DATA / "models.json") as f:
+        sources = json.load(f)["sources"]
+        return next((x["sid"] for x in sources if fn(x)), None)
 
 client = NexusTestSession(base_url='https://localhost', verify=False)
 ls = NexusTestSession(base_url='http://localhost:8080', headers={ 'Authorization': f'Token {os.environ["LABEL_STUDIO_API_KEY"]}'})
@@ -93,39 +99,45 @@ def helper_training(model, config):
     assert weights is not None
     return weights
 
-def helper_inference_ssn(alias, config, files, scores):
-    assert (response := client.post('/model/super-simple-net/infer', json={ **config, 'alias': alias })).status_code == 200
+@contextmanager
+def inference(model_id, config, **kwargs):
+    assert (response := client.post(f'/model/{model_id}/infer', json=config)).status_code == 200
     assert (pid := response.json().get("pid")) and psutil.pid_exists(pid)
     assert (response := client.get('/active')).status_code == 200
-    assert alias in response.json()
+    assert (alias := config.get('alias', model_id)) in response.json()
 
     time.sleep(5) # gateway scans active models every 5s
     try:
-        assert (response := requests.post(f'http://localhost:9090/infer/{alias}', files=[('images', open(f, 'rb')) for f in files])).status_code == 200
-        assert all(a > b for a,b in zip(response.json()['scores'], scores))
+        assert (response := requests.post(f'http://localhost:9090/infer/{alias}', **kwargs)).status_code == 200
+        yield response.json()
     finally:
         assert (response := client.post(f'/task/stop/{pid}')).status_code == 200
     psutil.Process(pid).wait(60)
 
 def helper_install_model(group):
-    model = group['models'][0]
-    if (CACHE / model).exists():
-        return
+    sid = find_sid(lambda x: x["owner"] == group["owner"] and x["group"] == group["group"])
+    model_id = f"{sid}-{group['models'][0]}" if sid else None
+    if model_id and (CACHE / model_id).exists():
+        return None
     assert (response := client.post('/models/add', json=[group])).status_code == 200
-    assert (response := client.post(f'/model/{model}/install')).status_code == 200
+    assert (sid := find_sid(lambda x: x["owner"] == group["owner"] and x["group"] == group["group"]))
+    model_id = f"{sid}-{group['models'][0]}"
+    assert (response := client.post(f'/model/{model_id}/install')).status_code == 200
     response = response.json()
     assert (pid := response.get('pid')) and 'logs' in response
     assert (response := client.get('/task/status')).status_code == 200
     pq = PyQuery(response.text)
-    assert (tags := pq('.task')) and any((model in tag.text for tag in tags))
+    assert (tags := pq('.task')) and any((model_id in tag.text for tag in tags))
     assert psutil.pid_exists(pid)
     psutil.Process(pid).wait(60 * 5)
+    return model_id
 
 def test_model_ssn():
     testdata = ensure_dataset('super-simple-net')
-    helper_install_model({ 'owner':'TestInstall','group':'TestGroup','models':['super-simple-net'],'url':'https://github.com/vicoslab/toolbox-models', 'branch': 'dev' })
+    model_id = helper_install_model({ 'owner':'TestInstall','group':'TestGroup','models':['super-simple-net'],'url':'https://github.com/vicoslab/toolbox-models', 'branch': 'dev' })
     weights = helper_training('super-simple-net', {'manifest': str(testdata / 'manifest.json'), 'epochs': 10, 'batch': 16, 'eval_step_size': 100})
-    helper_inference_ssn('test_model_ssn', {'weights': weights }, [testdata / 'damaged_0_0000_ls3_camera0.jpg'], [0.9])
+    with inference(model_id, {'weights': weights, 'alias': 'test_model_ssn' }, files=[('images', open(f, 'rb')) for f in [testdata / 'damaged_0_0000_ls3_camera0.jpg']]) as response:
+        assert all(a > b for a,b in zip(response['scores'], [0.9]))
 
 def test_import_export():
     testdata = ensure_dataset('super-simple-net')
@@ -151,27 +163,16 @@ def test_import_export():
     assert (manifest := exportdir / 'manifest.json').exists()
 
     weights = helper_training('super-simple-net', {'manifest': str(manifest), 'epochs': 2, 'batch': 16})
-    helper_inference_ssn('test_import_export', {'weights': weights }, [testdata / 'damaged_0_0000_ls3_camera0.jpg'], [0])
-
-def helper_inference_cedirnet_stem(alias, config, files, centers):
-    assert (response := client.post('/model/cedirnet-stem/infer', json={ **config, 'alias': alias })).status_code == 200
-    assert (pid := response.json().get("pid")) and psutil.pid_exists(pid)
-    assert (response := client.get('/active')).status_code == 200
-    assert alias in response.json()
-
-    time.sleep(5) # gateway scans active models every 5s
-    try:
-        assert (response := requests.post(f'http://localhost:9090/infer/{alias}', files=[('images', open(f, 'rb')) for f in files])).status_code == 200
-        centers_pred = response.json()['centers']
-        for i in range(len(centers)): # centers should be list of lists of pairs
-            # check if every center for this image has close enough prediction
-            assert all(any(math.hypot(c[0]-x[0], c[1]-x[1]) < 0.05 for x in centers_pred[i]) for c in centers[i])
-    finally:
-        assert (response := client.post(f'/task/stop/{pid}')).status_code == 200
-    psutil.Process(pid).wait(60)
+    with inference(model_id, {'weights': weights, 'alias': 'test_import_export' }, files=[('images', open(f, 'rb')) for f in [testdata / 'damaged_0_0000_ls3_camera0.jpg']]) as response:
+        assert all(a > b for a,b in zip(response['scores'], [0]))
 
 def test_model_cedirnet_stem():
     testdata = ensure_dataset('cedirnet-stem')
-    helper_install_model({ 'owner':'TestInstall','group':'TestGroup2','models':['cedirnet-stem'],'url':'https://github.com/vicoslab/toolbox-models', 'branch': 'dev' })
+    model_id = helper_install_model({ 'owner':'TestInstall','group':'TestGroup2','models':['cedirnet-stem'],'url':'https://github.com/vicoslab/toolbox-models', 'branch': 'dev' })
     weights = helper_training('cedirnet-stem', {'manifest': str(testdata / 'manifest.json'), 'epochs': 15})
-    helper_inference_cedirnet_stem('test_model_cedirnet_stem', {'model': weights }, [testdata / 'PtCo_IL_a-0016_BF.png', testdata / 'PtCo_IL_a-0016_HAADF.png'], [[[0.5, 0.5]]])
+    files = [('images', open(f, 'rb')) for f in [testdata / 'PtCo_IL_a-0016_BF.png', testdata / 'PtCo_IL_a-0016_HAADF.png']]
+    with inference(model_id, {'model': weights, 'alias': 'test_model_cedirnet_stem' }, files=files) as response:
+        centers = [[[0.5, 0.5]]]
+        for pred, gt in zip(response['centers'], centers): # pred, gt are lists of (x,y) centers
+            for center in gt:
+                assert any(math.hypot(c[0]-x[0], c[1]-x[1]) < 0.05 for x in pred)

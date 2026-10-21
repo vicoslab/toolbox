@@ -82,6 +82,7 @@ def refresh_manifest():
     for src in models_config["sources"]:
         if "sid" not in src:
             src["sid"] = hashlib.sha256(f"{src["owner"]}/{src["group"]}".encode()).hexdigest()[:7]
+            did_change = True
         repo = CACHE / ".models" / src["owner"] / src["group"]
         if not repo.exists():
             branch = ["--branch", src["branch"]] if "branch" in src else []
