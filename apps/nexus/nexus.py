@@ -204,7 +204,8 @@ templates = Jinja2Templates(directory="templates")
 def propagate(kwargs):
     r = {}
     try:
-        r["tour"] = int(kwargs["tour"])
+        if tour := kwargs.get("tour"):
+            r["tour"] = int(tour)
         for attr in ["model", "project", "experiment", "manifest"]:
             if attr in kwargs:
                 r[attr] = kwargs[attr]
