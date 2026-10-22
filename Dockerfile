@@ -127,10 +127,14 @@ RUN mkdir -m 777 /cache /persist /data
 ## Cache dirs
 ENV TOOLBOX_CACHE=/cache \
     TORCHINDUCTOR_CACHE_DIR=/tmp/torchinductor \
+    MPLCONFIGDIR=/tmp/matplotlib \
     UV_CACHE_DIR=/cache/.uv \
+    # hardlinks/clone wasn't working properly in docker
+    UV_LINK_MODE=symlink \
     UV_PYTHON_INSTALL_DIR=/cache/.uv-python \
     HUGGINGFACE_HUB_CACHE=/cache/.huggingface \
     PATH=/opt/apps/mlflow/.venv/bin:/opt/apps/label-studio/.venv/bin:$PATH \
+    PYTORCH_KERNEL_CACHE_PATH=/cache/.torch/kernels \
     TORCH_HOME=/cache/.torch
 
 ## Persist dirs
