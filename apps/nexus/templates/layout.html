@@ -134,6 +134,7 @@
             const eventSource = new EventSource(`/task/logs/${pid}/stream`);
             const lines = document.createElement("pre");
             lines.style.textOverflow = "ellipsis";
+            lines.style.width = "100%";
             const wrap = document.createElement("div");
             wrap.className = "logs";
             wrap.style.overflow = "hidden";
