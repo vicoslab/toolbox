@@ -118,7 +118,7 @@ def helper_install_model(group):
     sid = find_sid(lambda x: x["owner"] == group["owner"] and x["group"] == group["group"])
     model_id = f"{sid}-{group['models'][0]}" if sid else None
     if model_id and (CACHE / model_id).exists():
-        return None
+        return model_id
     assert (response := client.post('/models/add', json=[group])).status_code == 200
     assert (sid := find_sid(lambda x: x["owner"] == group["owner"] and x["group"] == group["group"]))
     model_id = f"{sid}-{group['models'][0]}"
@@ -135,18 +135,18 @@ def helper_install_model(group):
 def test_model_ssn():
     testdata = ensure_dataset('super-simple-net')
     model_id = helper_install_model({ 'owner':'TestInstall','group':'TestGroup','models':['super-simple-net'],'url':'https://github.com/vicoslab/toolbox-models', 'branch': 'dev' })
-    weights = helper_training('super-simple-net', {'manifest': str(testdata / 'manifest.json'), 'epochs': 10, 'batch': 16, 'eval_step_size': 100})
+    weights = helper_training(model_id, {'manifest': str(testdata / 'manifest.json'), 'epochs': 10, 'batch': 16, 'eval_step_size': 100})
     with inference(model_id, {'weights': weights, 'alias': 'test_model_ssn' }, files=[('images', open(f, 'rb')) for f in [testdata / 'damaged_0_0000_ls3_camera0.jpg']]) as response:
         assert all(a > b for a,b in zip(response['scores'], [0.9]))
 
 def test_import_export():
     testdata = ensure_dataset('super-simple-net')
-    helper_install_model({ 'owner':'TestInstall','group':'TestGroup','models':['super-simple-net'],'url':'https://github.com/vicoslab/toolbox-models', 'branch': 'dev' })
+    model_id = helper_install_model({ 'owner':'TestInstall','group':'TestGroup','models':['super-simple-net'],'url':'https://github.com/vicoslab/toolbox-models', 'branch': 'dev' })
     assert (response := client.get('/datasets')).status_code == 200
     assert testdata.name in response.json()['dirs']
 
     body = { 'dataset': str(testdata), 'group_size': 1, 'group_separation': 'interlace', 'regex_include': r'\.jpg', 'regex_exclude': 'damaged'}
-    assert (response := client.post('/dataset?model=super-simple-net', data=body)).status_code == 200
+    assert (response := client.post(f'/dataset?model={model_id}', data=body)).status_code == 200
     assert (project := parse_qs(urlsplit(response.url).query).get('project', [None])[0])
 
     time.sleep(5) # give label studio some time to process upload
@@ -157,22 +157,22 @@ def test_import_export():
     
     exportdir = Path('/data/testexport')
     export_request = {'project': project, 'dir': str(exportdir) }
-    assert (response := client.post('/export?model=super-simple-net', json=export_request)).status_code == 200
+    assert (response := client.post(f'/export?model={model_id}', json=export_request)).status_code == 200
     assert (pid := response.json()['pid']) and psutil.pid_exists(pid)
     psutil.Process(pid).wait(60)
     assert (manifest := exportdir / 'manifest.json').exists()
 
-    weights = helper_training('super-simple-net', {'manifest': str(manifest), 'epochs': 2, 'batch': 16})
+    weights = helper_training(model_id, {'manifest': str(manifest), 'epochs': 2, 'batch': 16})
     with inference(model_id, {'weights': weights, 'alias': 'test_import_export' }, files=[('images', open(f, 'rb')) for f in [testdata / 'damaged_0_0000_ls3_camera0.jpg']]) as response:
         assert all(a > b for a,b in zip(response['scores'], [0]))
 
 def test_model_cedirnet_stem():
     testdata = ensure_dataset('cedirnet-stem')
     model_id = helper_install_model({ 'owner':'TestInstall','group':'TestGroup2','models':['cedirnet-stem'],'url':'https://github.com/vicoslab/toolbox-models', 'branch': 'dev' })
-    weights = helper_training('cedirnet-stem', {'manifest': str(testdata / 'manifest.json'), 'epochs': 15})
+    weights = helper_training(model_id, {'manifest': str(testdata / 'manifest.json'), 'epochs': 15})
     files = [('images', open(f, 'rb')) for f in [testdata / 'PtCo_IL_a-0016_BF.png', testdata / 'PtCo_IL_a-0016_HAADF.png']]
     with inference(model_id, {'model': weights, 'alias': 'test_model_cedirnet_stem' }, files=files) as response:
         centers = [[[0.5, 0.5]]]
-        for pred, gt in zip(response['centers'], centers): # pred, gt are lists of (x,y) centers
-            for center in gt:
-                assert any(math.hypot(c[0]-x[0], c[1]-x[1]) < 0.05 for x in pred)
+        for pred, gt in zip(response['centers'], centers):
+            for cx, cy in gt:
+                assert any(math.hypot(cx-px, cy-py) < 0.05 for px, py in pred)

@@ -193,7 +193,7 @@ def create_inference_worker(model, options, alias=None):
         ["uv", "run", "gunicorn", "--bind", f":{port}", "--log-config", Path.cwd() / "worker-logging.conf", "infer:app", "--"] + flags,
         model_manifest[model]["dir"],
         f"Inference service worker for: `{model}`",
-        { "VIRTUAL_ENV": CACHE / model / ".venv", "LABEL_STUDIO_URL": "http://localhost:8080", "XDG_DATA_HOME": "/tmp" }
+        { "VIRTUAL_ENV": CACHE / model / ".venv", "INSTALL_DIR": CACHE / model, "LABEL_STUDIO_URL": "http://localhost:8080", "XDG_DATA_HOME": "/tmp" }
     )
     tasks[pid][TourStep.INFERENCE] = (alias or model, (port, model))
     return pid
@@ -335,7 +335,7 @@ def models_update(group_info: ModelGroup):
         if ref != "HEAD": # not detached
             if ref != src.get("branch"):
                 src["branch"] = ref
-            if subprocess.run(["git", "pull", "--ff-only"], cwd=groupdir).returncode:
+            if subprocess.run(["git", "pull", "--rebase"], cwd=groupdir).returncode:
                 raise HTTPException(status_code=409, detail="Could not integrate remote changes. Are there local modifications?")
         new = subprocess.run(["git", "rev-parse", "HEAD"], cwd=groupdir, capture_output=True, text=True, check=True).stdout.strip()
     except CalledProcessError as e:
@@ -509,7 +509,7 @@ async def model_train(request: Request, model: str):
         ["uv", "run", "train.py"] + flags,
         model_manifest[model]["dir"],
         f"Model training: `{model}`",
-        { "VIRTUAL_ENV": CACHE / model / ".venv" }
+        { "VIRTUAL_ENV": CACHE / model / ".venv", "INSTALL_DIR": CACHE / model }
     )
     tasks[pid][TourStep.TRAINING] = flags
 
