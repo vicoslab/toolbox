@@ -8,6 +8,7 @@ import time
 import logging
 from datetime import datetime
 
+CACHE = os.environ["TOOLBOX_CACHE"]
 forms = {}
 model_titles = {}
 workers = {}
@@ -131,8 +132,9 @@ def predict():
     else: abort(404)
 
     try_autostart(alias)
-    if not (worker := workers.get(alias)):
-        abort(404)
+    if (worker := workers.get(alias)): pass
+    elif (worker := next((v for k,v in workers.items() if Path(CACHE, k).exists() and k[8:] == alias), None)): pass # compatibility with loosely specified models
+    else: abort(404)
 
     port, _ = worker
 
