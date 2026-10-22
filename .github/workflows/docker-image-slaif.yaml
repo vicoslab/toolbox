@@ -58,7 +58,7 @@ jobs:
 
       - name: Generate model string
         id: models
-        run: printf "defaults=%s" $(echo '[{"group":"Default","owner":"ViCoS","models":["cedirnet","cedirnet-stem","dam4sam","geco2","sam3","super-simple-net"],"rev":"${{ github.ref_name }}","url":"https://github.com/vicoslab/toolbox-models"}]' | base64) >> "$GITHUB_OUTPUT"
+        run: printf "defaults=%s" $(echo '[{"group":"Default","owner":"ViCoS","models":["cedirnet","cedirnet-stem","dam4sam","geco2","sam3","super-simple-net"],"rev":"${{ github.ref_name }}","url":"https://github.com/vicoslab/toolbox-models"}]' | base64 -w0) >> "$GITHUB_OUTPUT"
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v6
