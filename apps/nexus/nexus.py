@@ -189,8 +189,9 @@ def create_inference_worker(model, options, alias=None):
             break
         port += 1
 
+    # --no-control-socket disables control-socket, which we aren't using, and logs errors in configurations with uid-only user
     pid = start_task(
-        ["uv", "run", "gunicorn", "--bind", f":{port}", "--log-config", Path.cwd() / "worker-logging.conf", "infer:app", "--"] + flags,
+        ["uv", "run", "gunicorn", "--bind", f":{port}", "--log-config", Path.cwd() / "worker-logging.conf", "--no-control-socket", "infer:app", "--", *flags],
         model_manifest[model]["dir"],
         f"Inference service worker for: `{model}`",
         { "VIRTUAL_ENV": CACHE / model / ".venv", "INSTALL_DIR": CACHE / model, "LABEL_STUDIO_URL": "http://localhost:8080", "XDG_DATA_HOME": "/tmp" }
