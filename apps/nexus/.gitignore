@@ -10,5 +10,10 @@ wheels/
 # Virtual environments
 .venv
 
+# Frontend testing
+tests/frontend/node_modules
+tests/frontend/output
+tests/frontend/package-lock.json
+
 opencv.js
 UTIF.js

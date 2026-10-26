@@ -135,7 +135,7 @@ def helper_install_model(group):
 def test_model_ssn():
     testdata = ensure_dataset('super-simple-net')
     model_id = helper_install_model({ 'owner':'TestInstall','group':'TestGroup','models':['super-simple-net'],'url':'https://github.com/vicoslab/toolbox-models', 'branch': 'dev' })
-    weights = helper_training(model_id, {'manifest': str(testdata / 'manifest.json'), 'epochs': 10, 'batch': 16, 'eval_step_size': 100})
+    weights = helper_training(model_id, {'manifest': str(testdata / 'manifest.json'), 'epochs': 12, 'batch': 16, 'eval_step_size': 100})
     with inference(model_id, {'weights': weights, 'alias': 'test_model_ssn' }, files=[('images', open(f, 'rb')) for f in [testdata / 'damaged_0_0000_ls3_camera0.jpg']]) as response:
         assert all(a > b for a,b in zip(response['scores'], [0.9]))
 
