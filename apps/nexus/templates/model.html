@@ -134,7 +134,8 @@
     let options, completions;
 
     function stopWorker(el, pid) {
-        el.parentElement.parentElement.style.backgroundColor = "var(--bg-muted)";
+        el.parentElement.parentElement.classList.add("disabled");
+        el.parentElement.parentElement.removeAttribute("open");
         el.remove();
         fetch(`/task/stop/${pid}`, { method: "POST" }).then(() => showToastForLogs({ pid, message: "Worker is shutting down" }));
     }
@@ -374,6 +375,29 @@
                 default: showToast("error", `model-options: Invalid type '${prop.type}'`);
             }
         }
+        const models = [...document.querySelectorAll(`details form[action^="/infer/"]`)].map(x => x.action.split("/").pop());
+        setInterval(async () => {
+            const active = await fetch("/active").then(x => x.json());
+            for (let i = 0; i < models.length;) {
+                const model = models[i];
+                if (model in active) {
+                    delete active[model];
+                    i++;
+                } else {
+                    models.splice(i, 1);
+                    const el = document.querySelector(`details:has(form[action="/infer/${model}"])`);
+                    if (el) {
+                        el.classList.add("disabled");
+                        el.removeAttribute("open");
+                    }
+                    showToast("info", `Inference worker for '${model}' has stopped.`);
+                }
+            }
+            for (const model in active) {
+                models.push(model);
+                showToast("info", `Inference worker for '${model}' has started.`);
+            }
+        }, 5000);
     })();
 </script>
 <style>
@@ -404,6 +428,14 @@
 
         button {
             font-weight: 500;
+        }
+    }
+
+    details.disabled {
+        background-color: var(--bg-muted) !important;
+        pointer-events: none;
+        .delete-worker {
+            display: none;
         }
     }
 
