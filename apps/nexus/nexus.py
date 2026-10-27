@@ -583,10 +583,9 @@ async def dataset_from_upload(request: Request, file: Annotated[UploadFile, File
 
             root = Path(d)
             if len(files := list(root.iterdir())) == 1:
-                name = files[0]
-                root = root / name
+                root = files[0]
 
-            if (target := DATASET_DIR / name).exists():
+            if (target := DATASET_DIR / root.name).exists():
                 raise HTTPException(status_code=400, detail=f"Dataset {str(target.name)} already exists")
             elif (manifest := root / "manifest.json").exists():
                 shutil.move(root, target)
