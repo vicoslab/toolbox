@@ -13,8 +13,7 @@
 <div class="wrapper">
     <div style="max-width: 70rem; margin:auto">
         <div style="display: flex; justify-content: center; gap: 1rem;">
-            <a class="button shadow" onclick="externalDataset()">I have an external
-                dataset</a>
+            <button class="shadow" onclick="externalDataset()">I have an external dataset</button>
             <a class="button shadow"
                 href="{{ url_for_query(request, 'label', params, tour=tour_enum.LABELING.value) }}">I have an existing
                 project</a>
