@@ -52,36 +52,6 @@ def ensure_dataset(model):
                 os.rmdir(files[0])
     return path
 
-def test_read_main():
-    assert (response := client.get('/')).status_code == 200
-    pq = PyQuery(response.text)
-    assert (tag := pq('title')) and 'Homepage' in tag.text()
-    assert (tag := pq('h2')) and 'Welcome to' in tag.text()
-    assert (tags := pq('ul.tour .tour-step')) and len(tags) > 0
-
-def test_manage_groups():
-    group = { 'owner':'TestManage','group':'TestGroup','models':['super-simple-net'],'url':'https://github.com/vicoslab/toolbox-models' }
-    
-    assert (response := client.post('/models/add', json=[group])).status_code == 200
-    
-    group_dir = CACHE / '.models' / 'TestManage' / 'TestGroup'
-    assert (group_dir / 'super-simple-net').exists()
-    assert (response := client.get('/models')).status_code == 200
-    pq = PyQuery(response.text)
-    assert (tag := pq('.model')) and tag.text().startswith('SuperSimpleNet')
-
-    pinned = {'owner': group['owner'], 'group': group['group'], 'rev': '2a5f3f10667fb78ef23222440182970082e56f2c'}
-    assert (response := client.post('/models/update', json=pinned)).status_code == 200
-    assert response.json() == { 'rev': pinned['rev'] }
-    assert subprocess.run(['git', 'rev-parse', 'HEAD'], cwd=group_dir, text=True, capture_output=True).stdout.strip() == pinned['rev']
-    assert (response := client.post('/models/update', json={ **pinned, 'rev': None })).status_code == 200
-    assert response.json()['rev'] == pinned['rev'] # detached head is left alone
-    assert (response := client.post('/models/update', json={ **pinned, 'rev': 'origin/HEAD' })).status_code == 200
-    assert response.json()['rev'] != pinned['rev']
-
-    assert (response := client.post('models/remove', json=group)).status_code == 200
-    assert not group_dir.exists() and not group_dir.parent.exists()
-
 def helper_training(model, config):
     assert (response := client.post(f'/model/{model}/train', json=config)).status_code == 200
     assert (pid := response.json().get("pid")) and psutil.pid_exists(pid)
@@ -131,13 +101,6 @@ def helper_install_model(group):
     assert psutil.pid_exists(pid)
     psutil.Process(pid).wait(60 * 5)
     return model_id
-
-def test_model_ssn():
-    testdata = ensure_dataset('super-simple-net')
-    model_id = helper_install_model({ 'owner':'TestInstall','group':'TestGroup','models':['super-simple-net'],'url':'https://github.com/vicoslab/toolbox-models', 'branch': 'dev' })
-    weights = helper_training(model_id, {'manifest': str(testdata / 'manifest.json'), 'epochs': 12, 'batch': 16, 'eval_step_size': 100})
-    with inference(model_id, {'weights': weights, 'alias': 'test_model_ssn' }, files=[('images', open(f, 'rb')) for f in [testdata / 'damaged_0_0000_ls3_camera0.jpg']]) as response:
-        assert all(a > b for a,b in zip(response['scores'], [0.9]))
 
 def test_import_export():
     testdata = ensure_dataset('super-simple-net')

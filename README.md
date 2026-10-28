@@ -62,20 +62,12 @@ The docker build is multistage and utilises caching where possible, so building 
 
 ## Testing
 We are using integration tests for development, which require multi GB downloads and gpu-accelerated training. While it may be technically possible to use these in CI/CD, it
-is easier to run these in the development environment:
-```bash
-    CONTAINER_ARGS="-v ~/.cache/toolbox/.uv:/cache/.uv -v ~/.cache/toolbox/.torch:/cache/.torch --publish 443:443 --device nvidia.com/gpu=all" make test
-```
+is easier to run these in the development environment.
 
-You can also add arguments to pytest using TEST_ARGS, for example `TEST_ARGS="test_nexus.py::test_import_export"`.
+Set up tests by installing `nodejs`, and running the docker container like you normally would (for example
+`docker run --rm -it --publish 443:443 --device nvidia.com/gpu=all -v ~/.cache/toolbox:/cache --user $(id -u):$(id -g) --shm-size 2G toolbox
+`). Then run `make test`.
 
-`make test` will build an image with local context, and run it with the test entrypoint. Providing a gpu and the uv and torch caches is required due to strict timeouts.
-Publishing the toolbox port is useful as testing will not exit automatically if there were any failing tests. It is then possible to manually inspect the ui/exec into the docker.
-
-`make test-git` should always be used before pushing as it will build image from git HEAD (i.e. without local changes) and run tests.
 
 ### Model tests
-To test model specific tests (from models installed in your cache), you can use
-```bash
-CONTAINER_ARGS="-v ~/.cache/toolbox:/cache --device nvidia.com/gpu=all" make test-installed
-```
+To run tests for models, you can change the environment variable `TEST_ROOT`, for example: `TEST_ROOT=/home/myuser/models make test`, or use `make test-models` which will use `../toolbox-models` as the models dir.

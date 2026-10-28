@@ -14,6 +14,8 @@ wheels/
 tests/frontend/node_modules
 tests/frontend/output
 tests/frontend/package-lock.json
+tests/data/*
+!tests/data/setup.sh
 
 opencv.js
 UTIF.js
