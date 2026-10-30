@@ -131,11 +131,14 @@
     const key = `toolbox-model-${model}`;
     const values = JSON.parse(localStorage.getItem(key) || "{}");
     const values_display = {};
+    const ignoreExit = [];
     let options, completions;
 
     function stopWorker(el, pid) {
-        el.parentElement.parentElement.classList.add("disabled");
-        el.parentElement.parentElement.removeAttribute("open");
+        const details = el.closest("details");
+        details.classList.add("disabled");
+        details.removeAttribute("open");
+        ignoreExit.push(details.querySelector("summary").innerText);
         el.remove();
         fetch(`/task/stop/${pid}`, { method: "POST" }).then(() => showToastForLogs({ pid, message: "Worker is shutting down" }));
     }
@@ -385,12 +388,13 @@
                     i++;
                 } else {
                     models.splice(i, 1);
-                    const el = document.querySelector(`details:has(form[action="/infer/${model}"])`);
-                    if (el) {
-                        el.classList.add("disabled");
-                        el.removeAttribute("open");
+                    const j = ignoreExit.indexOf(model);
+                    // Don't show notifications for workers we stopped
+                    if (j >= 0) {
+                        ignoreExit.splice(j, 1);
+                    } else {
+                        showToast("info", `Inference worker for '${model}' has stopped.`);
                     }
-                    showToast("info", `Inference worker for '${model}' has stopped.`);
                 }
             }
             for (const model in active) {
