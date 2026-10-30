@@ -156,6 +156,14 @@
                 actions.append(show_logs);
             }
 
+            const load = document.createElement("span");
+            load.innerHTML = `
+                <svg viewBox="0 0 24 24" fill="transparent" stroke="currentColor" stroke-width="2px" stroke-linecap="round"
+                    style="width: 0.75rem;">
+                    <path d="M 12 19 A 1 1 0 0 0 12 5 A 1 1 0 0 0 12 19"
+                        style="stroke-dasharray: 46 44; transform-origin: center; animation: dash 5s linear infinite, rotate 5s linear infinite;">
+                    </path>
+                </svg>`;
             eventSource.addEventListener("message", e => last.innerText = JSON.parse(e.data));
             eventSource.addEventListener("quick-action", e => {
                 const { action } = resolveQuickAction(...JSON.parse(e.data));
@@ -174,12 +182,13 @@
                 lines.append(last);
             });
             eventSource.addEventListener("eof", e => {
+                load.remove();
                 if (onFinish) {
                     onFinish();
                 }
             });
 
-            return showToast("info", message, wrap, actions);
+            return showToast("info", message, load, wrap, actions);
         }
         const toasts_key = "toolbox-toasts";
         {
