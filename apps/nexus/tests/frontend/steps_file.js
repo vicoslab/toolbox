@@ -49,7 +49,7 @@ export default function() {
       this.click('Ok');
       this.waitForElement('.loading');
       // If error for dataset exists is shown
-      if (await this.tryTo(() => this.waitForElement('.toast.error'))) {
+      if (await E.tryTo(() => this.waitForElement('.toast.error'))) {
           this.click('button[onclick*="external"]');
           this.selectOption('.dropdown select', manifest);
           this.click('Ok');
@@ -76,7 +76,7 @@ export default function() {
       this.waitForElement('.toast');
       this.waitForInvisible('.toast', 5);
       this.startRecordingTraffic();
-      handler();
+      await E.hopeThat(handler);
       this.stopRecordingTraffic();
       const traffics = await this.grabRecordedNetworkTraffics();
       this.click('#status');
@@ -85,13 +85,10 @@ export default function() {
       this.waitForURL(url => url.pathname.startsWith('/task/logs/'));
       this.click('Stop task');
       this.click('Yes');
+      E.hopeThat.noErrors();
       const preds = traffics.find(({ url }) => new URL(url).pathname.startsWith('/infer/'))?.response?.body;
       this.assert(preds !== undefined);
       return preds;
-    },
-
-    tryTo(handler) {
-      return E.tryTo(handler);
     },
 
     modelOption(name, type, value) {
