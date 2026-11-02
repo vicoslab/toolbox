@@ -116,6 +116,7 @@ def refresh_manifest():
                 if notice := manifest.get("x-toolbox-notice"):
                     model["notice"] = notice
                 for category in manifest.get("x-toolbox-tools", []):
+                    model["tool"] = True
                     if category not in tools:
                         tools[category] = []
                     tools[category].append((model_id, src["group"], src["owner"]))
