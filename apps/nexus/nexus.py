@@ -763,6 +763,7 @@ def finish_list(request: Request, model: str, manifest: Optional[str]=None, proj
         root = root.parent
 
     run_files = []
+    experiment = None
     manifests = [str(x) for x in root.rglob("manifest.json")]
     runs = mlflow.search_runs(experiment_names=[model_info["title"]], max_results=100, output_format="list")
     for run in runs:
@@ -770,11 +771,12 @@ def finish_list(request: Request, model: str, manifest: Optional[str]=None, proj
         if not any((m in params for m in manifests)):
             continue
 
-        path = Path(ARTIFACTS) / run.info.experiment_id / run.info.run_id / "artifacts"
+        experiment = run.info.experiment_id
+        path = Path(ARTIFACTS) / experiment / run.info.run_id / "artifacts"
         if len(tree := file_tree(path)) > 0:
             run_files.append((run.info.run_id, run.info.run_name, tree))
     
-    return { "runs": run_files, "experiment": run.info.experiment_id, "dataset": file_tree(root), "dataset_root": str(root) }
+    return { "runs": run_files, "experiment": experiment, "dataset": file_tree(root), "dataset_root": str(root) }
 
 def zip_response(dirs, filename):
     zip_buffer = io.BytesIO()
