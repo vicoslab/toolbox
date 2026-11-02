@@ -3,7 +3,7 @@ from fastapi.sse import EventSourceResponse, ServerSentEvent
 from fastapi.responses import RedirectResponse, HTMLResponse, FileResponse, Response
 from fastapi.templating import Jinja2Templates
 from typing import Annotated, List, Optional, Dict
-from pydantic import BaseModel, AnyHttpUrl
+from pydantic import BaseModel, AnyHttpUrl, Field
 import asyncio
 
 import time
@@ -167,6 +167,11 @@ def start_task(command, cwd, description, extra_env={}, blocking=False):
     os.set_blocking(proc.stdout.fileno(), blocking)
     return proc.pid
 
+class WorkerInfo(BaseModel):
+    model: str
+    port: int
+    options: dict = Field(exclude=True)
+
 def build_model_options(options, values):
     flags = []
     for k, v in values:
@@ -179,11 +184,12 @@ def build_model_options(options, values):
                 flags.extend(["--" + k, str(v)])
     return flags
 
-def create_inference_worker(model, options, alias=None):
-    flags = build_model_options(model_manifest[model]["options"], options)
+def create_inference_worker(model, values, alias=None):
+    options = model_manifest[model]["options"]
+    flags = build_model_options(options, values.items())
 
     port = 9091
-    used = [task[TourStep.INFERENCE][1][0] for task in tasks.values() if task["process"] and TourStep.INFERENCE in task]
+    used = [worker[1].port for task in tasks.values() if task["process"] and (worker := task.get(TourStep.INFERENCE))]
     while True:
         if port not in used:
             break
@@ -196,7 +202,8 @@ def create_inference_worker(model, options, alias=None):
         f"Inference service worker for: `{model}`",
         { "VIRTUAL_ENV": CACHE / model / ".venv", "INSTALL_DIR": CACHE / model, "LABEL_STUDIO_URL": "http://localhost:8080", "XDG_DATA_HOME": "/tmp" }
     )
-    tasks[pid][TourStep.INFERENCE] = (alias or model, (port, model))
+    options = { opt["title"]: v for k, v in values.items() if (opt := options.get(k)) }
+    tasks[pid][TourStep.INFERENCE] = (alias or model, WorkerInfo(port=port, model=model, options=options))
     return pid
 
 app = FastAPI()
@@ -426,7 +433,7 @@ def model(request: Request, model: str, manifest: str | None = None, weights: st
         params["weights"] = weights
 
     # alias: (pid, model)
-    workers = { inf[0]: (k, inf[1][1]) for (k, task) in tasks.items() if (inf := task.get(TourStep.INFERENCE)) and task["process"] is not None }
+    workers = { inf[0]: (pid, inf[1]) for (pid, task) in tasks.items() if (inf := task.get(TourStep.INFERENCE)) and task["process"] is not None }
     now = datetime.now()
     runs = { pid: task for pid, task in tasks.items() if TourStep.TRAINING in task }
     return templates.TemplateResponse(request=request, name="model.html", context=dict(
@@ -493,7 +500,7 @@ async def model_infer(request: Request, model: str, alias: Optional[str]=None):
         if task["process"] and (info := task.get(TourStep.INFERENCE)) and info[0] == (alias or model):
             raise HTTPException(status_code=400, detail=f"Worker with alias '{alias or model}' already running")
 
-    params["pid"] = create_inference_worker(model, options.items(), alias)
+    params["pid"] = create_inference_worker(model, options, alias)
 
     if params.get("tour") == TourStep.MONITORING.value:
         params["tour"] = TourStep.INFERENCE.value
@@ -555,7 +562,7 @@ def model_uninstall(model: str):
 
 @app.get("/active")
 def active_models():
-    return dict([task[TourStep.INFERENCE] for task in tasks.values() if TourStep.INFERENCE in task and task["process"] is not None])
+    return dict([info for task in tasks.values() if (info := task.get(TourStep.INFERENCE)) and task["process"] is not None])
 
 @app.get("/dataset", response_class=HTMLResponse)
 def dataset_get(request: Request, model: str):

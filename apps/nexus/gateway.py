@@ -107,7 +107,7 @@ def try_autostart(alias):
                 keepalive[alias] = [response.json()["pid"], time.monotonic()]
             for _ in range(10):
                 if worker := workers.get(alias):
-                    port, _ = worker
+                    port = worker["port"]
                     try:
                         requests.get(f"http://localhost:{port}/health")
                         if response.status_code == 200:
@@ -136,7 +136,7 @@ def predict():
     elif (worker := next((v for k,v in workers.items() if Path(CACHE, k).exists() and k[8:] == alias), None)): pass # compatibility with loosely specified models
     else: abort(404)
 
-    port, _ = worker
+    port = worker["port"]
 
     for task in data["tasks"]:
         for k, v in task["data"].items():
@@ -172,7 +172,7 @@ def infer(alias):
     if not (worker := workers.get(alias)):
         abort(404)
 
-    port, model = worker
+    port = worker["port"]
     # forward requests to actual backend
     if request.method == "POST":
         data = request.json if request.is_json else request.form.to_dict()

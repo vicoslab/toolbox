@@ -36,14 +36,30 @@
 <div class="model-overview wrapper">
     {% if params.tour|default(tour_enum.INFERENCE.value) == tour_enum.INFERENCE.value %}
     <div class="inference">
-        {% for (alias, (pid, model)) in workers.items() %}
+        {% for (alias, (pid, info)) in workers.items() %}
         <details name="workers" {% if first|default(true) %}open{% endif %}>
             {% set first = false %}
             <summary>{{ alias }}
-                <button title="Stop worker '{{ alias }}'?" class="shadow-sm transparent delete-worker"
-                    onclick="showModal(`Stop worker '{{ alias }}'?`).then(() => stopWorker(this, {{ pid }}))">
-                    <img src="/static/icons/remove.svg">
+                <button command="show-modal" commandfor="info-{{ alias }}" class="shadow-sm transparent worker-info">
+                    <img src="/static/icons/remove.svg" style="width: 1.2rem; height: 1.2rem;">
                 </button>
+                <dialog id="info-{{ alias }}" class="worker-info-popup">
+                    <h3>{{ alias }}</h3>
+                    {% if info.options %}
+                    <ul style="list-style: none; padding-left: 0;">
+                        {% for (name, value) in info.options.items() %}
+                        <li>{{ name }}: <pre>{{ value }}</pre></li>
+                        {% endfor %}
+                    </ul>
+                    {% endif %}
+                    
+                    <div style="display: flex; justify-content: end; gap: 0.5rem;">
+                        <button commandfor="info-{{ alias }}" command="close" title="Stop worker '{{ alias }}'?" onclick="stopWorker(this, {{ pid }})">
+                            Stop task
+                        </button>
+                        <button commandfor="info-{{ alias }}" command="close">Close</button>
+                    </div>
+                </dialog>
             </summary>
             <form class="inference-tab" action="/infer/{{ alias }}">
                 <fieldset>
@@ -135,6 +151,8 @@
     let options, completions;
 
     function stopWorker(el, pid) {
+        console.log(el);
+        el.closest("dialog")?.close();
         const details = el.closest("details");
         details.classList.add("disabled");
         details.removeAttribute("open");
@@ -405,11 +423,29 @@
     })();
 </script>
 <style>
-    .delete-worker {
-        padding: 0;
-        width: 1.2rem;
-        height: 1.2rem;
+    .worker-info {
         pointer-events: auto;
+        display: grid;
+        place-items: center;
+        padding: 0.25rem;
+    }
+    .worker-info-popup {
+        padding: 0.5rem 1rem;
+        ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            margin-bottom: 0.5rem;
+        }
+        pre {
+            display: inline-block;
+            margin: 0;
+            background-color: var(--bg-muted);
+            padding: 0.125rem 0.25rem;
+        }
+        button {
+            pointer-events: auto;
+        }
     }
 
     .model-dispatch {
@@ -438,7 +474,7 @@
     details.disabled {
         background-color: var(--bg-muted) !important;
         pointer-events: none;
-        .delete-worker {
+        .worker-info {
             display: none;
         }
     }
