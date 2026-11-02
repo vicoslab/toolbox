@@ -172,6 +172,34 @@
                 </div>
             </li>
             {% endif %}
+            {% if "image" in tools %}
+            <li data-category="image" class="tool-category">
+                <div class="tool-inner">
+                    <h4 style="font-weight: 500;">Image based</h4>
+                    {% for (name, group, owner, title, installed, enabled) in tools["image"] %}
+                    {% if installed %}
+                    <label class="tool button" data-src="{{ group }} by {{ owner }}">
+                        <input type="checkbox" name="{{ name }}" checked>
+                        {{ title }}
+                    </label>
+                    {% else %}
+                    <label class="tool button"
+                        onclick="install(`{{ url_for_query(request, 'model_install', params, model=name) }}`, `{{ name }}`);"
+                        title="Click to install model" data-src="{{ group }} by {{ owner }}">
+                        <input type="checkbox" name="{{ name }}" disabled>
+                        {{ title }}
+                    </label>
+                    {% endif %}
+                    {% endfor %}
+                </div>
+                <div class="tool-info">
+                    <p>
+                        <strong style="display: block; margin-bottom: 0.5rem;">Image based tools</strong>
+                        operate on the whole image and are triggered by clicking the button/label.
+                    </p>
+                </div>
+            </li>
+            {% endif %}
         </ul>
         {% endif %}
         {% if tasks | length %}

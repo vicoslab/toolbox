@@ -48,6 +48,13 @@ if smtoolsline := next((line for line in config.split('\n') if '@SMART_TOOLS@' i
             tools_config.append(f'\t<Label value="{title}" hotkey=" " alias="{key}"/>')
             i += 1
         tools_config.append('</KeypointLabels>')
+    if items := tools.get('image'):
+        tools_config.append('<Header size="5" value="Image level smart tools. Clicking a button retrieves that tool\'s output." />')
+        tools_config.append('<Labels name="toolbox-tools-image" toName="image">')
+        for (key, title) in items:
+            tools_config.append(f'\t<Label value="{title}" hotkey=" " alias="{key}"/>')
+            i += 1
+        tools_config.append('</Labels>')
 
     config = config.replace('@SMART_TOOLS@', ('\n' + lspace).join(tools_config) or tools_default)
 
