@@ -1,0 +1,15 @@
+diff --git a/web/libs/editor/src/tags/control/Label.jsx b/web/libs/editor/src/tags/control/Label.jsx
+index 38d94edc9..9fd749dd4 100644
+--- a/web/libs/editor/src/tags/control/Label.jsx
++++ b/web/libs/editor/src/tags/control/Label.jsx
+@@ -122,6 +122,10 @@ const Model = types
+      * Select label
+      */
+     toggleSelected() {
++      if (self.parent.name === "toolbox-tools-image") {
++        window.dataManager?.retrieveInteractivePredictions({ regions: [{ results: [{ value: { labels: [self.alias ?? self.value]}}]}] });
++        return;
++      }
+       let sameObjectSelectedRegions = [];
+ 
+       // here we check if you click on label from labels group

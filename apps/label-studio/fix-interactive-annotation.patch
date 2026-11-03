@@ -1,5 +1,5 @@
 diff --git a/web/apps/labelstudio/src/pages/DataManager/DataManager.jsx b/web/apps/labelstudio/src/pages/DataManager/DataManager.jsx
-index 584333f74..65fea37a8 100644
+index 584333f74..656c5f35e 100644
 --- a/web/apps/labelstudio/src/pages/DataManager/DataManager.jsx
 +++ b/web/apps/labelstudio/src/pages/DataManager/DataManager.jsx
 @@ -1,4 +1,5 @@
@@ -8,35 +8,43 @@ index 584333f74..65fea37a8 100644
  import { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
  import { generatePath, useHistory } from "react-router";
  import { Link, NavLink } from "react-router-dom";
-@@ -155,16 +156,15 @@ export const DataManagerPage = ({ ...props }) => {
+@@ -155,16 +156,13 @@ export const DataManagerPage = ({ ...props }) => {
      });
  
      if (interactiveBacked) {
 -      dataManager.on("lsf:regionFinishedDrawing", (reg, group) => {
-+      function retrieveInteractivePredictions(region, added) {
++      function retrieveInteractivePredictions(context) {
          const { lsf, task, currentAnnotation: annotation } = dataManager.lsf;
 -        const ids = group.map((r) => r.cleanId);
 -        const result = annotation.serializeAnnotation().filter((res) => ids.includes(res.id));
 -
-+        const regions = annotation.regions.filter(x => x.labels.length == region.labels.length && x.labels.every((it, i) => it == region.labels[i]) && (added || x != region));
-+        const labels = Object.fromEntries(region.results.map(r => [r.from_name.name, r.selectedLabels.map(x => x.alias ?? x.value)]));
          const suggestionsRequest = api.callApi("mlInteractive", {
            params: { pk: interactiveBacked.id },
            body: {
              task: task.id,
 -            context: { result },
-+            context: { regions, labels },
++            context,
            },
          });
  
-@@ -188,7 +188,9 @@ export const DataManagerPage = ({ ...props }) => {
+@@ -188,7 +186,19 @@ export const DataManagerPage = ({ ...props }) => {
  
            return null;
          });
 -      });
 +      }
-+      dataManager.on("onEntityCreate", debounce(r => retrieveInteractivePredictions(r, true), 50, { trailing: true }));
-+      dataManager.on("onEntityDelete", debounce(r => retrieveInteractivePredictions(r, false), 50, { trailing: true }));
++      Object.assign(dataManager, { retrieveInteractivePredictions });
++      function getContext(region, added) {
++        const regions = dataManager.lsf.currentAnnotation.regions.filter(x => 
++            x.labels.length == region.labels.length && 
++            x.labels.every((it, i) => it == region.labels[i]) && 
++            (added || x != region)
++          );
++        const labels = Object.fromEntries(region.results.map(r => [r.from_name.name, r.selectedLabels.map(x => x.alias ?? x.value)]));
++        return { regions, labels };
++      }
++      dataManager.on("onEntityCreate", debounce(r => retrieveInteractivePredictions(getContext(r, true)), 50, { trailing: true }));
++      dataManager.on("onEntityDelete", debounce(r => retrieveInteractivePredictions(getContext(r, false)), 50, { trailing: true }));
      }
  
      setContextProps({ dmRef: dataManager });
