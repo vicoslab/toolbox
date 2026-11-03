@@ -52,11 +52,13 @@ try:
     if models_file.exists():
         models_config = json.loads(models_file.read_text())
         models_config["added"] = list(set(models_config.get("added", [])))
+        if "tools" not in models_config:
+            models_config["tools"] = {}
     elif models_str := os.getenv("TOOLBOX_MODELS"):
-        models_config = { "added": [], "sources": json.loads(base64.b64decode(models_str)) }
+        models_config = { "added": [], "sources": json.loads(base64.b64decode(models_str)), "tools": {} }
         save_models(models_config)
     else:
-        models_config = { "added": [], "sources": [] }
+        models_config = { "added": [], "sources": [], "tools": {} }
         save_models(models_config)
     if type(models_config) != dict:
         print("Invalid models.json, overwriting")
@@ -67,7 +69,7 @@ except Exception as e:
         old = models_file.with_suffix(models_file.suffix + ".bak")
         print(f"Saving old sources config to {str(old)}")
         models_file.rename(old)
-    models_config = { "added": [], "sources": [] }
+    models_config = { "added": [], "sources": [], "tools": {} }
     save_models(models_config)
 
 model_manifest = {}
@@ -112,11 +114,11 @@ def refresh_manifest():
                 model["dir"] = model_path
                 model["train"] = (model_path / "train.py").exists()
                 model["tags"] = manifest.get("x-toolbox-tags", [])
+                model["tool"] = manifest.get("x-toolbox-tools", [])
                 tags.update(model["tags"])
                 if notice := manifest.get("x-toolbox-notice"):
                     model["notice"] = notice
-                for category in manifest.get("x-toolbox-tools", []):
-                    model["tool"] = True
+                for category in model["tool"]:
                     if category not in tools:
                         tools[category] = []
                     tools[category].append((model_id, src["group"], src["owner"]))
@@ -373,7 +375,6 @@ def models_remove(group_info: ModelGroup):
 
 class ModelGroupDefinition(ModelGroup):
     models: List[str]
-    tools: Optional[dict[str, List[str]]] = None
     url: AnyHttpUrl
 @app.post("/models/add")
 def models_add(data: List[ModelGroupDefinition]):
@@ -381,8 +382,6 @@ def models_add(data: List[ModelGroupDefinition]):
         defs = dict(defs)
         if defs["branch"] is None:
             del defs["branch"]
-        if defs["tools"] is None:
-            del defs["tools"]
         defs["url"] = str(defs["url"])
         if defs not in models_config["sources"]:
             models_config["sources"].append(defs)
@@ -444,6 +443,22 @@ def model(request: Request, model: str, manifest: str | None = None, weights: st
         workers=workers,
         params=params
     ))
+
+@app.post("/model/{model}/tool")
+def model_tool(request: Request, model: str, enable: bool, category: str):
+    if not (model_info := model_manifest.get(model)):
+        raise HTTPException(status_code=404, detail=f"Model '{model}' does not exist")
+    if not (tools := model_info.get("tool")):
+        raise HTTPException(status_code=404, detail=f"Model '{model}' is not a tool")
+    if category not in tools:
+        raise HTTPException(status_code=404, detail=f"Model '{model}' doesn't contain given tool category")
+    # automatically add
+    if category not in models_config["tools"]:
+        models_config["tools"][category] = {}
+    if model not in models_config["tools"][category]:
+        models_config["tools"][category][model] = [True, {}]
+    models_config["tools"][category][model][0] = enable
+    save_models(models_config)
 
 @app.get("/model/{model}/options")
 def model_options(request: Request, model: str, manifest: Optional[str] = None, weights: Optional[str] = None):
@@ -575,7 +590,24 @@ def dataset_get(request: Request, model: str):
     now = datetime.now()
     old = { pid: task for pid, task in tasks.items() if TourStep.DATASET in task }
 
-    tools_installed = { category: [(val, group, owner, model_manifest[val]["title"], (CACHE / val).exists()) for val, group, owner in vals] for category, vals in tools.items() if vals }
+    tools_installed = {}
+    for category, vals in tools.items():
+        if not vals:
+            continue
+
+        if category not in models_config["tools"]:
+            models_config["tools"][category] = {}
+
+        tools_installed[category] = []
+        for val, group, owner in vals:
+            # grandfather in tools which were already present
+            if val not in models_config["tools"][category]:
+                models_config["tools"][category][val] = [Path(CACHE, val).exists(), {}]
+                save_models(models_config)
+
+            enabled, _ = models_config["tools"][category][val]
+            tools_installed[category].append((val, group, owner, model_manifest[val]["title"], (CACHE / val).exists(), enabled))
+
     return templates.TemplateResponse(request=request, name="dataset.html", context=dict(now=now, tasks=old, tools=tools_installed, **model_manifest[model], params=params))
 
 @app.post("/dataset/external")
@@ -621,7 +653,6 @@ class DatasetCreation(BaseModel):
     regex_include: str
     regex_exclude: str
     shared: bool = False
-    tools: Optional[str] = None
     files: Optional[list[UploadFile]] = []
 
 @app.post("/dataset", response_class=HTMLResponse)
@@ -642,8 +673,8 @@ async def dataset(request: Request, data: Annotated[DatasetCreation, Form()], mo
 
     data_dict = data.model_dump()
     data_dict["tools"] = {
-        kind: [ (id, info["title"]) for id in tools if (info := model_manifest.get(id)) ]
-        for kind, tools in json.loads(data.tools or '{}').items()
+        kind: [ (id, info["title"]) for id, (enabled, _) in tools.items() if (info := model_manifest.get(id)) and enabled ]
+        for kind, tools in models_config["tools"].items()
     }
     del data_dict["files"]
     env = { "MODEL_DIR": model_manifest[model]["dir"], "CREATION_REQUEST": json.dumps(data_dict) }
