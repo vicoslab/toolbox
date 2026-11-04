@@ -45,7 +45,7 @@ export default function() {
       this.section('Loading external dataset');
       this.click('button[onclick*="external"]');
       this.attachFile('#dataset-upload', filename); // filename relative to test root
-      this.wait(1); // wait a bit for file to load
+      this.wait(3); // wait a bit for file to load
       this.click('Ok');
       this.waitForElement('.loading');
       // If error for dataset exists is shown
@@ -85,6 +85,7 @@ export default function() {
       this.waitForURL(url => url.pathname.startsWith('/task/logs/'));
       this.click('Stop task');
       this.click('Yes');
+      this.waitForNavigation(); // wait for page refresh
       E.hopeThat.noErrors();
       const preds = traffics.find(({ url }) => new URL(url).pathname.startsWith('/infer/'))?.response?.body;
       this.assert(preds !== undefined);
