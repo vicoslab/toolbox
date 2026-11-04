@@ -57,6 +57,7 @@
                         <button commandfor="info-{{ alias }}" command="close" title="Stop worker '{{ alias }}'?" onclick="stopWorker(this, {{ pid }})">
                             Stop task
                         </button>
+                        <button commandfor="info-{{ alias }}" command="close" onclick="addCustomTool('{{ alias }}', {{ pid }})">Use as smart tool</button>
                         <button commandfor="info-{{ alias }}" command="close">Close</button>
                     </div>
                 </dialog>
@@ -194,6 +195,21 @@
                     showToast("error", detail);
                     break;
             }
+        });
+    }
+    function addCustomTool(alias, pid) {
+        const input = document.createElement("input");
+        input.type = "text";
+        input.value = alias;
+        const label = document.createElement("label");
+        label.innerText = "Display name";
+        label.append(input);
+        showModal(`Use worker '${alias}' as smart tool?`, label).then(async () => {
+            const response = await fetch(`/tools?pid=${pid}&name=${encodeURIComponent(input.value)}`, { method: "POST" });
+            switch (response.status) {
+                case 200: showToast("info", `Added tool '${input.value}'`); break;
+                default: response.json().then(({ detail }) => showToast("error", detail));
+            } 
         });
     }
 
