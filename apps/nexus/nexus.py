@@ -450,8 +450,15 @@ def model(request: Request, model: str, manifest: str | None = None, weights: st
     workers = { inf[0]: (pid, inf[1]) for (pid, task) in tasks.items() if (inf := task.get(TourStep.INFERENCE)) and task["process"] is not None }
     now = datetime.now()
     runs = { pid: task for pid, task in tasks.items() if TourStep.TRAINING in task }
+
+    sources = {}
+    for src in models_config["sources"]:
+        models = [id for m in src["models"] if Path(CACHE, id := f"{src["sid"]}-{m}").exists()]
+        if models:
+            sources[f"{src["group"]} by {src["owner"]}"] = models
+
     return templates.TemplateResponse(request=request, name="model.html", context=dict(
-        **model_manifest[model],
+        sources=sources,
         now=now,
         runs=runs,
         workers=workers,

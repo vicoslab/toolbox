@@ -1,6 +1,6 @@
 {% extends "layout.html" %}
 
-{% block title %}{{ title }}{% endblock %}
+{% block title %}{{ model_manifest[params.model]["title"] }}{% endblock %}
 
 {% block content %}
 {% if params.tour|default(-1) == tour_enum.TRAINING.value %}
@@ -64,7 +64,7 @@
             </summary>
             <form class="inference-tab" action="/infer/{{ alias }}">
                 <fieldset>
-                    {{ form | replace("@ALIAS@", alias) | safe }}
+                    {{ model_manifest[info.model]["form"] | replace("@ALIAS@", alias) | safe }}
                 </fieldset>
                 <div class="toolbar">
                     <div class="toolbar-left"></div>
@@ -80,7 +80,22 @@
 
             <div class="inference-tab">
                 <div class="edit-options" style="display: none;">
-                    <h2 style="flex-basis: 100%;">Model options</h2>
+                    <h2 style="flex-basis: 100%;">
+                        {% if params.tour|default(tour_enum.INFERENCE.value) == tour_enum.INFERENCE.value %}
+                        Start inference for
+                        <select id="select-inference">
+                            {% for source, models in sources.items() %}
+                            <optgroup label="{{ source }}">
+                                {% for id in models %}
+                                <option value="{{ id }}" {% if id == params["model"] %}selected{% endif %}>{{ model_manifest[id]["title"] }}</option>
+                                {% endfor %}
+                            </optgroup>
+                            {% endfor %}
+                        </select>
+                        {% else %}
+                        Model options
+                        {% endif %}
+                    </h2>
                     <div id="set-options"></div>
                     <button title="Add option" class="add-option shadow">
                         <img class="icon" src="/static/icons/add.svg">
@@ -145,11 +160,10 @@
 <script src="/static/model.js"></script>
 <script>
     const model = "{{ params.model }}";
-    const key = `toolbox-model-${model}`;
-    const values = JSON.parse(localStorage.getItem(key) || "{}");
-    const values_display = {};
+    const modelSelect = document.getElementById("select-inference");
+    const setOptions = document.getElementById("set-options");
     const ignoreExit = [];
-    let options, completions;
+    let values, values_display, options, completions;
 
     function stopWorker(el, pid) {
         console.log(el);
@@ -181,6 +195,8 @@
         });
     }
     function startInference(url) {
+        url = new URL(url);
+        url.pathname = `/model/${modelSelect.value}/infer`;
         if (!checkRequiredOptions()) return;
         fetch(url, { body: JSON.stringify(values), method: "POST", headers: { "Content-Type": "application/json" } }).then(async r => {
             switch (r.status) {
@@ -213,12 +229,153 @@
         });
     }
 
-    (async () => {
-        const setOptions = document.getElementById("set-options");
-        ({ options, completions } = await fetch(`{{ url_for_query(request, 'model_options', params) | safe }}`).then(r => r.json()));
-        if (Object.keys(options).length > 0) {
-            document.querySelector(".edit-options").style.display = "";
+    function display(k, v) {
+        const prop = options[k];
+        if (prop === undefined) return;
+
+        const wrap = document.createElement("button");
+        wrap.addEventListener("click", () => editOption(k, prop));
+        wrap.className = "shadow";
+        wrap.style.display = "flex";
+        wrap.style.alignItems = "center";
+        wrap.style.padding = "0.25rem 0.5rem 0.25rem 1rem"
+        wrap.title = prop.description || "";
+
+        const name = document.createElement("span");
+        name.className = "tag-name";
+        name.innerText = prop.title;
+
+        const value = document.createElement("span");
+        value.className = "tag-value";
+        value.innerText = v;
+
+        const remove = document.createElement("button");
+        remove.title = "Remove option";
+        remove.innerHTML = `<img src="/static/icons/remove.svg" class="shadow-sm">`;
+        remove.className = "transparent";
+        remove.style.width = "1rem";
+        remove.style.height = "1rem";
+        remove.style.marginLeft = "0.5rem";
+        remove.style.padding = 0;
+        remove.addEventListener("click", e => {
+            if (k in values) {
+                delete values[k];
+                delete values_display[k];
+                wrap.remove();
+            }
+            e.stopPropagation();
+        });
+        wrap.append(name, value, remove);
+        return wrap;
+    }
+    function setValue(k, v) {
+        console.log("setValue", k, v);
+        values[k] = v;
+        let el = values_display[k];
+        if (el === undefined) {
+            el = display(k, v);
+            values_display[k] = el;
+            setOptions.append(el);
+        } else {
+            values_display[k].querySelector(".tag-value").innerText = v;
         }
+    }
+    function editOption(k, prop) {
+        const title = document.createElement("div");
+        title.className = "option-title";
+        title.innerText = prop.title;
+
+        const description = document.createElement("p");
+        description.className = "option-description";
+        description.innerText = prop.description || "";
+
+        if (prop.enum) {
+            const opts = document.createElement("div");
+            for (const opt of prop.enum) {
+                const radio = document.createElement("input");
+                radio.name = k;
+                radio.type = "radio";
+                radio.id = opt;
+                radio.value = opt;
+                radio.checked = (values[k] ?? prop.default) === opt;
+
+                const radio_label = document.createElement("label");
+                radio_label.htmlFor = opt;
+                radio_label.innerText = opt;
+                opts.append(radio, radio_label);
+            }
+            showModal(title, description, opts).then(() => setValue(k, opts.querySelector('input:checked').value)).catch(() => { });
+            return;
+        }
+        switch (prop.type) {
+            case "string": {
+                const input = dropdown({ name: k, completions: completions[k], placeholder: prop.default, value: values[k] });
+                showModal(title, description, input).then(() => setValue(k, input.value)).catch(() => { });
+                break;
+            }
+            case "boolean": {
+                const radio_yes = document.createElement("input");
+                radio_yes.name = k;
+                radio_yes.type = "radio";
+                radio_yes.checked = !!(values[k] ?? prop.default ?? false);
+                const radio_yes_label = document.createElement("label");
+                radio_yes_label.append(radio_yes, "true");
+
+                const radio_no = document.createElement("input");
+                radio_no.name = k;
+                radio_no.type = "radio";
+                radio_no.checked = !(values[k] ?? prop.default ?? false);
+                const radio_no_label = document.createElement("label");
+                radio_no_label.append(radio_no, "false");
+
+                showModal(title, description, radio_yes_label, radio_no_label).then(() => setValue(k, radio_yes.checked === true)).catch(() => { });
+                break;
+            }
+            case "number":
+            case "integer": {
+                const input = document.createElement("input");
+                input.name = k;
+                input.inputMode = prop.type === "integer" ? "numeric" : "decimal";
+                input.pattern = prop.type === "integer" ? "\d*" : "\d+(.\d+)?";
+                input.placeholder = prop.default ?? "";
+                input.value = values[k] ?? null;
+                showModal(title, description, input).then(() => setValue(k, input.value)).catch(() => { });
+                break;
+            }
+            case "array": {
+                if (prop.items?.enum) {
+                    const opts = document.createElement("div");
+                    for (const opt of prop.items?.enum) {
+                        const box = document.createElement("input");
+                        box.name = k;
+                        box.type = "checkbox";
+                        box.value = opt;
+                        box.checked = (values[k] ?? prop.default ?? []).includes(opt);
+
+                        const box_label = document.createElement("label");
+                        box_label.append(box, opt);
+                        opts.append(box_label);
+                    }
+                    showModal(title, description, opts).then(() => setValue(k, [...opts.querySelectorAll('input:checked')].map(x => x.value))).catch(() => { });
+                    return;
+                }
+                showToast("error", `model-options: Invalid item in array type: '${prop.items}'`)
+                break;
+            }
+            default: showToast("error", `model-options: Invalid type '${prop.type}'`);
+        }
+    }
+
+    async function showOptions(id) {
+        const url = model == id ? `{{ url_for_query(request, 'model_options', params) | safe }}` : `/model/${id}/options`;
+        ({ options, completions } = await fetch(url).then(r => r.json()));
+        document.querySelector(".edit-options").style.display = Object.keys(options).length > 0 ? "" : "none";
+
+        const key = `toolbox-model-${modelSelect?.value || model}`;
+        values = JSON.parse(localStorage.getItem(key) || "{}");
+        values_display = {};
+        setOptions.replaceChildren();
+
         if (stage !== undefined) {
             for (const [k, v] of Object.entries(options)) {
                 if ("stage" in v && v.stage !== stage) {
@@ -232,8 +389,27 @@
             }
         }
 
+        for (const [k, [autofill, compls]] of Object.entries(completions)) {
+            if (autofill !== null) {
+                values[k] = autofill;
+            }
+        }
+        for (const [k, v] of Object.entries(values)) {
+            // k may have been removed due to train/infer only options
+            if (k in options) {
+                const el = display(k, v);
+                values_display[k] = el;
+                setOptions.append(el);
+            }
+        }
+    }
+
+    modelSelect?.addEventListener("change", () => showOptions(modelSelect.value));
+
+    (() => {
         const listOptions = document.getElementById("list-options");
         const addOption = document.querySelector(".edit-options > button");
+        showOptions(modelSelect.value);
         addOption.addEventListener("click", () => {
             listOptions.replaceChildren(...Object.keys(options).filter(k => !(k in values)).sort((a, b) => options[a].title.localeCompare(options[b].title, undefined, { numeric: true, sensitivity: "base" })).map(k => {
                 const prop = options[k];
@@ -263,155 +439,6 @@
             }
         });
 
-        for (const [k, [autofill, compls]] of Object.entries(completions)) {
-            if (autofill !== null) {
-                values[k] = autofill;
-            }
-        }
-        for (const [k, v] of Object.entries(values)) {
-            // k may have been removed due to train/infer only options
-            if (k in options) {
-                const el = display(k, v);
-                values_display[k] = el;
-                setOptions.append(el);
-            }
-        }
-
-        function display(k, v) {
-            const prop = options[k];
-            if (prop === undefined) return;
-
-            const wrap = document.createElement("button");
-            wrap.addEventListener("click", () => editOption(k, prop));
-            wrap.className = "shadow";
-            wrap.style.display = "flex";
-            wrap.style.alignItems = "center";
-            wrap.style.padding = "0.25rem 0.5rem 0.25rem 1rem"
-            wrap.title = prop.description || "";
-
-            const name = document.createElement("span");
-            name.className = "tag-name";
-            name.innerText = prop.title;
-
-            const value = document.createElement("span");
-            value.className = "tag-value";
-            value.innerText = v;
-
-            const remove = document.createElement("button");
-            remove.title = "Remove option";
-            remove.innerHTML = `<img src="/static/icons/remove.svg" class="shadow-sm">`;
-            remove.className = "transparent";
-            remove.style.width = "1rem";
-            remove.style.height = "1rem";
-            remove.style.marginLeft = "0.5rem";
-            remove.style.padding = 0;
-            remove.addEventListener("click", e => {
-                if (k in values) {
-                    delete values[k];
-                    delete values_display[k];
-                    wrap.remove();
-                }
-                e.stopPropagation();
-            });
-            wrap.append(name, value, remove);
-            return wrap;
-        }
-        function setValue(k, v) {
-            values[k] = v;
-            let el = values_display[k];
-            if (el === undefined) {
-                el = display(k, v);
-                values_display[k] = el;
-                setOptions.append(el);
-            } else {
-                values_display[k].querySelector(".tag-value").innerText = v;
-            }
-        }
-        function editOption(k, prop) {
-            const title = document.createElement("div");
-            title.className = "option-title";
-            title.innerText = prop.title;
-
-            const description = document.createElement("p");
-            description.className = "option-description";
-            description.innerText = prop.description || "";
-
-            if (prop.enum) {
-                const opts = document.createElement("div");
-                for (const opt of prop.enum) {
-                    const radio = document.createElement("input");
-                    radio.name = k;
-                    radio.type = "radio";
-                    radio.id = opt;
-                    radio.value = opt;
-                    radio.checked = (values[k] ?? prop.default) === opt;
-
-                    const radio_label = document.createElement("label");
-                    radio_label.htmlFor = opt;
-                    radio_label.innerText = opt;
-                    opts.append(radio, radio_label);
-                }
-                showModal(title, description, opts).then(() => setValue(k, opts.querySelector('input:checked').value)).catch(() => { });
-                return;
-            }
-            switch (prop.type) {
-                case "string": {
-                    const input = dropdown({ name: k, completions: completions[k], placeholder: prop.default, value: values[k] });
-                    showModal(title, description, input).then(() => setValue(k, input.value)).catch(() => { });
-                    break;
-                }
-                case "boolean": {
-                    const radio_yes = document.createElement("input");
-                    radio_yes.name = k;
-                    radio_yes.type = "radio";
-                    radio_yes.checked = !!(values[k] ?? prop.default ?? false);
-                    const radio_yes_label = document.createElement("label");
-                    radio_yes_label.append(radio_yes, "true");
-
-                    const radio_no = document.createElement("input");
-                    radio_no.name = k;
-                    radio_no.type = "radio";
-                    radio_no.checked = !(values[k] ?? prop.default ?? false);
-                    const radio_no_label = document.createElement("label");
-                    radio_no_label.append(radio_no, "false");
-
-                    showModal(title, description, radio_yes_label, radio_no_label).then(() => setValue(k, radio_yes.checked === true)).catch(() => { });
-                    break;
-                }
-                case "number":
-                case "integer": {
-                    const input = document.createElement("input");
-                    input.name = k;
-                    input.inputMode = prop.type === "integer" ? "numeric" : "decimal";
-                    input.pattern = prop.type === "integer" ? "\d*" : "\d+(.\d+)?";
-                    input.placeholder = prop.default ?? "";
-                    input.value = values[k] ?? null;
-                    showModal(title, description, input).then(() => setValue(k, input.value)).catch(() => { });
-                    break;
-                }
-                case "array": {
-                    if (prop.items?.enum) {
-                        const opts = document.createElement("div");
-                        for (const opt of prop.items?.enum) {
-                            const box = document.createElement("input");
-                            box.name = k;
-                            box.type = "checkbox";
-                            box.value = opt;
-                            box.checked = (values[k] ?? prop.default ?? []).includes(opt);
-
-                            const box_label = document.createElement("label");
-                            box_label.append(box, opt);
-                            opts.append(box_label);
-                        }
-                        showModal(title, description, opts).then(() => setValue(k, [...opts.querySelectorAll('input:checked')].map(x => x.value))).catch(() => { });
-                        return;
-                    }
-                    showToast("error", `model-options: Invalid item in array type: '${prop.items}'`)
-                    break;
-                }
-                default: showToast("error", `model-options: Invalid type '${prop.type}'`);
-            }
-        }
         const models = [...document.querySelectorAll(`details form[action^="/infer/"]`)].map(x => x.action.split("/").pop());
         setInterval(async () => {
             const active = await fetch("/active").then(x => x.json());
