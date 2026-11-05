@@ -162,12 +162,12 @@ TOUR_STEPS = [
     # id, title, endpoint, train_only
     (TourStep.START.value, "Start", "index", False),
     (TourStep.MODEL_SELECTION.value, "Models", "models", False),
-    (TourStep.DATASET.value, "Dataset", "dataset", True),
+    (TourStep.DATASET.value, "Dataset", "dataset_get", True),
     (TourStep.LABELING.value, "Labeling", "label", True),
-    (TourStep.EXPORT.value, "Export", "export", True),
-    (TourStep.TRAINING.value, "Training", "model", True),
+    (TourStep.EXPORT.value, "Export", "export_get", True),
+    (TourStep.TRAINING.value, "Training", "train", True),
     (TourStep.MONITORING.value, "Experiments", "dashboard",  True),
-    (TourStep.INFERENCE.value, "Inference", "model", False),
+    (TourStep.INFERENCE.value, "Inference", "infer", False),
     (TourStep.FINISH.value, "Finish tour", "finish", False),
 ]
 
@@ -226,8 +226,6 @@ templates = Jinja2Templates(directory="templates")
 def propagate(kwargs):
     r = {}
     try:
-        if tour := kwargs.get("tour"):
-            r["tour"] = int(tour)
         for attr in ["model", "project", "experiment", "manifest"]:
             if attr in kwargs:
                 r[attr] = kwargs[attr]
@@ -241,10 +239,7 @@ templates.env.globals.update(dict(tour_steps=TOUR_STEPS, tour_enum=TourStep, bra
 
 @app.get("/", response_class=HTMLResponse)
 def index(request: Request):
-    params = propagate(request.query_params)
-    if "tour" not in params:
-        params["tour"] = TourStep.START.value
-    return templates.TemplateResponse(request=request, name="index.html", context=dict(presets=PRESETS, params=params))
+    return templates.TemplateResponse(request=request, name="index.html", context=dict(presets=PRESETS, params=propagate(request.query_params)))
 
 @app.get("/label", response_class=HTMLResponse)
 def label(request: Request, project: str | None = None):
@@ -434,8 +429,7 @@ def datasets(path: str, files: Optional[bool]=False):
     
     raise HTTPException(status_code=404, detail="Invalid path")
 
-@app.get("/models/{model}", response_class=HTMLResponse)
-def model(request: Request, model: str, manifest: str | None = None, weights: str | None = None):
+def handle_model(template: str, request: Request, model: str, manifest: str | None = None, weights: str | None = None):
     params = propagate(request.query_params)
     if model not in model_manifest or not (CACHE / model).exists():
         return RedirectResponse(url_for_query(request, "models", params))
@@ -457,13 +451,14 @@ def model(request: Request, model: str, manifest: str | None = None, weights: st
         if models:
             sources[f"{src["group"]} by {src["owner"]}"] = models
 
-    return templates.TemplateResponse(request=request, name="model.html", context=dict(
+    return templates.TemplateResponse(request=request, name=template, context=dict(
         sources=sources,
         now=now,
         runs=runs,
         workers=workers,
         params=params
     ))
+
 @app.get("/tools")
 def tools_list():
     return models_config["tools"]
@@ -547,13 +542,13 @@ class TaskResponse(BaseModel):
     logs: str
     duplicate: bool=False
 
+@app.get("/model/{model}/infer", response_class=HTMLResponse)
+def infer(request: Request, model: str, manifest: str | None = None, weights: str | None = None):
+    return handle_model("infer.html", request, model, manifest, weights)
 @app.post("/model/{model}/infer")
 async def model_infer(request: Request, model: str, alias: Optional[str]=None):
     if model not in model_manifest:
         raise HTTPException(status_code=404, detail=f"Model '{model}' does not exist")
-
-    params = propagate(request.query_params)
-    params["model"] = model
 
     options = await request.json()
     if not alias:
@@ -563,12 +558,12 @@ async def model_infer(request: Request, model: str, alias: Optional[str]=None):
         if task["process"] and (info := task.get(TourStep.INFERENCE)) and info[0] == (alias or model):
             raise HTTPException(status_code=400, detail=f"Worker with alias '{alias or model}' already running")
 
-    params["pid"] = create_inference_worker(model, options, alias)
+    pid = create_inference_worker(model, options, alias)
+    return TaskResponse(pid=pid, logs=str(url_for_query(request, "logs", propagate(request.query_params), model=model, pid=pid)))
 
-    if params.get("tour") == TourStep.MONITORING.value:
-        params["tour"] = TourStep.INFERENCE.value
-    return TaskResponse(pid=params["pid"], logs=str(url_for_query(request, "logs", params)))
-
+@app.get("/model/{model}/train", response_class=HTMLResponse)
+def train(request: Request, model: str, manifest: str | None = None, weights: str | None = None):
+    return handle_model("train.html", request, model, manifest, weights)
 @app.post("/model/{model}/train")
 async def model_train(request: Request, model: str):
     if model not in model_manifest:
@@ -584,13 +579,7 @@ async def model_train(request: Request, model: str):
     )
     tasks[pid][TourStep.TRAINING] = flags
 
-    params = propagate(request.query_params)
-    params["model"] = model
-    params["pid"] = pid
-    # skip labeling steps
-    if params.get("tour") == TourStep.DATASET.value:
-        params["tour"] = TourStep.TRAINING.value
-    return TaskResponse(pid=pid, logs=str(url_for_query(request, "logs", params)))
+    return TaskResponse(pid=pid, logs=str(url_for_query(request, "logs", propagate(request.query_params), model=model, pid=pid)))
 
 @app.post("/model/{model}/install")
 def model_install(request: Request, model: str):
@@ -697,7 +686,6 @@ class DatasetCreation(BaseModel):
 
 @app.post("/dataset", response_class=HTMLResponse)
 async def dataset(request: Request, data: Annotated[DatasetCreation, Form()], model: str):
-    params = propagate(request.query_params);
     if model not in model_manifest or not (CACHE / model).exists():
         raise HTTPException(status_code=404, detail="Model is not installed")
 
@@ -729,14 +717,10 @@ async def dataset(request: Request, data: Annotated[DatasetCreation, Form()], mo
     os.set_blocking(task["process"].stdout.fileno(), False)
 
     if id is None:
-        return RedirectResponse(url_for_query(request, "logs", params, pid=pid), status_code=303)
+        return RedirectResponse(url_for_query(request, "logs", propagate(request.query_params), pid=pid), status_code=303)
     task[TourStep.DATASET] = id
 
-    params = propagate(request.query_params)
-    if params.get("tour") == TourStep.DATASET.value:
-        params["tour"] = TourStep.LABELING.value
-    params["project"] = id
-    return RedirectResponse(url_for_query(request, "label", params), status_code=303)
+    return RedirectResponse(url_for_query(request, "label", propagate(request.query_params), project=id), status_code=303)
 
 class DatasetAddition(BaseModel):
     dataset: str
@@ -745,8 +729,6 @@ class DatasetAddition(BaseModel):
 
 @app.post("/dataset/upload", response_class=HTMLResponse)
 async def dataset_upload(request: Request, data: Annotated[DatasetAddition, Form()], project: int):
-    params = propagate(request.query_params);
-
     if not (base := Path(data.dataset)).exists():
         raise HTTPException(status_code=400, detail="Provided dataset does not exist")
     base = base / datetime.now().strftime("upload-%Y-%m-%d-%H-%M-%S")
@@ -756,10 +738,7 @@ async def dataset_upload(request: Request, data: Annotated[DatasetAddition, Form
     pid = start_task(["uv", "run", "add.py"], "../ls-utils", f"Adding tasks to project", extra_env={ "ADDITION_REQUEST": addition })
     tasks[pid][TourStep.DATASET] = project
 
-    if params.get("tour") == TourStep.DATASET.value:
-        params["tour"] = TourStep.LABELING.value
-
-    return RedirectResponse(url_for_query(request, "label", params), status_code=303)
+    return RedirectResponse(url_for_query(request, "label", propagate(request.query_params)), status_code=303)
 
 @app.get("/export", response_class=HTMLResponse)
 def export_get(request: Request):

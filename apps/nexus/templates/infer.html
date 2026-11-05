@@ -1,0 +1,209 @@
+{% extends "layout.html" %}
+
+{% block title %}{{ model_manifest[params.model]["title"] }}{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="/static/options.css">
+<div class="tour-description" data-tour_step="inference">
+    <h3>Tour: Inference</h3>
+    <p>
+        The inference tab is where you start inference workers based on pretrained weights or training artifacts.
+        If you came here from the training/monitoring step, the weights may be filled in already, otherwise you need
+        to add them from the options. Then you can start the inference worker.
+        The other options are the same as with training, but are not relevant unless specified otherwise.
+
+        This is the final step. Apply the trained model and review results by uploading samples into the interface.
+        Depending on the task, interaction may be required.
+    </p>
+</div>
+<div class="model-overview wrapper">
+    <div class="inference">
+        {% for (alias, (pid, info)) in workers.items() %}
+        <details name="workers" {% if first|default(true) %}open{% endif %}>
+            {% set first = false %}
+            <summary>{{ alias }}
+                <button command="show-modal" commandfor="info-{{ alias }}" class="shadow-sm transparent worker-info">
+                    <img src="/static/icons/remove.svg" style="width: 1.2rem; height: 1.2rem;">
+                </button>
+                <dialog id="info-{{ alias }}" class="worker-info-popup">
+                    <h3>{{ alias }}</h3>
+                    {% if info.options %}
+                    <ul style="list-style: none; padding-left: 0;">
+                        {% for (name, value) in info.options.items() %}
+                        <li>{{ name }}: <pre>{{ value }}</pre></li>
+                        {% endfor %}
+                    </ul>
+                    {% endif %}
+                    
+                    <div style="display: flex; justify-content: end; gap: 0.5rem;">
+                        <button commandfor="info-{{ alias }}" command="close" title="Stop worker '{{ alias }}'?" onclick="stopWorker(this, {{ pid }})">
+                            Stop task
+                        </button>
+                        <button commandfor="info-{{ alias }}" command="close" onclick="addCustomTool('{{ alias }}', {{ pid }})">Use as smart tool</button>
+                        <button commandfor="info-{{ alias }}" command="close">Close</button>
+                    </div>
+                </dialog>
+            </summary>
+            <form class="inference-tab" action="/infer/{{ alias }}">
+                <fieldset>
+                    {{ model_manifest[info.model]["form"] | replace("@ALIAS@", alias) | safe }}
+                </fieldset>
+                <div class="toolbar">
+                    <div class="toolbar-left"></div>
+                    <div class="toolbar-right"></div>
+                </div>
+            </form>
+        </details>
+        {% endfor %}
+        <details name="workers" {% if first|default(true) %}open{% endif %}>
+            <summary>
+                <img style="height: 1.5rem; margin: auto;" alt="Create worker" src="/static/icons/add.svg">
+            </summary>
+
+            <div class="inference-tab">
+                <div class="edit-options" style="display: none;">
+                    <h2 style="flex-basis: 100%;">
+                        Start inference for
+                        <select id="select-inference">
+                            {% for source, models in sources.items() %}
+                            <optgroup label="{{ source }}">
+                                {% for id in models %}
+                                <option value="{{ id }}" {% if id == params["model"] %}selected{% endif %}>{{ model_manifest[id]["title"] }}</option>
+                                {% endfor %}
+                            </optgroup>
+                            {% endfor %}
+                        </select>
+                    </h2>
+                    <div id="set-options"></div>
+                    <button title="Add option" class="add-option shadow">
+                        <img class="icon" src="/static/icons/add.svg">
+                        <div id="list-options" popover=""></div>
+                    </button>
+                </div>
+                <div style="margin: 2rem auto; width: fit-content;">
+                    <button id="model-inference" class="shadow"
+                        onclick="startInference(`{{ url_for_query(request, 'model_infer', params) }}`)">Start new</button>
+                </div>
+            </div>
+        </details>
+    </div>
+</div>
+
+<script src="/static/opencv.js" async></script>
+<script src="/static/UTIF.js" async></script>
+<script src="/static/model.js"></script>
+<script src="/static/options.js"></script>
+<script>
+    const optionsUrl = `{{ url_for_query(request, 'model_options', params) | safe }}`;
+    const model = "{{ params.model }}";
+    const modelSelect = document.getElementById("select-inference");
+    const ignoreExit = [];
+
+    function stopWorker(el, pid) {
+        el.closest("dialog")?.close();
+        const details = el.closest("details");
+        details.classList.add("disabled");
+        details.removeAttribute("open");
+        ignoreExit.push(details.querySelector("summary").innerText);
+        el.remove();
+        fetch(`/task/stop/${pid}`, { method: "POST" }).then(() => showToastForLogs({ pid, message: "Worker is shutting down" }));
+    }
+    function startInference(url) {
+        url = new URL(url);
+        url.pathname = `/model/${modelSelect.value}/infer`;
+        if (!checkRequiredOptions("infer")) return;
+        fetch(url, { body: JSON.stringify(values), method: "POST", headers: { "Content-Type": "application/json" } }).then(async r => {
+            switch (r.status) {
+                case 200: {
+                    const { pid } = await r.json();
+                    localStorage.setItem(toasts_key, `{"${pid}": "Inference worker started"}`);
+                    location.reload();
+                    break;
+                }
+                default:
+                    const { detail } = await r.json();
+                    showToast("error", detail);
+                    break;
+            }
+        });
+    }
+    function addCustomTool(alias, pid) {
+        const input = document.createElement("input");
+        input.type = "text";
+        input.value = alias;
+        const label = document.createElement("label");
+        label.innerText = "Display name";
+        label.append(input);
+        showModal(`Use worker '${alias}' as smart tool?`, label).then(async () => {
+            const response = await fetch(`/tools?pid=${pid}&name=${encodeURIComponent(input.value)}`, { method: "POST" });
+            switch (response.status) {
+                case 200: showToast("info", `Added tool '${input.value}'`); break;
+                default: response.json().then(({ detail }) => showToast("error", detail));
+            } 
+        });
+    }
+
+    const models = [...document.querySelectorAll(`details form[action^="/infer/"]`)].map(x => x.action.split("/").pop());
+    setInterval(async () => {
+        const active = await fetch("/active").then(x => x.json());
+        for (let i = 0; i < models.length;) {
+            const model = models[i];
+            if (model in active) {
+                delete active[model];
+                i++;
+            } else {
+                models.splice(i, 1);
+                const j = ignoreExit.indexOf(model);
+                // Don't show notifications for workers we stopped
+                if (j >= 0) {
+                    ignoreExit.splice(j, 1);
+                } else {
+                    showToast("info", `Inference worker for '${model}' has stopped.`);
+                }
+            }
+        }
+        for (const model in active) {
+            models.push(model);
+            showToast("info", `Inference worker for '${model}' has started.`);
+        }
+    }, 5000);
+
+    const showOptionsWrapped = (id) => showOptions("infer", model == id ? optionsUrl : `/model/${id}/options`, `toolbox-model-${id}`);
+    modelSelect.addEventListener("change", () => showOptionsWrapped(modelSelect.value));
+    showOptionsWrapped(modelSelect.value);
+</script>
+<style>
+    .worker-info {
+        pointer-events: auto;
+        display: grid;
+        place-items: center;
+        padding: 0.25rem;
+    }
+    .worker-info-popup {
+        padding: 0.5rem 1rem;
+        ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            margin-bottom: 0.5rem;
+        }
+        pre {
+            display: inline-block;
+            margin: 0;
+            background-color: var(--bg-muted);
+            padding: 0.125rem 0.25rem;
+        }
+        button {
+            pointer-events: auto;
+        }
+    }
+
+    details.disabled {
+        background-color: var(--bg-muted) !important;
+        pointer-events: none;
+        .worker-info {
+            display: none;
+        }
+    }
+</style>
+{% endblock %}

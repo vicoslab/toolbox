@@ -4,7 +4,6 @@
 
 {% block content %}
 <div class="model-list wrapper">
-    {% if params.tour|default(-1) == tour_enum.MODEL_SELECTION.value %}
     <div class="tour-description" style="margin: 0; margin-bottom: 1rem;" data-tour_step="model_selection">
         <h3>Tour: Models</h3>
         <p>
@@ -18,7 +17,6 @@
             sequences of characters (such as <i>YWJjZGVmZw==</i>).
         </p>
     </div>
-    {% endif %}
     <ul id="tag-list" class="tags"
         style="font-size: small; list-style: none; margin: 0; margin-bottom: 1rem; padding: 0; width: 100%; row-gap: 1rem;">
         {% for tag in tags | sort %}
@@ -30,7 +28,6 @@
         </li>
         {% endfor %}
     </ul>
-    {% set tour = params.tour|default(-1) %}
     {% for (group, owner), (rev, installed, models) in groups.items() %}
     <h2 class="model-group">
         {{ group }}{% if owner %}<span> by </span>{{ owner }}{% endif %}
@@ -45,14 +42,8 @@
         </div>
     </h2>
     {% for name, info in models.items() %}
-    {% if tour == tour_enum.MODEL_SELECTION.value and model_manifest[name]["train"] %}
-    {% set _ = params.update({"tour": tour_enum.DATASET.value }) %}
-    {% else %}
-    {% set _ = params.update({"tour": tour_enum.INFERENCE.value }) %}
-    {% endif %}
-    {% set _ = params.update({ "model": name }) %}
     {% if name in installed %}
-    <a href="{{ url_for_query(request, 'dataset' if params.tour|default(-1) == tour_enum.DATASET.value else 'model', params) }}"
+    <a href="{{ url_for_query(request, 'dataset' if model_manifest[name]['train'] else 'infer', params, model=name) }}"
         class="model installed shadow">
         <h3>{{ info.title }}</h3>
         <p>{{ info.description }}</p>
@@ -70,7 +61,7 @@
     </a>
     {% else %}
     <a class="model" title="You must install the model to make it available for use."
-        onclick="install(`{{ url_for_query(request, 'model_install', params) }}`, `{{ name }}`, `{{ group }}`, `{{ info.get('notice', '') }}`); return false;">
+        onclick="install(`{{ url_for_query(request, 'model_install', params, model=name) }}`, `{{ name }}`, `{{ group }}`, `{{ info.get('notice', '') }}`); return false;">
         <h3>{{ info.title }}</h3>
         <p>{{ info.description }}</p>
         <span class="source-info" title="{{ group }} by {{ owner }}">

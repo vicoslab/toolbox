@@ -3,7 +3,6 @@
 {% block title %}Labeling{% endblock %}
 
 {% block content %}
-{% if params.tour == tour_enum.LABELING.value %}
 <div class="tour-description" data-tour_step="labeling">
     <h3>Labeling</h3>
     <p>
@@ -25,14 +24,13 @@
         experience in the toolbox.
     </p>
 </div>
-{% endif %}
 <iframe src="/app/label-studio{{ page }}"></iframe>
 <script>
     (() => {
         const params = new URLSearchParams(window.location.search);
         const frame = document.querySelector("iframe");
         const p = /^\/app\/label-studio\/projects\/(\d+)/;
-        if (params.has("tour") && !params.has("project")) {
+        if (!params.has("project")) {
             let id = null;
             const tour_export = document.querySelector(`a.tour-step[data-step-name="Export"]`);
             function preventSwitch(e) {
@@ -50,9 +48,7 @@
                     document.querySelectorAll("a").forEach(x => {
                         const url = new URL(x.href);
                         const params = new URLSearchParams(url.search);
-                        if (params.has("tour")) {
-                            params.set("project", id);
-                        }
+                        params.set("project", id);
                         url.search = params.toString();
                         x.href = url.toString();
                     });

@@ -3,7 +3,6 @@
 {% block title %}Experiments{% endblock %}
 
 {% block content %}
-{% if params.tour == tour_enum.MONITORING.value %}
 <div class="tour-description" data-tour_step="monitoring">
     <h3>Experiments</h3>
     <p>
@@ -15,6 +14,5 @@
         application), with some adjustments to the latter for a more seamless experience in the toolbox.
     </p>
 </div>
-{% endif %}
 <iframe src="/app/mlflow{{ page }}"></iframe>
 {% endblock %}

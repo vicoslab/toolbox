@@ -1,0 +1,74 @@
+{% extends "layout.html" %}
+
+{% block title %}{{ model_manifest[params.model]["title"] }}{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="/static/options.css">
+<div class="tour-description" data-tour_step="training">
+    <h3>Tour: Training</h3>
+    <p>
+        On this page you can configure options for model training. Individual options may differ between models, so
+        you should review their descriptions by hovering over. In any case, a dataset manifest is needed to provide
+        information about training samples to the training procedure.
+
+        If you came here from the 'Export' step, the dataset manifest should be filled in for you already. Otherwise
+        you can find past exports on the <a href="{{ url_for_query(request, 'status', params) }}">status</a> page.
+    </p>
+    <p>
+        For your own dataset, you are expected to prepare a dataset manifest yourself and manually enter the path
+        for the dataset manifest in the options. Rewiew the datasets page to check what formatting is required.
+    </p>
+</div>
+<div class="model-overview wrapper">
+    <div class="text-layout">
+        <div class="edit-options" style="display: none;">
+            <h2 style="flex-basis: 100%;">Model options</h2>
+            <div id="set-options"></div>
+            <button title="Add option" class="add-option shadow">
+                <img class="icon" src="/static/icons/add.svg">
+                <div id="list-options" popover=""></div>
+            </button>
+        </div>
+        <div style="margin: 2rem auto; width: fit-content;">
+            <button id="model-training" class="shadow";
+                onclick="startTraining(`{{ url_for_query(request, 'model_train', params) }}`)">Start new</button>
+        </div>
+        {% if runs | length %}
+        <h3>Tasks</h3>
+        {% for pid, task in runs.items() | reverse %}
+        <a href="{{ url_for_query(request, 'logs', params, pid=pid) }}" class="task">
+            {{ task.description }}
+            {% if task.process %}
+            {% set verb = "Started" %}
+            {% set timestamp = now - task["start_time"] %}
+            {% else %}
+            {% set verb = "Finished" if task.code == 0 else "Exited" %}
+            {% set timestamp = now - task["end_time"] %}
+            {% endif %}
+            <span class="timestamp">{{ verb }} {{ timestamp }} ago</span>
+        </a>
+        {% endfor %}
+        {% endif %}
+    </div>
+</div>
+
+<script src="/static/opencv.js" async></script>
+<script src="/static/UTIF.js" async></script>
+<script src="/static/model.js"></script>
+<script src="/static/options.js"></script>
+<script>
+    const model = "{{ params.model }}";
+    const key = `toolbox-model-${model}`;
+
+    function startTraining(url) {
+        if (!checkRequiredOptions("train")) return;
+        const updated = JSON.stringify(values);
+        localStorage.setItem(key, updated);
+        fetch(url, { body: updated, method: "POST", headers: { "Content-Type": "application/json" } }).then(r => r.json()).then(({ pid, logs }) => {
+            window.location = logs;
+        });
+    }
+
+    showOptions("train", `{{ url_for_query(request, 'model_options', params) | safe }}`, key);
+</script>
+{% endblock %}

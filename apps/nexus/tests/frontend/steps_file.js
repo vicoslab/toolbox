@@ -54,7 +54,7 @@ export default function() {
           this.selectOption('.dropdown select', manifest);
           this.click('Ok');
       }
-      this.waitForURL(url => url.pathname.startsWith('/models/'), { timeout: 5000 });
+      this.waitForURL(url => url.pathname.startsWith('/model/'), { timeout: 5000 });
     },
 
     training(options, timeout) {

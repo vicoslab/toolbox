@@ -1,0 +1,41 @@
+
+#list-options {
+    font-weight: 500;
+    border: 1px solid var(--border);
+    text-align: left;
+    padding: 0;
+    margin: 0;
+    position: absolute;
+    max-height: 40vh;
+    overflow: auto;
+
+    >div {
+        padding: 0.25rem 0.5rem;
+
+        &:hover {
+            background-color: var(--bg-accent-hover);
+        }
+    }
+}
+
+.add-option {
+    padding: 0;
+    width: 2rem;
+    height: 2rem;
+}
+
+.edit-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    max-width: min(55rem, calc(100vw - 10rem));
+    margin: auto
+}
+
+#set-options {
+    display: contents;
+
+    button {
+        font-weight: 500;
+    }
+}
