@@ -2,6 +2,7 @@ from flask import Flask, render_template, abort, request
 from flask_limiter import Limiter
 import requests
 from pathlib import Path
+import hashlib
 import os
 import json
 import time
@@ -13,7 +14,8 @@ forms = {}
 model_titles = {}
 workers = {}
 projects = {}
-autostart = json.loads(os.environ.get("TOOLBOX_AUTOSTART", "{}"))
+autostart_public = json.loads(os.environ.get("TOOLBOX_AUTOSTART", "{}"))
+autostart_tools = {}
 keepalive = {}
 lifetime = 60 * 15 # 15min
 
@@ -37,8 +39,22 @@ limiter = Limiter(
 )
 
 def refresh_workers():
-    model_dir = Path(os.environ["TOOLBOX_CACHE"]) / ".models"
-    forms.update({ p.parent.name: p.read_text() for p in model_dir.rglob("ui.html") })
+    model_dir = Path(os.environ["TOOLBOX_CACHE"], ".models")
+    for p in model_dir.rglob("ui.html"):
+        model, group, owner, *_ = map(lambda x: x.name, p.parents)
+        sid = hashlib.sha256(f"{owner}/{group}".encode()).hexdigest()[:7]
+        forms[f"{sid}-{model}"] = p.read_text()
+
+    try:
+        response = requests.get("http://localhost:8079/tools")
+        if response.status_code == 200:
+            autostart_tools.clear()
+            for vals in response.json().values():
+                autostart_tools.update(vals)
+            app.logger.debug("Tools: %s", autostart_tools)
+    except Exception as e:
+        app.logger.error("Refresh tools: %s", e)
+
     try:
         response = requests.get("http://localhost:8079/active")
         if response.status_code == 200:
@@ -47,9 +63,8 @@ def refresh_workers():
             app.logger.debug("Workers: %s", workers)
 
             now = time.monotonic()
-            for k in keepalive:
-                if k not in workers:
-                    del keepalive[k]
+            for k in list(filter(lambda x: x in workers, keepalive)):
+                del keepalive[k]
             for k, (pid, timestamp) in keepalive.items():
                 if now - timestamp > lifetime:
                     app.logger.info("Autostart: stopping '%s'", k)
@@ -95,28 +110,31 @@ def get_region_label(regions):
                     return v[0]
     return None
 
-def try_autostart(alias):
-    if auto := autostart.get(alias):
-        if alias in keepalive:
-            keepalive[alias][1] = time.monotonic()
+def try_autostart(autostart, alias):
+    if not (auto := autostart.get(alias)):
+        return
+
+    if alias in keepalive:
+        keepalive[alias][1] = time.monotonic()
+        return
+
+    app.logger.info("Autostart '%s'", alias)
+    response = requests.post(f"http://localhost:8079/model/{auto["model"]}/infer?alias={alias}", json=auto["options"])
+    if response.status_code != 200:
+        return
+
+    keepalive[alias] = [response.json()["pid"], time.monotonic()]
+    for _ in range(10):
+        if worker := workers.get(alias):
+            port = worker["port"]
+            try:
+                if requests.get(f"http://localhost:{port}/health").status_code == 200:
+                    return
+            except Exception as e:
+                app.logger.debug("Health %s", e)
         else:
-            model, config = auto["model"], auto["config"]
-            app.logger.info("Autostart '%s'", alias)
-            response = requests.post(f"http://localhost:8079/model/{model}/infer?alias={alias}", json=config)
-            if response.status_code == 200:
-                keepalive[alias] = [response.json()["pid"], time.monotonic()]
-            for _ in range(10):
-                if worker := workers.get(alias):
-                    port = worker["port"]
-                    try:
-                        requests.get(f"http://localhost:{port}/health")
-                        if response.status_code == 200:
-                            return
-                    except Exception as e:
-                        app.logger.debug("Health %s", e)
-                else:
-                    refresh_workers()
-                time.sleep(0.05)
+            refresh_workers()
+        time.sleep(0.05)
 
 # proxy prediction requests for label-studio-ml-backend
 @app.route("/predict", methods=["POST"])
@@ -126,12 +144,16 @@ def predict():
 
     data = request.json
     # interactive requests will have a context, and should be set up such that the region contains info on which model to run
-    if (context := data["params"]["context"]) and (regions := context.get("regions")) and (alias := get_region_label(regions)): pass
+    if (context := data["params"]["context"]):
+        # if there is a context, but we cant get model from it, we want to fail
+        # only if there is no context, we fall back to project associated model
+        if not (regions := context.get("regions")) or not (alias := get_region_label(regions)):
+            abort(404)
     # otherwise try to run the model associated with the project
     elif (alias := projects.get(data["project"])): pass
     else: abort(404)
 
-    try_autostart(alias)
+    try_autostart(autostart_tools, alias)
     if (worker := workers.get(alias)): pass
     elif (worker := next((v for k,v in workers.items() if Path(CACHE, k).exists() and k[8:] == alias), None)): pass # compatibility with loosely specified models
     else: abort(404)
@@ -167,12 +189,12 @@ def infer(alias):
     if app.debug:
         refresh_workers()
 
-    try_autostart(alias)
+    try_autostart(autostart_public, alias)
 
     if not (worker := workers.get(alias)):
         abort(404)
 
-    port = worker["port"]
+    model, port = worker["model"], worker["port"]
     # forward requests to actual backend
     if request.method == "POST":
         data = request.json if request.is_json else request.form.to_dict()
