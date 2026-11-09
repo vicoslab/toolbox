@@ -127,6 +127,7 @@ RUN mkdir -m 777 /cache /persist /data
 ## Cache dirs
 ENV TOOLBOX_CACHE=/cache \
     TORCHINDUCTOR_CACHE_DIR=/tmp/torchinductor \
+    XDG_CACHE_HOME=/tmp/cache \
     MPLCONFIGDIR=/tmp/matplotlib \
     UV_CACHE_DIR=/cache/.uv \
     # hardlinks/clone wasn't working properly in docker
