@@ -70,15 +70,13 @@ export default function() {
       this.click('#action-training');
     },
 
-    async inference(handler) {
+    async worker(handler) {
       this.section('Inference');
       this.click('#model-inference');
       this.waitForElement('.toast');
       this.waitForInvisible('.toast', 5);
-      this.startRecordingTraffic();
       await E.hopeThat(handler);
-      this.stopRecordingTraffic();
-      const traffics = await this.grabRecordedNetworkTraffics();
+      this.switchTo(); // focus main page if we're inside an iframe
       this.click('#status');
       this.waitForURL(url => url.pathname == '/task/status');
       this.click('h2:first-of-type+a');
@@ -87,8 +85,18 @@ export default function() {
       this.click('Yes');
       this.waitForNavigation(); // wait for page refresh
       E.hopeThat.noErrors();
-      const preds = traffics.find(({ url }) => new URL(url).pathname.startsWith('/infer/'))?.response?.body;
-      this.assert(preds !== undefined);
+    },
+
+    async inference(handler) {
+      let traffics;
+      await this.worker(() => {
+        this.startRecordingTraffic();
+        handler();
+        this.stopRecordingTraffic();
+        traffics = this.grabRecordedNetworkTraffics();
+      });
+      const preds = (await traffics).find(({ url }) => new URL(url).pathname.startsWith('/infer/'))?.response?.body;
+      this.assert(preds !== undefined, 'Traffic should contain inference response');
       return preds;
     },
 
