@@ -371,7 +371,10 @@ dialog {
     dialog {
         margin: auto;
     }
-    > pre {
+}
+
+.console {
+    pre {
         overflow: auto;
         margin: 0.5rem 0;
         padding: 0.25rem 0.5rem;

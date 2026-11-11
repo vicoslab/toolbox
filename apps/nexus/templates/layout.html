@@ -116,15 +116,11 @@
                 actions.append(action);
             }
         }
-        function showToastForLogs({ pid, message, url, onFinish }) {
-            const eventSource = new EventSource(`/task/logs/${pid}/stream`);
+        function logsHelper({ limit = 0, showInfo = false } = {}) {
             const lines = document.createElement("pre");
             lines.style.textOverflow = "ellipsis";
             lines.style.width = "100%";
-            const wrap = document.createElement("div");
-            wrap.className = "logs";
-            wrap.style.overflow = "hidden";
-            wrap.append(lines);
+
             let count = 0;
             let last = document.createElement("div");
             last.className = "line";
@@ -133,6 +129,38 @@
             const actions = document.createElement("div");
             actions.style.display = "flex";
             actions.style.gap = "0.5rem";
+
+            const onmessage = e => last.innerText = JSON.parse(e.data);
+            const onaction = e => {
+                const { action, info } = resolveQuickAction(...JSON.parse(e.data));
+                if (action) {
+                    appendAction(actions, action);
+                }
+                if (showInfo && info) {
+                    appendAction(actions, info);
+                }
+            };
+            const onnewline = e => {
+                count += 1;
+                if (limit > 0 && count > limit) {
+                    lines.children[0].remove();
+                }
+                last = document.createElement("div");
+                last.className = "line";
+                last.innerText = JSON.parse(e.data);
+                lines.append(last);
+            };
+
+            return { lines, actions, onmessage, onaction, onnewline };
+        }
+        function showToastForLogs({ pid, message, url, onFinish }) {
+            const eventSource = new EventSource(`/task/logs/${pid}/stream`);
+            const { lines, actions, onmessage, onaction, onnewline } = logsHelper({ limit: 5 });
+
+            const wrap = document.createElement("div");
+            wrap.className = "logs console";
+            wrap.style.overflow = "hidden";
+            wrap.append(lines);
 
             if (url) {
                 const show_logs = document.createElement("a");
@@ -150,23 +178,9 @@
                         style="stroke-dasharray: 46 44; transform-origin: center; animation: dash 5s linear infinite, rotate 5s linear infinite;">
                     </path>
                 </svg>`;
-            eventSource.addEventListener("message", e => last.innerText = JSON.parse(e.data));
-            eventSource.addEventListener("quick-action", e => {
-                const { action } = resolveQuickAction(...JSON.parse(e.data));
-                if (action) {
-                    appendAction(actions, action);
-                }
-            });
-            eventSource.addEventListener("newline", e => {
-                count += 1;
-                if (count > 5) {
-                    lines.children[0].remove();
-                }
-                last = document.createElement("div");
-                last.className = "line";
-                last.innerText = JSON.parse(e.data);
-                lines.append(last);
-            });
+            eventSource.addEventListener("message", onmessage);
+            eventSource.addEventListener("quick-action", onaction);
+            eventSource.addEventListener("newline", onnewline);
             eventSource.addEventListener("eof", e => {
                 load.remove();
                 if (onFinish) {
