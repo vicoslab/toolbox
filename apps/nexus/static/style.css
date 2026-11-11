@@ -419,6 +419,62 @@ dialog {
     }
 }
 
+#agent-wrapper {
+    position: absolute;
+    left: 1rem;
+    bottom: 1rem;
+    width: 512px;
+    height: 256px;
+    padding: 0.5rem;
+
+    background-color: var(--bg-primary);
+    border: 1px solid var(--border);
+
+    display: flex;
+    flex-direction: column;
+    h3 {
+        margin: 0;
+        margin-bottom: 0.5rem;
+    }
+    .tty {
+        flex-grow: 1;
+        display: flex;
+        flex-direction: column;
+        background-color: var(--fg-secondary);
+    }
+    pre {
+        flex-grow: 1;
+        margin: 0;
+    }
+    .prompt {
+        border: none;
+        outline: none;
+        resize: none;
+        color: var(--bg-primary);
+        font-family: monospace;
+        font-size: 1rem;
+        margin: 0 0.5rem;
+        border-top: 1px solid var(--bg-primary);
+        padding: 0.25rem 0;
+        white-space: pre;
+
+        &::before {
+            content: ">";
+            padding-right: 0.5rem;
+        }
+        &:empty {
+            caret-color: transparent;
+            &::after {
+                content: "█";
+                animation-name: blink;
+                animation-duration: 1.5s;
+                animation-iteration-count: infinite;
+                animation-timing-function: steps(1, end);
+            }
+        }
+    }
+}
+
 #toast-wrapper {
     position: absolute;
     right: 1rem;
@@ -474,6 +530,11 @@ dialog {
         transform-origin: center;
         animation: dash 5s linear infinite, rotate 5s linear infinite;
     }
+}
+@keyframes blink {
+    0% {}
+    50% { color: transparent; }
+    100% {}
 }
 @keyframes rotate {
     to {

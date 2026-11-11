@@ -43,8 +43,8 @@ else:
         print(f"Using empty presets because PRESETS didn't exist or was not valid json")
         PRESETS = {}
 
-DATA.mkdir(exist_ok=True)
-models_file = DATA / "models.json"
+(toolbox_dir := DATA / "toolbox").mkdir(exist_ok=True)
+models_file = toolbox_dir / "models.json"
 
 class ToolInfo(BaseModel):
     name: str
@@ -175,8 +175,9 @@ TOUR_STEPS = [
 if "VIRTUAL_ENV" in os.environ:
     del os.environ["VIRTUAL_ENV"]
 
-def start_task(command, cwd, description, extra_env={}, blocking=False):
-    proc = Popen(command, cwd = cwd, stdout = PIPE, stderr = STDOUT, text = True, env={ **os.environ, **extra_env })
+def start_task(command, cwd, description, extra_env={}, blocking=False, stdin=False):
+    stdin = PIPE if stdin else None
+    proc = Popen(command, cwd=cwd, stdin=stdin, stdout=PIPE, stderr=STDOUT, text=True, env={ **os.environ, **extra_env })
     tasks[proc.pid] = dict(description=description, output=[], info=[], process=proc, code=None, start_time=datetime.now())
     os.set_blocking(proc.stdout.fileno(), blocking)
     return proc.pid
@@ -914,6 +915,29 @@ def logs(request: Request, pid: int):
     params["pid"] = pid
 
     return templates.TemplateResponse(request=request, name="logs.html", context=dict(pid=pid, description=task["description"], info=task["info"], running=task["code"] is None, params=params))
+
+@app.get("/agent")
+def agent(request: Request, flavor: str):
+    old = next((pid for pid, task in tasks.items() if "agent" in task and task["process"]), None)
+    if old:
+        if tasks[old]["agent"] != flavor:
+            raise HTTPException(status_code=400, detail="Flavor does not match existing agent")
+        return RedirectResponse(url_for_query(request, "logs_stream", { "pid": old }))
+
+    pid = start_task(["python", "agent.py", flavor], None, "Agent", stdin=True)
+    tasks[pid]["agent"] = flavor
+    return RedirectResponse(url_for_query(request, "logs_stream", { "pid": pid }))
+
+@app.post("/agent")
+async def agent_input(request: Request):
+    for task in tasks.values():
+        if "agent" in task and (agent := task["process"]):
+            body = await request.body()
+            print(body.decode("utf-8"), flush=True)
+            agent.stdin.write(json.dumps(body.decode("utf-8")) + "\n")
+            agent.stdin.flush()
+            return
+    raise HTTPException(status_code=404, detail="Agent is not running")
 
 @app.post("/task/stop/{pid}")
 def kill(request: Request, pid: int):

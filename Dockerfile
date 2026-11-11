@@ -63,7 +63,7 @@ FROM base
 RUN --mount=target=/var/lib/apt/lists,type=cache,sharing=locked --mount=target=/var/cache/apt,type=cache,sharing=locked \
     rm -f /etc/apt/apt.conf.d/docker-clean && \
     apt update && \
-    apt install -y git nano curl make supervisor ffmpeg libsm6 libxext6 unzip
+    apt install -y git nano curl make supervisor ffmpeg libsm6 libxext6 unzip bubblewrap
 
 RUN curl -LsSf https://astral.sh/uv/install.sh | UV_UNMANAGED_INSTALL=/usr/local/bin sh
 ENV UV_HTTP_TIMEOUT=90
@@ -142,7 +142,7 @@ ENV TOOLBOX_CACHE=/cache \
 ENV LABEL_STUDIO_BASE_DATA_DIR=/persist/label-studio \
     MLFLOW_BACKEND_STORE_URI=sqlite:////persist/mlflow/mlflow.db \
     MLFLOW_ARTIFACTS_DESTINATION=/persist/mlflow/artifacts \
-    TOOLBOX_DATA=/persist/toolbox
+    TOOLBOX_DATA=/persist
 
 ENV TOOLBOX_TEMPDIR=/tmp/toolbox
 

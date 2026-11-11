@@ -51,6 +51,9 @@
     </script>
     <main>
         {% block content %}{% endblock %}
+        <div id="agent-wrapper" class="console">
+            <h3>Agent</h3>
+        </div>
         <div id="toast-wrapper"></div>
     </main>
     <script src="/static/common.js"></script>
@@ -132,7 +135,12 @@
 
             const onmessage = e => last.innerText = JSON.parse(e.data);
             const onaction = e => {
-                const { action, info } = resolveQuickAction(...JSON.parse(e.data));
+                const [kind, value] = JSON.parse(e.data);
+                if (kind === "Clear") {
+                    action.replaceChildren();
+                    return;
+                }
+                const { action, info } = resolveQuickAction(kind, value);
                 if (action) {
                     appendAction(actions, action);
                 }
@@ -275,6 +283,7 @@
                     const v = document.createElement("span");
                     v.innerText = val;
                     v.className = "tag-value";
+                    if (!val) v.style.display = "none";
 
                     const info = document.createElement("a");
                     info.className = "button";
@@ -338,6 +347,35 @@
             }
             return component;
         }
+        (() => {
+            const { lines, actions, onmessage, onaction, onnewline } = logsHelper({ showInfo: true });
+            const wrapper = document.getElementById('agent-wrapper');
+
+            const source = new EventSource(`/agent?flavor=codex`);
+            source.addEventListener('message', onmessage);
+            source.addEventListener('quick-action', onaction);
+            source.addEventListener('newline', onnewline);
+
+            const prompt = document.createElement('div');
+            prompt.className = "prompt";
+            prompt.name = 'prompt';
+            prompt.contentEditable = true;
+            prompt.addEventListener('keyup', e => {
+                if (e.keyCode === 13 && !e.shiftKey) {
+                    fetch('/agent', { method: 'POST', body: e.target.innerText });
+                    e.target.innerText = '';
+                }
+            });
+            prompt.addEventListener('input', e => {
+                if (e.target.innerText === '\n') e.target.innerText = '';
+            });
+
+            const tty = document.createElement('div');
+            tty.className = "tty";
+            tty.append(lines, prompt);
+
+            wrapper.append(tty, actions);
+        })();
     </script>
     {% if params.model and (params.manifest or params.project) %}
     <script>

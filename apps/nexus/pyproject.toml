@@ -8,6 +8,7 @@ dependencies = [
     "fastapi[standard]",
     "flask-limiter>=4.1.1",
     "mlflow>=3.11.1",
+    "openai-codex>=0.167.1",
     "python-multipart>=0.0.32",
 ]
 
