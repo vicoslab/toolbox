@@ -62,7 +62,7 @@
     eventSource.addEventListener("eof", e => document.getElementById("confirm-stop") && location.reload());
     let scrollTop = 0;
     let override = true;
-    setTimeout(() => override = false, 500);
+    let tLast = null;
     eventSource.addEventListener("newline", e => {
         last.innerText = JSON.parse(e.data);
         last = document.createElement("div");
@@ -70,6 +70,8 @@
         const isSticky = lines.parentElement.scrollTop + lines.parentElement.clientHeight >= lines.clientHeight && lines.parentElement.scrollTop >= scrollTop;
         lines.append(last);
         if (isSticky || override) {
+            override &= tLast === null || Date.now() - tLast < 100;
+            tLast = Date.now();
             scrollTop = lines.parentElement.scrollHeight - lines.parentElement.clientHeight;
             lines.parentElement.scroll({ top: scrollTop, behavior: "smooth" });
         }
