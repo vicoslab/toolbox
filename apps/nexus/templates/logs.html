@@ -64,9 +64,9 @@
     let override = true;
     setTimeout(() => override = false, 500);
     eventSource.addEventListener("newline", e => {
+        last.innerText = JSON.parse(e.data);
         last = document.createElement("div");
         last.className = "line";
-        last.innerText = JSON.parse(e.data);
         const isSticky = lines.parentElement.scrollTop + lines.parentElement.clientHeight >= lines.clientHeight && lines.parentElement.scrollTop >= scrollTop;
         lines.append(last);
         if (isSticky || override) {
