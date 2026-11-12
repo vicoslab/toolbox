@@ -352,7 +352,10 @@
             const wrapper = document.getElementById('agent-wrapper');
 
             const source = new EventSource(`/agent?flavor=codex`);
-            source.addEventListener('message', onmessage);
+            source.addEventListener('message', e => {
+                onmessage(e);
+                lines.scrollTop = lines.scrollHeight;
+            });
             source.addEventListener('quick-action', onaction);
             source.addEventListener('newline', onnewline);
 
@@ -369,6 +372,7 @@
             prompt.addEventListener('input', e => {
                 if (e.target.innerText === '\n') e.target.innerText = '';
             });
+            wrapper.addEventListener('click', () => prompt.focus());
 
             const tty = document.createElement('div');
             tty.className = "tty";

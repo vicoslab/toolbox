@@ -441,10 +441,12 @@ dialog {
         display: flex;
         flex-direction: column;
         background-color: var(--fg-secondary);
+        overflow: auto;
     }
     pre {
         flex-grow: 1;
         margin: 0;
+        overflow: auto;
     }
     .prompt {
         border: none;
@@ -457,6 +459,7 @@ dialog {
         border-top: 1px solid var(--bg-primary);
         padding: 0.25rem 0;
         white-space: pre;
+        text-wrap: wrap;
 
         &::before {
             content: ">";
