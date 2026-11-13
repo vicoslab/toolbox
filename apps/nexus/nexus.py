@@ -376,9 +376,12 @@ def models_remove(group_info: ModelGroup):
     for src in models_config["sources"]:
         if src["owner"] == group_info.owner and src["group"] == group_info.group:
             models_config["sources"].remove(src)
-            for category, vals in models_config["tools"].items():
-                for model in src["models"]:
-                    if (model_id := f"{src["sid"]}-{model}") in vals:
+            for model in src["models"]:
+                model_id = f"{src["sid"]}-{model}"
+                if (CACHE / model_id).exists():
+                    shutil.rmtree(CACHE / model_id)
+                for vals in models_config["tools"].values():
+                    if model_id in vals:
                         del vals[model_id]
             refresh_manifest()
             save_models(models_config)
