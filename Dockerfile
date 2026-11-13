@@ -54,7 +54,7 @@ ADD https://github.com/mlflow/mlflow.git#v3.10.1 .
 COPY apps/mlflow/*.patch .
 RUN git apply *.patch && rm *.patch
 
-RUN --mount=type=cache,target=/root/.cache/uv uv sync
+RUN --mount=type=cache,target=/root/.cache/uv uv sync --extra mcp
 RUN --mount=type=cache,target=/root/.yarn cd mlflow/server/js && yarn install && yarn build
 RUN --mount=type=cache,target=/root/.cache/uv uv pip install . tests/resources/mlflow-test-plugin
 

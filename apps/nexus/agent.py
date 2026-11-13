@@ -14,7 +14,21 @@ if flavor == 'codex':
     CODEX_HOME = Path(os.environ['TOOLBOX_DATA'], 'agents', 'codex')
     CODEX_HOME.mkdir(exist_ok=True, parents=True)
     old = None
-    config = CodexConfig(env={ 'CODEX_HOME': str(CODEX_HOME) })
+    config = CodexConfig(
+        env={
+            'CODEX_HOME': str(CODEX_HOME),
+        },
+        config_overrides=[
+            'default_permissions = "toolbox"',
+            'permissions.toolbox.extends = ":workspace"',
+            'mcp_servers.toolbox.url = "http://localhost:8079/mcp"',
+            # Works but it seems like theres no useful tools exposed
+            # 'mcp_servers.mlflow.command = "uv"',
+            # 'mcp_servers.mlflow.args = ["run", "mlflow", "mcp", "run"]',
+            # 'mcp_servers.mlflow.env = { MLFLOW_TRACKING_URI = "http://localhost:8081", MLFLOW_MCP_TOOLS = "experiments,runs" }',
+            # 'mcp_servers.mlflow.cwd = "/opt/apps/mlflow"',
+        ],
+    )
     with Codex(config) as codex:
         try:
             if codex.account() is None:

@@ -3,10 +3,13 @@ from fastapi.sse import EventSourceResponse, ServerSentEvent
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import RedirectResponse, HTMLResponse, FileResponse, Response
 from fastapi.templating import Jinja2Templates
+from mcp.server import MCPServer
+from mcp.server.mcpserver.exceptions import ToolError, ResourceNotFoundError
 from typing import Annotated, List, Optional, Dict
 from pydantic import BaseModel, AnyHttpUrl, Field
 import asyncio
 
+import contextlib
 import time
 import requests
 import io
@@ -45,6 +48,15 @@ else:
 
 (toolbox_dir := DATA / "toolbox").mkdir(exist_ok=True)
 models_file = toolbox_dir / "models.json"
+
+class ToolboxError():
+    @staticmethod
+    def mcp(msg: str, **kwargs):
+        return ToolError(msg)
+    
+    @staticmethod
+    def http(msg: str, http_status=400, **kwargs):
+        return HTTPException(status_code=http_status, detail=msg)
 
 class ToolInfo(BaseModel):
     name: str
@@ -114,8 +126,7 @@ def refresh_manifest():
                 model["title"] = manifest["title"]
                 model["description"] = manifest["description"]
                 model["dir"] = model_path
-                model["group"] = src["group"]
-                model["owner"] = src["owner"]
+                model["source"] = src
                 model["train"] = (model_path / "train.py").exists()
                 model["tags"] = manifest.get("x-toolbox-tags", [])
                 # if tools are a list (old way), the model doesn't distinguish between default/supported tools
@@ -221,7 +232,16 @@ def create_inference_worker(model, values, alias=None):
     tasks[pid][TourStep.INFERENCE] = (alias or model, WorkerInfo(port=port, model=model, options=options))
     return pid
 
-app = FastAPI()
+# The documentation shows that when mounting an MCP app, its session manager
+# must be run within the parent application's lifespan.
+@contextlib.asynccontextmanager
+async def lifespan(app: FastAPI):
+    async with mcp.session_manager.run():
+        yield
+
+mcp = MCPServer("Toolbox")
+app = FastAPI(lifespan=lifespan)
+app.mount("/mcp", mcp.streamable_http_app(streamable_http_path="/"))
 templates = Jinja2Templates(directory="templates")
 
 def propagate(kwargs):
@@ -310,6 +330,11 @@ if not app.debug:
     # this is needed because task's writes will start blocking if output is not consumed
     Thread(target=monitor_task, daemon=True).start()
 
+@mcp.resource("toolbox://models")
+def models_mcp():
+    '''Mapping of currently loaded model definitions.'''
+    return { k: { **v, "installed": (CACHE / k).exists() } for k, v in model_manifest.items() }
+
 @app.get("/models", response_class=HTMLResponse)
 def models(request: Request):
     groups = {}
@@ -333,8 +358,10 @@ class ModelGroup(BaseModel):
     rev: Optional[str] = None
     branch: Optional[str] = None
 
+@mcp.tool("models.update")
 @app.post("/models/update")
 def models_update(group_info: ModelGroup):
+    '''Update git checkout for group described by group_info. Group must already be present.'''
     src = None
     for s in models_config["sources"]:
         if s["owner"] == group_info.owner and s["group"] == group_info.group:
@@ -366,8 +393,10 @@ def models_update(group_info: ModelGroup):
 
     return { "rev": new }
 
+@mcp.tool("models.remove")
 @app.post("/models/remove")
 def models_remove(group_info: ModelGroup):
+    '''Remove ALL local files related to group described by group_info.'''
     ownerdir = CACHE / ".models" / group_info.owner
     shutil.rmtree(ownerdir / group_info.group)
     if len(list(ownerdir.iterdir())) == 0:
@@ -389,8 +418,10 @@ def models_remove(group_info: ModelGroup):
 class ModelGroupDefinition(ModelGroup):
     models: List[str]
     url: AnyHttpUrl
+@mcp.tool("models.add")
 @app.post("/models/add")
 def models_add(data: List[ModelGroupDefinition]):
+    '''Make provided model groups available in the toolbox.'''
     for defs in data:
         defs = dict(defs)
         if defs["branch"] is None:
@@ -463,8 +494,10 @@ def handle_model(template: str, request: Request, model: str, manifest: str | No
         params=params
     ))
 
+@mcp.resource("toolbox://smart-tools")
 @app.get("/tools")
 def tools_list():
+    '''List models which can be used for smart annotation in Label Studio.'''
     return models_config["tools"]
 
 @app.patch("/tools/{tool}")
@@ -549,31 +582,39 @@ class TaskResponse(BaseModel):
 @app.get("/model/{model}/infer", response_class=HTMLResponse)
 def infer(request: Request, model: str, manifest: str | None = None, weights: str | None = None):
     return handle_model("infer.html", request, model, manifest, weights)
-@app.post("/model/{model}/infer")
-async def model_infer(request: Request, model: str, alias: Optional[str]=None):
-    if model not in model_manifest:
-        raise HTTPException(status_code=404, detail=f"Model '{model}' does not exist")
 
-    options = await request.json()
+def do_infer(err, options: dict, model: str, alias: Optional[str]=None):
+    if model not in model_manifest:
+        raise err(f"Model '{model}' does not exist", http_status=404)
+
     if not alias:
         alias = options.get("alias")
 
     for pid, task in tasks.items():
         if task["process"] and (info := task.get(TourStep.INFERENCE)) and info[0] == (alias or model):
-            raise HTTPException(status_code=400, detail=f"Worker with alias '{alias or model}' already running")
+            raise err(f"Worker with alias '{alias or model}' already running")
 
-    pid = create_inference_worker(model, options, alias)
+    return create_inference_worker(model, options, alias)
+
+@app.post("/model/{model}/infer")
+async def model_infer(request: Request, model: str, alias: Optional[str]=None):
+    options = await request.json()
+    pid = do_infer(ToolboxError.http, options, model, alias)
     return TaskResponse(pid=pid, logs=str(url_for_query(request, "logs", propagate(request.query_params), model=model, pid=pid)))
+
+@mcp.tool("models.infer")
+def model_infer_mcp(options: dict, model: str, alias: Optional[str]=None):
+    '''Start inference worker with given options. Alias must be unique among running workers (model id is used by default).'''
+    return { "pid": do_infer(ToolboxError.mcp, options, model, alias), "message": "Started inference worker." }
 
 @app.get("/model/{model}/train", response_class=HTMLResponse)
 def train(request: Request, model: str, manifest: str | None = None, weights: str | None = None):
     return handle_model("train.html", request, model, manifest, weights)
-@app.post("/model/{model}/train")
-async def model_train(request: Request, model: str):
-    if model not in model_manifest:
-        raise HTTPException(status_code=404, detail=f"Model '{model}' does not exist")
 
-    options = await request.json()
+def do_train(err, options: dict, model: str):
+    if model not in model_manifest:
+        raise err(f"Model '{model}' does not exist", http_status=404)
+
     flags = build_model_options(model_manifest[model]["options"], options.items())
     pid = start_task(
         ["uv", "run", "train.py"] + flags,
@@ -582,42 +623,69 @@ async def model_train(request: Request, model: str):
         { "VIRTUAL_ENV": CACHE / model / ".venv", "INSTALL_DIR": CACHE / model }
     )
     tasks[pid][TourStep.TRAINING] = flags
+    return pid
+
+@mcp.tool("models.train")
+def model_train_mcp(options: dict, model: str):
+    '''Start training run with given options.'''
+    return { "pid": do_train(ToolboxError.mcp, options, model), "message": "Started training run." }
+
+@app.post("/model/{model}/train")
+async def model_train(request: Request, model: str):
+    '''Start training run with given options.'''
+    options = await request.json()
+    pid = do_train(ToolboxError.http, options, model)
 
     return TaskResponse(pid=pid, logs=str(url_for_query(request, "logs", propagate(request.query_params), model=model, pid=pid)))
 
-@app.post("/model/{model}/install")
-def model_install(request: Request, model: str):
+def do_install(err, model: str):
     if model not in model_manifest:
-        raise HTTPException(status_code=404, detail=f"Model '{model}' does not exist")
+        raise err(f"Model '{model}' does not exist", http_status=404)
 
-    params = propagate(request.query_params)
     model_dir = model_manifest[model]["dir"]
     if (CACHE / model).exists():
-        params["model"] = model
-        raise HTTPException(status_code=400, detail=f"Model '{model}' already exists or installation is in progress")
+        raise err(f"Model '{model}' already exists or installation is in progress")
 
     if model not in models_config["added"]:
         models_config["added"].append(model)
     save_models(models_config)
+    return start_task(["bash", "-c", f"./setup.sh && echo \"Finished installing '{model}'\""], model_dir, f"Installing model: `{model}`", extra_env={ "INSTALL_DIR": str(CACHE / model)})
 
-    params["model"] = model
-    params["pid"] = start_task(["bash", "-c", f"./setup.sh && echo \"Finished installing '{model}'\""], model_dir, f"Installing model: `{model}`", extra_env={ "INSTALL_DIR": str(CACHE / model)})
-    return { "pid": params["pid"], "logs": str(url_for_query(request, "logs", params)) }
+@mcp.tool("models.install")
+def model_install_mcp(model: str):
+    '''Start model installation for given model id.'''
+    return { "pid": do_install(ToolboxError.mcp, model), "message": "Started installation." }
 
-@app.post("/model/{model}/uninstall")
-def model_uninstall(model: str):
+@app.post("/model/{model}/install")
+def model_install(request: Request, model: str):
+    '''Start model installation for given model id.'''
+    pid = do_install(ToolboxError.http, model)
+    return TaskResponse(pid=pid, logs=str(url_for_query(request, "logs", propagate(request.query_params), model=model, pid=pid)))
+
+def do_uninstall(err, model: str):
     if model not in model_manifest:
-        raise HTTPException(status_code=404, detail=f"Model '{model}' does not exist")
+        raise err(f"Model '{model}' does not exist", http_status=404)
 
     install_dir = CACHE / model
     if not install_dir.exists():
-        raise HTTPException(status_code=400, detail=f"Model '{model}' is not installed")
+        raise err(f"Model '{model}' is not installed")
 
     shutil.rmtree(install_dir)
-    return {}
 
+@mcp.tool("models.uninstall")
+def model_uninstall_mcp(model: str):
+    '''Remove installation directory of given model id.'''
+    return do_uninstall(ToolboxError.mcp, model)
+
+@app.post("/model/{model}/uninstall")
+def model_uninstall(model: str):
+    '''Remove installation directory of given model id.'''
+    return do_uninstall(ToolboxError.http, model)
+
+@mcp.resource("toolbox://workers")
 @app.get("/active")
 def active_models():
+    '''List running inference workers.'''
     return dict([info for task in tasks.values() if (info := task.get(TourStep.INFERENCE)) and task["process"] is not None])
 
 @app.get("/dataset", response_class=HTMLResponse)
@@ -639,7 +707,8 @@ def dataset_get(request: Request, model: str):
         for alias, info in vals.items():
             manifest = model_manifest[info.model]
             custom = alias not in model_manifest or category not in manifest["tool"]["default"]
-            tools_installed[category].append((alias, manifest["group"], manifest["owner"], (CACHE / info.model).exists(), info, custom))
+            src = manifest["source"]
+            tools_installed[category].append((alias, src["group"], src["owner"], (CACHE / info.model).exists(), info, custom))
 
     return templates.TemplateResponse(request=request, name="dataset.html", context=dict(now=now, tasks=old, tools=tools_installed, **model_manifest[model], params=params))
 
@@ -882,6 +951,16 @@ def status(request: Request):
     timestamps = { pid: now - task.get("end_time", task["start_time"]) for pid, task in tasks.items() }
     return templates.TemplateResponse(request=request, name="status.html", context=dict(tasks=tasks, timestamps=timestamps, params=propagate(request.query_params)))
 
+@mcp.resource("toolbox://logs/{pid}")
+def logs_mcp(pid: int):
+    '''Get logs for specified task. If task is still running, logs may be incomplete and running=True will be returned in the response.'''
+    if not (task := tasks.get(pid)):
+        raise ResourceNotFoundError()
+    return {
+        "logs": task["output"],
+        "running": task["process"] is not None,
+    }
+
 @app.get("/task/logs/{pid}/stream", response_class=EventSourceResponse)
 async def logs_stream(pid: int, last_event_id: Annotated[int | None, Header()] = None):
     if not (task := tasks.get(pid)):
@@ -941,6 +1020,15 @@ async def agent_input(request: Request):
             agent.stdin.flush()
             return
     raise HTTPException(status_code=404, detail="Agent is not running")
+
+@mcp.tool("tasks.stop")
+def stop_task(pid: int):
+    '''Stop execution of specified task.'''
+    if not (task := tasks.get(pid)):
+        raise ToolError("Task does not exist")
+    if not (proc := task["process"]):
+        raise ToolError("Task already exited")
+    proc.terminate()
 
 @app.post("/task/stop/{pid}")
 def kill(request: Request, pid: int):
