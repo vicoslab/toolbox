@@ -17,7 +17,7 @@ RUN \
     ln -s $(which yarn) /usr/local/bin/yarn && \
     ln -s $(which node) /usr/local/bin/node
 
-RUN curl -LsSf https://astral.sh/uv/install.sh | sh
+RUN curl -LsSf https://releases.astral.sh/github/uv/releases/download/0.13.7/uv-installer.sh | sh
 ENV PATH="/root/.local/bin:$PATH"
 ENV UV_HTTP_TIMEOUT=90
 
@@ -49,7 +49,7 @@ RUN --mount=type=cache,target=/root/.yarn \
 ## MLFlow builder
 FROM builder AS build-mlflow
 WORKDIR /opt/apps/mlflow
-ADD https://github.com/mlflow/mlflow.git#v3.10.1 .
+ADD https://github.com/mlflow/mlflow.git#v3.18.0 .
 
 COPY apps/mlflow/*.patch .
 RUN git apply *.patch && rm *.patch

@@ -64,8 +64,15 @@
         if (url.password || url.username) {
             window.location = location.href;
         }
-        if (!("mlflow.workflowType_v1" in localStorage)) {
-            localStorage["mlflow.workflowType_v1"] = '"machine_learning"';
+        const storageOverrides = {
+            "mlflow.assistant.fab.autoOpenedOnFirstLoad_v1": 'true',
+            "mlflow.assistant.panelOpen_v1": 'false',
+            "mlflow.workflowType_v1": '"machine_learning"'
+        }
+        for (const [k,v] of Object.entries(storageOverrides)) {
+            if (!(k in localStorage)) {
+                localStorage[k] = v;
+            }
         }
         const tourHelp = document.querySelector(".tour-description");
         if (tourHelp) {

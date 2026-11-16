@@ -1,13 +1,16 @@
 diff --git a/mlflow/server/js/src/experiment-tracking/components/experiment-logged-models/ExperimentLoggedModelDetailsHeader.tsx b/mlflow/server/js/src/experiment-tracking/components/experiment-logged-models/ExperimentLoggedModelDetailsHeader.tsx
-index 59b3f4d2c..576b016a2 100644
+index 0e582c4496..b41492e6c3 100644
 --- a/mlflow/server/js/src/experiment-tracking/components/experiment-logged-models/ExperimentLoggedModelDetailsHeader.tsx
 +++ b/mlflow/server/js/src/experiment-tracking/components/experiment-logged-models/ExperimentLoggedModelDetailsHeader.tsx
-@@ -60,7 +60,7 @@ export const ExperimentLoggedModelDetailsHeader = ({
+@@ -60,10 +60,7 @@ export const ExperimentLoggedModelDetailsHeader = ({
  
    const breadcrumbs = [
      // eslint-disable-next-line react/jsx-key
--    <Link to={Routes.getExperimentPageTabRoute(experimentId, ExperimentPageTabName.Models)}>
-+    <Link to={Routes.getExperimentPageRoute(experimentId)}>
+-    <Link
+-      componentId="mlflow.logged_models.details_header.experiment_link"
+-      to={Routes.getExperimentPageTabRoute(experimentId, ExperimentPageTabName.Models)}
+-    >
++    <Link componentId="mlflow.logged_models.details_header.experiment_link" to={Routes.getExperimentPageRoute(experimentId)}>
        {getExperimentName()}
      </Link>,
      // eslint-disable-next-line react/jsx-key
