@@ -21,7 +21,7 @@
             != tour_enum.LABELING.value %}
             {% else %}
             <a role="listitem" class="tour-step{{ current }}"
-            href="{{ url_for_query(request, step_endpoint, params, tour = id) }}"
+            href="{{ url_for_query(request, step_endpoint, params) }}"
             data-step-name="{{ step_name }}">{{
                 step_name }}</a>
                 {% endif %}
