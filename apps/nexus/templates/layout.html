@@ -51,8 +51,13 @@
     </script>
     <main>
         {% block content %}{% endblock %}
-        <div id="agent-wrapper" class="console">
+        <div id="agent-wrapper" class="console" style="display: none;">
             <h3>Agent</h3>
+            <div class="window-controls">
+                <button value="minimize" title="Minimize" class="transparent shadow-sm" style="padding: 0;"><img style="width: 1.5rem;" src="/static/icons/dash.svg"></button>
+                <button value="popout" title="Pop out" class="transparent shadow-sm" style="padding: 0;"><img style="width: 1.5rem;" src="/static/icons/popout.svg"></button>
+                <button value="close" title="Close" class="transparent shadow-sm" style="padding: 0;"><img style="width: 1.5rem;" src="/static/icons/remove.svg"></button>
+            </div>
         </div>
         <div id="toast-wrapper"></div>
     </main>
@@ -354,39 +359,94 @@
             }
             return component;
         }
-        (() => {
+        function tryLoadAgent() {
+            const stateKey = "toolbox.agent";
+            let agentState = JSON.parse(localStorage.getItem(stateKey) || "{}");
+            if (!agentState.flavor || agentState.standalone && window.location.pathname !== "/chat") { // no provider is selected or standalone mode
+                // wrapper has display: none by default, so we just exit
+                return;
+            }
+            const source = new EventSource(`/agent?flavor=${agentState.flavor}`);
             const { lines, actions, onmessage, onaction, onnewline } = logsHelper({ showInfo: true });
-            const wrapper = document.getElementById('agent-wrapper');
 
-            const source = new EventSource(`/agent?flavor=codex`);
-            source.addEventListener('message', e => {
+            const wrapper = document.getElementById("agent-wrapper");
+            wrapper.style.display = "";
+            wrapper.classList.toggle("minimized", agentState.minimized);
+
+            const controls = wrapper.querySelector(".window-controls");
+            controls.addEventListener("click", async e => {
+                agentState = JSON.parse(localStorage.getItem(stateKey) || "{}");
+                switch (e.target.closest("button").value) {
+                    case "minimize": {
+                        agentState.minimized = wrapper.classList.toggle("minimized");
+                        localStorage.setItem(stateKey, JSON.stringify(agentState));
+                        break;
+                    }
+                    case "popout": {
+                        agentState.standalone = true;
+                        localStorage.setItem(stateKey, JSON.stringify(agentState));
+                        wrapper.remove();
+                        const url = new URL(window.location);
+                        url.pathname = "/chat";
+                        window.open(url);
+                        break;
+                    }
+                    case "close": {
+                        const reminder = document.createElement("i");
+                        reminder.innerText = "You can always enable agents again at the 'Start' page.";
+                        reminder.style.display = "block";
+                        reminder.style.marginTop = "0.5rem";
+                        showModal("This will disable agents and kill any running instances. Are you sure?", reminder).then(() => {
+                            const agentState = JSON.parse(localStorage.getItem(stateKey) || "{}");
+                            agentState.flavor = null;
+                            localStorage.setItem(stateKey, JSON.stringify(agentState));
+                            wrapper.remove();
+                            source.close(); // close source so agent doesn't get reactivated
+                            fetch("/agent", { method: "POST" });
+                        });
+                        break;
+                    }
+                }
+                e.stopPropagation();
+            });
+
+            source.addEventListener("message", e => {
                 onmessage(e);
                 lines.scrollTop = lines.scrollHeight;
             });
-            source.addEventListener('quick-action', onaction);
-            source.addEventListener('newline', onnewline);
+            source.addEventListener("quick-action", onaction);
+            source.addEventListener("newline", onnewline);
 
-            const prompt = document.createElement('div');
+            const prompt = document.createElement("div");
             prompt.className = "prompt";
-            prompt.name = 'prompt';
+            prompt.name = "prompt";
             prompt.contentEditable = true;
-            prompt.addEventListener('keyup', e => {
+            prompt.addEventListener("keyup", e => {
                 if (e.keyCode === 13 && !e.shiftKey) {
-                    fetch('/agent', { method: 'POST', body: e.target.innerText });
-                    e.target.innerText = '';
+                    fetch("/chat", { method: "POST", body: e.target.innerText });
+                    e.target.innerText = "";
                 }
             });
-            prompt.addEventListener('input', e => {
-                if (e.target.innerText === '\n') e.target.innerText = '';
+            prompt.addEventListener("input", e => {
+                if (e.target.innerText === "\n") e.target.innerText = "";
             });
-            wrapper.addEventListener('click', () => prompt.focus());
+            wrapper.addEventListener("click", e => {
+                if (!document.getSelection().toString()) {
+                    prompt.focus();
+                }
+                wrapper.classList.remove("minimized");
+                agentState = JSON.parse(localStorage.getItem(stateKey) || "{}");
+                agentState.minimized = false;
+                localStorage.setItem(stateKey, JSON.stringify(agentState));
+            });
 
-            const tty = document.createElement('div');
+            const tty = document.createElement("div");
             tty.className = "tty";
             tty.append(lines, prompt);
 
             wrapper.append(tty, actions);
-        })();
+        }
+        tryLoadAgent();
     </script>
     {% if params.model and (params.manifest or params.project) %}
     <script>

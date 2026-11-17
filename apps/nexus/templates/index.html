@@ -29,6 +29,11 @@
         {% endif %}
         <h3>Steps</h3>
         <ol>
+            <button role="listitem" class="card" onclick="enableAgents()">
+                <img src="/static/icons/chat.svg">
+                <h4>Setup agent (optional)</h4>
+                Connect external LLM provider to enable chat-based features in the toolox.
+            </button>
             <a role="listitem" class="card"
                 href="{{ url_for_query(request, 'models', params) }}">
                 <img src="/static/icons/question.svg">
@@ -86,6 +91,46 @@
     </div>
 </div>
 <script>
+    function enableAgents(form) {
+        const stateKey = "toolbox.agent";
+        if (JSON.parse(localStorage.getItem(stateKey) || "{}").flavor) {
+            const url = new URL(window.location);
+            url.pathname = "/chat";
+            const a = document.createElement("a");
+            a.href = url;
+            a.target = "_blank";
+            a.innerText = "standalone";
+            a.style.textDecoration = "none";
+            a.style.color = "var(--fg-accent-default)";
+            showToast("error", "Agent is already running. If there is no 'Agent' window visible on the page, ", a, " mode is enabled.");
+            return;
+        }
+        const providers = {
+            codex: "OpenAI (ChatGPT/Codex)",
+        };
+        const options = Object.entries(providers).map(([id, title]) => {
+            const input = document.createElement("input");
+            input.type = "radio";
+            input.name = "provider";
+            input.value = id;
+
+            const el = document.createElement("label");
+            el.append(input, title);
+            el.className = "provider";
+            return el;
+        });
+        showModal(...options).then(() => {
+            const flavor = document.querySelector("#confirmation input[name='provider']:checked")?.value;
+            if (!flavor) {
+                showToast("error", "No provider selected");
+                return;
+            }
+            const agentState = JSON.parse(localStorage.getItem(stateKey) || "{}");
+            agentState.flavor = flavor;
+            localStorage.setItem(stateKey, JSON.stringify(agentState));
+            tryLoadAgent();
+        });
+    }
     function selectPreset(el, preset, tags) {
         if (localStorage["toolbox.preset"] === preset) {
             el.classList.remove("selected");
@@ -118,7 +163,7 @@
             }
         }
     }
-
+    
     .card {
         display: grid;
         grid-template-areas:
@@ -141,12 +186,22 @@
             grid-area: icon;
         }
     }
-
+    button.card {
+        text-align: left;
+        font-weight: inherit;
+        font-size: inherit;
+        width: calc(100% - 1rem);
+    }
     a.card {
         text-decoration: none;
 
         &:hover {
             background-color: var(--bg-accent-hover);
+        }
+    }
+    .provider {
+        input {
+            margin-right: 0.5rem;
         }
     }
 </style>

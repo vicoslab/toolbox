@@ -998,6 +998,21 @@ def logs(request: Request, pid: int):
 
     return templates.TemplateResponse(request=request, name="logs.html", context=dict(pid=pid, description=task["description"], info=task["info"], running=task["code"] is None, params=params))
 
+@app.get("/chat")
+def chat(request: Request):
+    return templates.TemplateResponse(request=request, name="chat.html", context=dict(params=propagate(request.query_params)))
+
+@app.post("/chat")
+async def chat_input(request: Request):
+    for task in tasks.values():
+        if "agent" in task and (agent := task["process"]):
+            body = await request.body()
+            print(body.decode("utf-8"), flush=True)
+            agent.stdin.write(json.dumps(body.decode("utf-8")) + "\n")
+            agent.stdin.flush()
+            return
+    raise HTTPException(status_code=404, detail="Agent is not running")
+
 @app.get("/agent")
 def agent(request: Request, flavor: str):
     old = next((pid for pid, task in tasks.items() if "agent" in task and task["process"]), None)
@@ -1011,15 +1026,10 @@ def agent(request: Request, flavor: str):
     return RedirectResponse(url_for_query(request, "logs_stream", { "pid": pid }))
 
 @app.post("/agent")
-async def agent_input(request: Request):
-    for task in tasks.values():
-        if "agent" in task and (agent := task["process"]):
-            body = await request.body()
-            print(body.decode("utf-8"), flush=True)
-            agent.stdin.write(json.dumps(body.decode("utf-8")) + "\n")
-            agent.stdin.flush()
-            return
-    raise HTTPException(status_code=404, detail="Agent is not running")
+def agent_stop():
+    for pid, task in tasks.items():
+        if (proc := task["process"]) and "agent" in task:
+            proc.terminate()
 
 @mcp.tool("tasks.stop")
 def stop_task(pid: int):
