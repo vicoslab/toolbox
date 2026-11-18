@@ -28,7 +28,7 @@ import tempfile
 import zipfile
 
 import mlflow
-mlflow.set_tracking_uri("http://localhost:8081")
+mlflow.set_tracking_uri("https://localhost/app/mlflow")
 ARTIFACTS = os.getenv("MLFLOW_ARTIFACTS_DESTINATION")
 CACHE = Path(os.environ["TOOLBOX_CACHE"])
 DATA = Path(os.environ["TOOLBOX_DATA"])
@@ -226,7 +226,7 @@ def create_inference_worker(model, values, alias=None):
         ["uv", "run", "gunicorn", "--bind", f":{port}", "--log-config", Path.cwd() / "worker-logging.conf", "--no-control-socket", "infer:app", "--", *flags],
         model_manifest[model]["dir"],
         f"Inference service worker for: `{model}`",
-        { "VIRTUAL_ENV": CACHE / model / ".venv", "INSTALL_DIR": CACHE / model, "LABEL_STUDIO_URL": "http://localhost:8080", "XDG_DATA_HOME": "/tmp" }
+        { "UV_PROJECT_ENVIRONMENT": CACHE / model / ".venv", "INSTALL_DIR": CACHE / model, "LABEL_STUDIO_URL": "http://localhost:8080", "XDG_DATA_HOME": "/tmp" }
     )
     options = { opt["title"]: v for k, v in values.items() if (opt := options.get(k)) and opt.get("stage") in [None, "infer"] }
     tasks[pid][TourStep.INFERENCE] = (alias or model, WorkerInfo(port=port, model=model, options=options))
@@ -620,7 +620,7 @@ def do_train(err, options: dict, model: str):
         ["uv", "run", "train.py"] + flags,
         model_manifest[model]["dir"],
         f"Model training: `{model}`",
-        { "VIRTUAL_ENV": CACHE / model / ".venv", "INSTALL_DIR": CACHE / model }
+        { "UV_PROJECT_ENVIRONMENT": CACHE / model / ".venv", "INSTALL_DIR": CACHE / model }
     )
     tasks[pid][TourStep.TRAINING] = flags
     return pid
@@ -1007,7 +1007,6 @@ async def chat_input(request: Request):
     for task in tasks.values():
         if "agent" in task and (agent := task["process"]):
             body = await request.body()
-            print(body.decode("utf-8"), flush=True)
             agent.stdin.write(json.dumps(body.decode("utf-8")) + "\n")
             agent.stdin.flush()
             return

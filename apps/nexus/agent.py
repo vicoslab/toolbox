@@ -24,7 +24,7 @@ if flavor == 'codex':
             'mcp_servers.toolbox.url = "http://localhost:8079/mcp"',
             'mcp_servers.mlflow.command = "uv"',
             'mcp_servers.mlflow.args = ["run", "mlflow", "mcp", "run"]',
-            'mcp_servers.mlflow.env = { MLFLOW_TRACKING_URI = "http://localhost:8081", MLFLOW_MCP_TOOLS = "experiments,runs" }',
+            'mcp_servers.mlflow.env = { MLFLOW_TRACKING_URI = "https://localhost/app/mlflow", MLFLOW_MCP_TOOLS = "experiments,runs" }',
             'mcp_servers.mlflow.cwd = "/opt/apps/mlflow"',
         ],
     )
