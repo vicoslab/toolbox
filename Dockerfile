@@ -118,7 +118,7 @@ RUN unzip -p opencv.zip js/bin/opencv.js > static/opencv.js && rm opencv.zip
 ADD https://github.com/photopea/UTIF.js.git /tmp/utif
 RUN mv /tmp/utif/UTIF.js static && rm -rf /tmp/utif
 
-COPY ${src}/nexus.py ${src}/gateway.py ${src}/worker-logging.conf ${src}/uv.lock ${src}/pyproject.toml ${src}/__init__.py .
+COPY ${src}/nexus ${src}/gateway.py ${src}/worker-logging.conf ${src}/uv.lock ${src}/pyproject.toml ${src}/__init__.py .
 COPY ${src}/tests tests
 
 RUN --mount=type=cache,target=/root/.cache/uv XDG_DATA_HOME=/usr/local/share uv sync

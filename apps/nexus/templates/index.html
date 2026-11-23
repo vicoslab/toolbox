@@ -34,20 +34,17 @@
                 <h4>Setup agent (optional)</h4>
                 Connect external LLM provider to enable chat-based features in the toolox.
             </button>
-            <a role="listitem" class="card"
-                href="{{ url_for_query(request, 'models', params) }}">
+            <a role="listitem" class="card" href="{{ request.state.url_for_query('models') }}">
                 <img src="/static/icons/question.svg">
                 <h4>Model selection</h4>
                 Select a model based on your use case.
             </a>
-            <a role="listitem" class="card"
-                href="{{ url_for_query(request, 'dataset', params) }}">
+            <a role="listitem" class="card" href="{{ request.state.url_for_query('dataset') }}">
                 <img src="/static/icons/picture.svg">
                 <h4>Prepare dataset</h4>
                 Collect a diverse set of representative images.
             </a>
-            <a role="listitem" class="card"
-                href="{{ url_for_query(request, 'label', params) }}">
+            <a role="listitem" class="card" href="{{ request.state.url_for_query('label') }}">
                 <img src="/static/icons/draw.svg">
                 <h4>Annotation</h4>
                 Annotate images with labels (depending on the model, this may be a mask, points, ...). If you use
@@ -55,22 +52,19 @@
                 tools, you will need to create a file with information about the dataset (follow guidelines for your
                 selected model).
             </a>
-            <a role="listitem" class="card" {% if 'model' in params
-                %}href="{{ url_for_query(request, 'train', params) }}" {% else %}
-                style="cursor: not-allowed;" {% endif %}>
+            <a role="listitem" class="card" {% if 'model' in params %}href="{{ request.state.url_for_query('train') }}"
+                {% else %} style="cursor: not-allowed;" {% endif %}>
                 <img src="/static/icons/gear.svg">
                 <h4>Training</h4>
                 Train model based on your annotations to obtain weights.
             </a>
-            <a role="listitem" class="card"
-                href="{{ url_for_query(request, 'dashboard', params) }}">
+            <a role="listitem" class="card" href="{{ request.state.url_for_query('dashboard') }}">
                 <img src="/static/icons/beaker.svg">
                 <h4>Experiments</h4>
                 Monitor training metrics of your experiments for any issues.
             </a>
-            <a role="listitem" class="card" {% if 'model' in params
-                %}href="{{ url_for_query(request, 'infer', params) }}" {% else %}
-                style="cursor: not-allowed;" {% endif %}>
+            <a role="listitem" class="card" {% if 'model' in params %}href="{{ request.state.url_for_query('infer') }}"
+                {% else %} style="cursor: not-allowed;" {% endif %}>
                 <img src="/static/icons/remove.svg">
                 <h4>Evaluation</h4>
                 Run inference on unseen examples and inspect incorrect results.
@@ -81,8 +75,7 @@
                 Collect additional samples or correct annotations if necessary, and repeat previous steps to obtain new
                 weights.
             </div>
-            <a role="listitem" class="card"
-                href="{{ url_for_query(request, 'finish', params) }}">
+            <a role="listitem" class="card" href="{{ request.state.url_for_query('finish') }}">
                 <img src="/static/icons/download.svg">
                 <h4>Finish</h4>
                 Deploy inference worker or download annotations and training artifacts from the toolbox.
@@ -163,7 +156,7 @@
             }
         }
     }
-    
+
     .card {
         display: grid;
         grid-template-areas:
@@ -186,12 +179,14 @@
             grid-area: icon;
         }
     }
+
     button.card {
         text-align: left;
         font-weight: inherit;
         font-size: inherit;
         width: calc(100% - 1rem);
     }
+
     a.card {
         text-decoration: none;
 
@@ -199,6 +194,7 @@
             background-color: var(--bg-accent-hover);
         }
     }
+
     .provider {
         input {
             margin-right: 0.5rem;

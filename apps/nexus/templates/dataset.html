@@ -14,9 +14,8 @@
     <div style="max-width: 70rem; margin:auto">
         <div style="display: flex; justify-content: center; gap: 1rem;">
             <button class="shadow" onclick="externalDataset()">I have an external dataset</button>
-            <a class="button shadow"
-                href="{{ url_for_query(request, 'label', params, tour=tour_enum.LABELING.value) }}">I have an existing
-                project</a>
+            <a class="button shadow" href="{{ request.state.url_for_query('label', tour=tour_enum.LABELING.value) }}">I
+                have an existing project</a>
             {% if "project" in params %}
             <button class="shadow" onclick="showAddDialog(this.form)">Add data to
                 active project</button>
@@ -101,7 +100,7 @@
                         <button class="shadow" type="button" onclick="this.form.classList.remove('s2')">Back</button>
                         <button class="shadow create" type="submit">Create</button>
                         <button class="shadow add" type="submit"
-                            formaction="{{ url_for_query(request, 'dataset_upload', params)}}">Upload</button>
+                            formaction="{{ request.state.url_for_query('dataset_upload')}}">Upload</button>
                     </div>
                 </form>
 
@@ -120,17 +119,23 @@
                         <input type="checkbox" name="{{ name }}" {% if info.enabled %}checked{% endif %}>
                         {{ info.name }}
                         {% if custom %}
-                        <button class="remove-tool transparent shadow-sm" title="Remove tool" onclick="remove('{{ name }}', 'rectangle')"><svg><use href="/static/icons/remove.svg#root"></use></svg></button>
+                        <button class="remove-tool transparent shadow-sm" title="Remove tool"
+                            onclick="remove('{{ name }}', 'rectangle')"><svg>
+                                <use href="/static/icons/remove.svg#root"></use>
+                            </svg></button>
                         {% endif %}
                     </label>
                     {% else %}
                     <label class="tool button"
-                        onclick="install(`{{ url_for_query(request, 'model_install', params, model=info.model) }}`, `{{ name }}`);"
+                        onclick="install(`{{ request.state.url_for_query('model_install', model=info.model) }}`, `{{ name }}`);"
                         title="Click to install model" data-src="{{ group }} by {{ owner }}">
                         <input type="checkbox" name="{{ name }}" disabled>
                         {{ info.name }}
                         {% if custom %}
-                        <button class="remove-tool transparent shadow-sm" title="Remove tool" onclick="remove('{{ name }}', 'rectangle')"><svg><use href="/static/icons/remove.svg#root"></use></svg></button>
+                        <button class="remove-tool transparent shadow-sm" title="Remove tool"
+                            onclick="remove('{{ name }}', 'rectangle')"><svg>
+                                <use href="/static/icons/remove.svg#root"></use>
+                            </svg></button>
                         {% endif %}
                     </label>
                     {% endif %}
@@ -156,17 +161,23 @@
                         <input type="checkbox" name="{{ name }}" {% if info.enabled %}checked{% endif %}>
                         {{ info.name }}
                         {% if custom %}
-                        <button class="remove-tool transparent shadow-sm" title="Remove tool" onclick="remove('{{ name }}', 'keypoint')"><svg><use href="/static/icons/remove.svg"></use></svg></button>
+                        <button class="remove-tool transparent shadow-sm" title="Remove tool"
+                            onclick="remove('{{ name }}', 'keypoint')"><svg>
+                                <use href="/static/icons/remove.svg"></use>
+                            </svg></button>
                         {% endif %}
                     </label>
                     {% else %}
                     <label class="tool button"
-                        onclick="install(`{{ url_for_query(request, 'model_install', params, model=info.model) }}`, `{{ name }}`);"
+                        onclick="install(`{{ request.state.url_for_query('model_install', model=info.model) }}`, `{{ name }}`);"
                         title="Click to install model" data-src="{{ group }} by {{ owner }}">
                         <input type="checkbox" name="{{ name }}" disabled>
                         {{ info.name }}
                         {% if custom %}
-                        <button class="remove-tool transparent shadow-sm" title="Remove tool" onclick="remove('{{ name }}', 'keypoint')"><svg><use href="/static/icons/remove.svg#root"></use></svg></button>
+                        <button class="remove-tool transparent shadow-sm" title="Remove tool"
+                            onclick="remove('{{ name }}', 'keypoint')"><svg>
+                                <use href="/static/icons/remove.svg#root"></use>
+                            </svg></button>
                         {% endif %}
                     </label>
                     {% endif %}
@@ -193,17 +204,23 @@
                         <input type="checkbox" name="{{ name }}" {% if info.enabled %}checked{% endif %}>
                         {{ info.name }}
                         {% if custom %}
-                        <button class="remove-tool transparent shadow-sm" title="Remove tool" onclick="remove('{{ name }}', 'image')"><svg><use href="/static/icons/remove.svg#root"></use></svg></button>
+                        <button class="remove-tool transparent shadow-sm" title="Remove tool"
+                            onclick="remove('{{ name }}', 'image')"><svg>
+                                <use href="/static/icons/remove.svg#root"></use>
+                            </svg></button>
                         {% endif %}
                     </label>
                     {% else %}
                     <label class="tool button"
-                        onclick="install(`{{ url_for_query(request, 'model_install', params, model=info.model) }}`, `{{ name }}`);"
+                        onclick="install(`{{ request.state.url_for_query('model_install', model=info.model) }}`, `{{ name }}`);"
                         title="Click to install model" data-src="{{ group }} by {{ owner }}">
                         <input type="checkbox" name="{{ name }}" disabled>
                         {{ info.name }}
                         {% if custom %}
-                        <button class="remove-tool transparent shadow-sm" title="Remove tool" onclick="remove('{{ name }}', 'image')"><svg><use href="/static/icons/remove.svg#root"></use></svg></button>
+                        <button class="remove-tool transparent shadow-sm" title="Remove tool"
+                            onclick="remove('{{ name }}', 'image')"><svg>
+                                <use href="/static/icons/remove.svg#root"></use>
+                            </svg></button>
                         {% endif %}
                     </label>
                     {% endif %}
@@ -222,7 +239,7 @@
         {% if tasks | length %}
         <h3>Tasks</h3>
         {% for pid, task in tasks.items() %}
-        <a href="{{ url_for_query(request, 'logs', params, pid=pid) }}" class="task">
+        <a href="{{ request.state.url_for_query('logs', pid=pid) }}" class="task">
             {{ task.description }}
             {% if task[tour_enum.DATASET] %}
             (ID: {{ task[tour_enum.DATASET] }})
@@ -266,7 +283,7 @@
         });
     }
     async function externalDataset() {
-        const { options, completions } = await fetch(`{{ url_for_query(request, 'model_options', params, tour=tour_enum.TRAINING.value) | safe }}`).then(r => r.json());
+        const { options, completions } = await fetch(`{{ request.state.url_for_query('model_options', tour=tour_enum.TRAINING.value) | safe }}`).then(r => r.json());
         for (const [k, v] of Object.entries(options)) {
             const { description, format, default_ } = v;
             if (format === "file:manifest.json") {
@@ -441,7 +458,7 @@
         async function showGroups() {
             const form = manageProject.querySelector("form");
             if (manageProject.classList.contains("add")) {
-                const [storages, { root }] = await Promise.all([fetch("/app/label-studio/api/storages/localfiles?project={{ params.project|default('') }}"), fetch("/datasets")].map(r => r.then(x => x.json())));
+                const [storages, { root }] = await Promise.all([fetch("/app/label-studio/api/storages/localfiles?project={{ project|default('') }}"), fetch("/datasets")].map(r => r.then(x => x.json())));
                 if (storages.length > 0) {
                     form.dataset.value = storages[0].path;
                     const { groups } = await fetch("/datasets" + storages[0].path.replace(root, "")).then(x => x.json());
@@ -651,7 +668,8 @@
         }
     }
 
-    .remove-tool, .remove-tool.remove-tool:hover {
+    .remove-tool,
+    .remove-tool.remove-tool:hover {
         width: 1.2rem;
         height: 1.2rem;
         border: none;
@@ -661,6 +679,7 @@
         top: 0;
         display: none;
         transform: translateX(50%) translateY(-50%);
+
         svg {
             width: 100%;
             height: 100%;
@@ -679,6 +698,7 @@
         input {
             appearance: none;
         }
+
         &:hover .remove-tool {
             display: block;
         }

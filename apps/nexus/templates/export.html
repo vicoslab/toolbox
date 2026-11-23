@@ -36,17 +36,16 @@
                 <label for="combine" title="Combine exported annotations with existing manifest">Combine</label>
                 <div id="wrap-combine"></div>
                 <button class="shadow"
-                    onclick="exportDataset(`{{ url_for_query(request, 'export', params) }}`, new FormData(this.form)); return false;">
+                    onclick="exportDataset(`{{ request.state.url_for_query('export') }}`, new FormData(this.form)); return false;">
                     Start export </button>
-                <a class="button shadow"
-                    href="{{ url_for_query(request, 'train', params) }}"
-                    style="place-self: end;">Skip export</a>
+                <a class="button shadow" href="{{ request.state.url_for_query('train') }}" style="place-self: end;">Skip
+                    export</a>
             </fieldset>
         </form>
         {% if tasks | length %}
         <h3>Tasks</h3>
         {% for pid, task in tasks.items() | reverse %}
-        <a href="{{ url_for_query(request, 'logs', params, pid=pid) }}" class="task">
+        <a href="{{ request.state.url_for_query('logs', pid=pid) }}" class="task">
             {{ task.description }} (ID: {{ task[tour_enum.EXPORT] }})
             {% if task.process %}
             {% set verb = "Started" %}
@@ -63,7 +62,7 @@
 </div>
 <script>
     (async () => {
-        const { options, completions } = await fetch(`{{ url_for_query(request, 'model_options', params) | safe }}`).then(r => r.json());
+        const { options, completions } = await fetch(`{{ request.state.url_for_query('model_options') | safe }}`).then(r => r.json());
         for (const [k, v] of Object.entries(options)) {
             const { description, format, default_ } = v;
             if (format === "file:manifest.json") {

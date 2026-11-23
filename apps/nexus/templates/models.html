@@ -43,7 +43,7 @@
     </h2>
     {% for name, info in models.items() %}
     {% if name in installed %}
-    <a href="{{ url_for_query(request, 'dataset' if model_manifest[name]['train'] else 'infer', params, model=name) }}"
+    <a href="{{ request.state.url_for_query('dataset' if model_manifest[name]['train'] else 'infer', model=name) }}"
         class="model installed shadow">
         <h3>{{ info.title }}</h3>
         <p>{{ info.description }}</p>
@@ -55,13 +55,14 @@
             <li class="tag">{{ tag }}</li>
             {% endfor %}
         </ul>
-        <button class="shadow-sm transparent" onclick="delete_(`{{ name }}`); return false;">
+        <button class="shadow-sm transparent"
+            onclick="delete_(`{{ request.state.url_for_query('model_uninstall', model=name) }}`, `{{ name }}`); return false;">
             <img style="width: 1.5rem;" src="/static/icons/trash.svg">
         </button>
     </a>
     {% else %}
     <a class="model" title="You must install the model to make it available for use."
-        onclick="install(`{{ url_for_query(request, 'model_install', params, model=name) }}`, `{{ name }}`, `{{ group }}`, `{{ info.get('notice', '') }}`); return false;">
+        onclick="install(`{{ request.state.url_for_query('model_install', model=name) }}`, `{{ name }}`, `{{ group }}`, `{{ info.get('notice', '') }}`); return false;">
         <h3>{{ info.title }}</h3>
         <p>{{ info.description }}</p>
         <span class="source-info" title="{{ group }} by {{ owner }}">
@@ -205,9 +206,9 @@
             }
         }).catch(() => { });
     }
-    function delete_(name) {
+    function delete_(url, name) {
         showModal(`Delete installed files for model '${name}'?`).then(async () => {
-            await fetch(`/model/${name}/uninstall`, { method: "post" });
+            await fetch(url, { method: "post" });
             location.reload();
         }).catch(() => { });
     }

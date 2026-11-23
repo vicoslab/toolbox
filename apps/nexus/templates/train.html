@@ -12,7 +12,8 @@
         information about training samples to the training procedure.
 
         If you came here from the 'Export' step, the dataset manifest should be filled in for you already. Otherwise
-        you can find past exports on the <a href="{{ url_for_query(request, 'status', params) }}">status</a> page.
+        you can find past exports on the <a href="{{ request.state.url_for_query('status', **params) }}">status</a>
+        page.
     </p>
     <p>
         For your own dataset, you are expected to prepare a dataset manifest yourself and manually enter the path
@@ -30,13 +31,14 @@
             </button>
         </div>
         <div style="margin: 2rem auto; width: fit-content;">
-            <button id="model-training" class="shadow";
-                onclick="startTraining(`{{ url_for_query(request, 'model_train', params) }}`)">Start new</button>
+            <button id="model-training" class="shadow" ;
+                onclick="startTraining(`{{ request.state.url_for_query('model_train', **params) }}`)">Start
+                new</button>
         </div>
         {% if runs | length %}
         <h3>Tasks</h3>
         {% for pid, task in runs.items() | reverse %}
-        <a href="{{ url_for_query(request, 'logs', params, pid=pid) }}" class="task">
+        <a href="{{ request.state.url_for_query('logs', pid=pid, **params) }}" class="task">
             {{ task.description }}
             {% if task.process %}
             {% set verb = "Started" %}
@@ -69,6 +71,6 @@
         });
     }
 
-    showOptions("train", `{{ url_for_query(request, 'model_options', params) | safe }}`, key);
+    showOptions("train", `{{ request.state.url_for_query('model_options', **params) | safe }}`, key);
 </script>
 {% endblock %}
