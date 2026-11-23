@@ -4,7 +4,7 @@ import { Section } from 'codeceptjs/steps';
 import * as E from 'codeceptjs/effects'
 import { ok } from 'node:assert/strict';
 
-export default function() {
+export default function () {
   return actor({
 
     assert(condition, message) {
@@ -15,7 +15,7 @@ export default function() {
       Section(title);
     },
 
-    installSrc (src) {
+    installSrc(src) {
       this.section('Install source');
       this.click('Models');
       this.usePlaywrightTo('Prepare clipboard permissions/content', async ({ browserContext, page }) => {
@@ -38,21 +38,25 @@ export default function() {
       this.amOnPage('/models?tour=1');
       this.click('button[onclick*="delete_"]', 'a.model');
       this.click('Ok');
-      this.waitForNavigation(); // wait for page refresh
     },
 
     async externalDataset(filename, manifest) {
       this.section('Loading external dataset');
       this.click('button[onclick*="external"]');
+      // wait+focus helps with flakyness
+      this.waitForElement('#dataset-upload');
+      this.focus('#dataset-upload');
       this.attachFile('#dataset-upload', filename); // filename relative to test root
-      this.wait(3); // wait a bit for file to load
+      this.waitForFunction(() => {
+        return document.getElementById('dataset-upload')?.files?.length > 0;
+      }, 5);
       this.click('Ok');
       this.waitForElement('.loading');
       // If error for dataset exists is shown
       if (await E.tryTo(() => this.waitForElement('.toast.error'))) {
-          this.click('button[onclick*="external"]');
-          this.selectOption('.dropdown select', manifest);
-          this.click('Ok');
+        this.click('button[onclick*="external"]');
+        this.selectOption('.dropdown select', manifest);
+        this.click('Ok');
       }
       this.waitForURL(url => url.pathname.startsWith('/model/'), { timeout: 5000 });
     },
@@ -60,7 +64,7 @@ export default function() {
     training(options, timeout) {
       this.section('Configure training');
       for (const args of options) {
-          this.modelOption(...args);
+        this.modelOption(...args);
       }
 
       this.section('Training');
