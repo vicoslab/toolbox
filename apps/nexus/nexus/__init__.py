@@ -17,7 +17,6 @@ async def lifespan(app: FastAPI):
 
 def collect(router):
     routes = {}
-    print(vars(router), flush=True)
     for r in router.routes:
         if isinstance(r, Route):
             routes[r.name] = set(r.param_convertors.keys())
@@ -29,7 +28,6 @@ def collect(router):
 
 
 routes = collect(router)
-# print(routes, flush=True)
 
 
 def url_for_query(request: Request, route: str, **overrides):
